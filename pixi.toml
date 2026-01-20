@@ -1,0 +1,10 @@
+[workspace]
+authors = ["Farnoosh Babazadeh <farnooshbabazadeh@gmail.com>"]
+channels = ["conda-forge"]
+name = "cns-ngs-clinical"
+platforms = ["win-64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
