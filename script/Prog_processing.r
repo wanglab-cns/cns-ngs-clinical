@@ -1,3 +1,46 @@
+#####################################################
+## Script: CNS NGS clinical + mutation integration,
+##         mutation matrices (binary + oncoprint),
+##         and SummarizedExperiment export
+##
+## Purpose:
+##   Load CNS NGS clinical metadata and curated mutation calls from the
+##   CNS Tumours NGS & Clinical Data Lock workbook; derive (i) a binary
+##   gene-level mutation matrix for downstream modeling and (ii) an
+##   oncoprint-ready event-type matrix that preserves alteration classes;
+##   harmonize common patients and export SummarizedExperiment objects.
+##
+## Inputs:
+##   - data/Jan 21 2026 CNS Tumours NGS & Clinical Data Lock.xlsx
+##       * Sheet 2: Clinical data
+##       * Sheet 3: Mutation data
+##
+## Outputs:
+##   - result/data/se_mut_bin_clin.RData
+##       SummarizedExperiment with:
+##         assay: mat_bin (genes x patients; 0/1 any alteration)
+##         colData: curated clinical metadata (OS time/event, histology, IDH, age)
+##   - result/data/se_mut_onco_clin.RData
+##       SummarizedExperiment with:
+##         assay: mat_onco (genes x patients; "" or "type1;type2" per cell)
+##         colData: curated clinical metadata (same as above)
+##
+## Key steps:
+##   1) Load clinical + mutation sheets; set patient ID column to 'Study'.
+##   2) Repair invalid clinical column names (NA/blank) to enable dplyr verbs.
+##   3) Curate OS variables:
+##        - os.event: Dead=1; Alive/LTF=0; NA preserved
+##        - os.time: Survival (Months)
+##      and create analysis-friendly fields (histo, IDH.status, Age).
+##   4) Filter mutation records:
+##        - remove Unclassified mutation types
+##        - remove 'Multi-Gene' entries
+##   5) Build mutation matrices:
+##        - Option A (mat_bin): binary gene-level (any alteration per gene/patient)
+##        - Option B (mat_onco): oncoprint-style strings (semicolon-separated types)
+##   6) Harmonize common patients between clinical metadata and matrices; ensure
+##      consistent ordering; export SummarizedExperiment objects.
+#####################################################
 ####################################################
 ## Load libraries
 ####################################################
@@ -130,11 +173,4 @@ eset <- SummarizedExperiment(assay= list("gene_expression"=mat_onco),
 save(eset, file = file.path(dir_output, 'se_mut_onco_clin.RData'))
 
 
-# Questions: 
-- what does 'LTF' mean in survival status? ---> Lost To Follow up ---> censoring
-- Any censoring for time-to-event outcome (OS)?
-- Histology type? 
-- Tier variable (Tier 1? or 1 and 2?) 
-- Analysis based on IDH status?  (let's consider both stratification or even as not stratification, IDH wild type GBM)
-- Cut-off for age variable? --> median of age at diagnosis? ~ 40 yrs
-- 'C23-098' & 'C24-002' with mutation type, Unclassified
+
