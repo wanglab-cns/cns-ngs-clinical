@@ -29,68 +29,106 @@ colnames(mut_dat)[1] <- 'Study'
 mut_dat <- mut_dat[!is.na(mut_dat$Study), ]
 length(unique(mut_dat$Study))
 
-## Common patients ---> Not necessary as MAE object 
-int <- intersect(clin$Study, mut_dat$Study) # 213 patients
-clin <- clin[clin$Study %in% int, ]
-mut_dat <- mut_dat[mut_dat$Study %in% int, ]
+
+## remove NA columns in clinical data
+bad <- which(is.na(names(clin)) | names(clin) == "")
+bad
+names(clin)[bad]
+
+# 2) Repair names (NA/blank -> unnamed_#, then make all names unique)
+nm <- names(clin)
+nm[is.na(nm) | nm == ""] <- paste0("unnamed_", which(is.na(nm) | nm == ""))
+names(clin) <- make.unique(nm)
+
+# 3) Confirm it's clean
+any(is.na(names(clin)) | names(clin) == "")
+
+#################################################
+## Curate clinical data
+#################################################
+## OS event
+clin <- clin %>%
+  mutate(
+    os.event = case_when(
+      is.na(`Survival Status`) ~ NA_integer_,
+      `Survival Status` == "Dead" ~ 1L,
+      TRUE ~ 0L
+    )
+  )
+
+## rename variable 
+clin$os.time <- clin$'Survival (Months)'
+clin$histo <- clin$"Histology"
+clin$IDH.status <- clin$'IDH status'
+clin$Age <- clin$'Age at diagnosis'
+clin <- clin[order(clin$Study), ]
 
 #################################################
 ## Create mutation matrix
 #################################################
+mut_dat <- mut_dat[!is.na(mut_dat$Study), ]
+mut_dat <- mut_dat[mut_dat$'Mutation Type' != 'Unclassified', ]
+mut_dat <- mut_dat[mut_dat$Gene != 'Multi-Gene', ]
+mut_dat <- mut_dat[, order(colnames(mut_dat))]
 
+## Option A: binary gene-level matrix
+mat_bin <- mut_dat %>%
+  mutate(
+    Study = trimws(Study),
+    Gene  = trimws(Gene),
+    Gene  = dplyr::na_if(Gene, "")
+  ) %>%
+  filter(!is.na(Study), Study != "", !is.na(Gene)) %>%
+  transmute(patient = Study, gene = Gene) %>%
+  distinct() %>%
+  mutate(value = 1L) %>%
+  pivot_wider(names_from = patient, values_from = value, values_fill = 0L) %>%
+  tibble::column_to_rownames("gene") %>%
+  as.matrix()
 
+## Option B: oncoprint event-type matrix
+mat_onco <- mut_dat %>%
+  mutate(
+    Study = trimws(Study),
+    Gene  = trimws(Gene),
+    Type  = tolower(`Mutation Type`)   # optional: make labels cleaner
+  ) %>%
+  filter(!is.na(Gene), Gene != "") %>%
+  group_by(Gene, Study) %>%
+  summarise(
+    value = paste(sort(unique(Type)), collapse = ";"),
+    .groups = "drop"
+  ) %>%
+  pivot_wider(
+    names_from  = Study,
+    values_from = value,
+    values_fill = ""
+  ) %>%
+  tibble::column_to_rownames("Gene") %>%
+  as.matrix()
 
+## Common patients  
+int <- intersect(clin$Study, colnames(mat_bin)) # 213 patients
+clin <- clin[clin$Study %in% int, ]
+clin <- as.data.frame(clin)
+rownames(clin) <- clin$Study
 
+mat_bin <- mat_bin[, colnames(mat_bin) %in% int]
+mat_bin <- mat_bin[, order(colnames(mat_bin))]
+mat_onco <- mat_onco[, colnames(mat_onco) %in% int]
+mat_onco <- mat_onco[, order(colnames(mat_onco))]
 
-## ADD SCRIPT OR STEPS FOR MAE OBJECT
-table(clin$'Survival Status')
-#Alive  Dead   LTF
-#  126    59    28
+## SE object
+eset <- SummarizedExperiment(assay= list("gene_expression"=mat_bin),    
+                            colData=clin)
 
-# any censoring for survival? 
-summary(clin$'Survival (Months)')
-#   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
-#  0.230   5.388  13.568  33.312  25.263 321.651       2
+save(eset, file = file.path(dir_output, 'se_mut_bin_clin.RData'))
 
-table(clin$'Histology...46')                   
-#      Astrocytoma       Diffuse HGG      Glioblastoma            Glioma
-#               51                 1               105                23
-# Oligodendroglioma             Other
-#               13                20
+eset <- SummarizedExperiment(assay= list("gene_expression"=mat_onco),    
+                            colData=clin)
 
-table(clin$'IDH status...59') 
-#IDHmut  IDHwt     NA
-#    50    152     10
+save(eset, file = file.path(dir_output, 'se_mut_onco_clin.RData'))
 
-table(mut_dat$'Mutation Type')
-#Copy Number Variant              Fusion           SNV/Indel        Unclassified 
-#                149                  50                 545                   2
-
-mut_dat[mut_dat$'Mutation Type' == 'Unclassified', ]
-
-# for patient C24-002
-mut_dat[mut_dat$Gene == 'Multi-Gene', ]
-
-# WHO Grade
-table(clin$'WHO 2021 Grade')
-
-# 1   2   3   4  NA
-# 22  23  23 136   9
-
-df <- mut_dat[!duplicated(mut_dat$Study), ]
-df <- df[order(df$Study), ]
-df_clin <- clin[order(clin$Study), ]
-
-table(df$Tier, df_clin$'WHO 2021 Grade') 
-
-#        1   2   3   4  NA
-#  I     9  20  17 114   5
-#  II   10   0   4  19   1
-#  III   0   1   1   0   2
-
-summary(clin$"Age at diagnosis")
-#   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-# 0.6516 33.5858 46.8648 45.7562 57.4057 82.8956
 
 # Questions: 
 - what does 'LTF' mean in survival status? ---> Lost To Follow up ---> censoring
