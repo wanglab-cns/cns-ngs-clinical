@@ -92,10 +92,10 @@ mut_other <- mut_fixed
 mut_other[mut_other %in% combo_levels] <- "Other"
 
 col <- c(
-  "SNV/Indel" = "blue",
-  "CNV"       = "red",
-  "Fusion"    = "#008000",
-  "Other"     = "#756BB1"
+  "SNV/Indel" = "#68855CFF",
+  "CNV"       = "#A06177FF",
+  "Fusion"    = "#526A83FF",
+  "Other"     = "#D9AF6BFF"
 )
 
 alter_fun <- list(
@@ -140,7 +140,7 @@ left_annotation =  rowAnnotation(
     )),
     right_annotation = NULL)
 
-pdf(file.path(dir_output, 'fig1.pdf'), width = 5, height = 8)
+pdf(file.path(dir_output, 'fig1.pdf'), width = 5, height = 7)
 p
 dev.off()
 
