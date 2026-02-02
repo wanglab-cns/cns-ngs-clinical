@@ -112,7 +112,7 @@ clin <- clin[order(clin$Study), ]
 mut_dat <- mut_dat[!is.na(mut_dat$Study), ]
 mut_dat <- mut_dat[mut_dat$'Mutation Type' != 'Unclassified', ]
 mut_dat <- mut_dat[mut_dat$Gene != 'Multi-Gene', ]
-mut_dat <- mut_dat[, order(colnames(mut_dat))]
+mut_dat <- mut_dat[order(mut_dat$Study), ]
 
 ## Option A: binary gene-level matrix
 mat_bin <- mut_dat %>%
@@ -128,6 +128,8 @@ mat_bin <- mut_dat %>%
   pivot_wider(names_from = patient, values_from = value, values_fill = 0L) %>%
   tibble::column_to_rownames("gene") %>%
   as.matrix()
+
+mat_bin <- mat_bin[, order(colnames(mat_bin))]
 
 ## Option B: oncoprint event-type matrix
 mat_onco <- mut_dat %>%
@@ -150,6 +152,8 @@ mat_onco <- mut_dat %>%
   tibble::column_to_rownames("Gene") %>%
   as.matrix()
 
+mat_onco <- mat_onco[, order(colnames(mat_onco))]
+
 ## Common patients  
 int <- intersect(clin$Study, colnames(mat_bin)) # 213 patients
 clin <- clin[clin$Study %in% int, ]
@@ -157,9 +161,7 @@ clin <- as.data.frame(clin)
 rownames(clin) <- clin$Study
 
 mat_bin <- mat_bin[, colnames(mat_bin) %in% int]
-mat_bin <- mat_bin[, order(colnames(mat_bin))]
 mat_onco <- mat_onco[, colnames(mat_onco) %in% int]
-mat_onco <- mat_onco[, order(colnames(mat_onco))]
 
 ## SE object
 eset <- SummarizedExperiment(assay= list("gene_expression"=mat_bin),    
