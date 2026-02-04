@@ -2,28 +2,43 @@
 ## Script: CNS NGS OncoPrint (ComplexHeatmap)
 ##
 ## Purpose:
-##   Generate an OncoPrint from a curated CNS NGS mutation event matrix stored
-##   in a SummarizedExperiment object. Standardize alteration labels, optionally
-##   collapse multi-event cells into "Other", and export the figure as a PDF.
+##   Generate publication-quality OncoPrints from a curated CNS NGS
+##   mutation event matrix stored in a SummarizedExperiment object.
+##   The script standardizes alteration labels, enforces within-cell
+##   alteration priority, optionally collapses multi-event cells into
+##   a single "Other" category, and visualizes mutation frequencies
+##   with and without clinical annotations.
 ##
 ## Input:
 ##   - result/data/se_mut_onco_clin.RData
-##       SummarizedExperiment with:
-##         assay: gene x patient character matrix ("" or "type1;type2")
+##       SummarizedExperiment containing:
+##         assay: gene × sample character matrix
+##                ("" or semicolon-delimited alteration types)
+##         colData: sample-level clinical metadata
 ##
 ## Output:
 ##   - result/Fig/fig1.pdf
+##       OncoPrint of mutation events only (no clinical metadata)
+##   - result/Fig/fig2.pdf
+##       OncoPrint with clinical annotations (Sex, Age group, IDH status)
 ##
 ## Key steps:
-##   1) Load SummarizedExperiment and extract the oncoprint matrix.
-##   2) Relabel alteration types to a consistent vocabulary:
-##        snv/indel -> SNV/Indel
-##        copy number variant -> CNV
-##        fusion -> Fusion
-##      and enforce within-cell ordering (Fusion > CNV > SNV/Indel).
-##   3) Collapse combined event labels (e.g., "Fusion;CNV") into "Other" for a
-##      simplified legend (optional).
-##   4) Draw and export OncoPrint using ComplexHeatmap.
+##   1) Load the SummarizedExperiment and extract the mutation matrix
+##      and clinical metadata.
+##   2) Standardize alteration labels to a controlled vocabulary:
+##        snv/indel            → SNV/Indel
+##        copy number variant → CNV
+##        fusion              → Fusion
+##      and enforce a consistent within-cell priority:
+##        Fusion > CNV > SNV/Indel.
+##   3) Optionally collapse combined alteration labels
+##      (e.g., "Fusion;CNV", "CNV;SNV/Indel") into a single "Other"
+##      category to simplify visualization and legends.
+##   4) Define custom graphical functions for alteration rendering
+##      and generate OncoPrints using ComplexHeatmap.
+##   5) Add sample-level clinical annotations (Sex, Age group, IDH
+##      status) and alteration frequency barplots, and export figures
+##      as PDF files.
 #####################################################
 ####################################################
 ## Load libraries
@@ -84,7 +99,7 @@ mut_fixed[1:4, 1:6]
 table(mut_fixed)
 
 ####################################################
-## OncoPrint ---> ComplexHeatmap
+## OncoPrint ---> no clinbical metadata
 ####################################################
 combo_levels <- c("CNV;SNV/Indel", "Fusion;CNV", "Fusion;CNV;SNV/Indel")
 
@@ -104,15 +119,15 @@ alter_fun <- list(
               gp = gpar(fill = "#CCCCCC", col = NA))
   },
   "SNV/Indel" = function(x, y, w, h) {
-    grid.rect(x, y, w - unit(2, "pt"), h * 0.33,
-              gp = gpar(fill = col["SNV/Indel"], col = NA))
-  },
+  grid.rect(x, y, w - unit(2, "pt"), h - unit(2, "pt"),
+            gp = gpar(fill = col["SNV/Indel"], col = NA))
+},
   "CNV" = function(x, y, w, h) {
     grid.rect(x, y, w - unit(2, "pt"), h - unit(2, "pt"),
               gp = gpar(fill = col["CNV"], col = NA))
   },
   "Fusion" = function(x, y, w, h) {
-    grid.rect(x, y, w - unit(2, "pt"), h * 0.33,
+    grid.rect(x, y, w - unit(2, "pt"), h - unit(2, "pt"),
               gp = gpar(fill = col["Fusion"], col = NA))
   },
   "Other" = function(x, y, w, h) {
@@ -134,14 +149,81 @@ p <- oncoPrint(
   remove_empty_rows = TRUE,
   remove_empty_columns = TRUE,
   heatmap_legend_param = heatmap_legend_param,
-left_annotation =  rowAnnotation(
-        rbar = anno_oncoprint_barplot(
-            axis_param = list(direction = "reverse")
-    )),
-    right_annotation = NULL)
+    row_names_gp = grid::gpar(fontsize = 7),
+  left_annotation = rowAnnotation(
+    rbar = anno_oncoprint_barplot(
+      axis_param = list(direction = "reverse")
+    )
+  ),
+  right_annotation = NULL
+)
 
-pdf(file.path(dir_output, 'fig1.pdf'), width = 5, height = 7)
+pdf(file.path(dir_output, 'fig1.pdf'),  width = 5, height = 7)
 p
 dev.off()
 
-## ADD ANNOTATIONS
+####################################################
+## OncoPrint ---> clinbical metadata
+####################################################
+# sample-level metadata
+clin$Age <- ifelse(clin$Age >= 40, '> 40', '< 40')
+clin$IDH.status[clin$IDH.status == 'NA'] <- "Unknown"
+clin$IDH.status[clin$IDH.status == 'IDHmut'] <- "Mut"
+clin$IDH.status[clin$IDH.status == 'IDHwt'] <- "WT"
+
+anno_df <- data.frame(
+  Sex = factor(clin$Sex, levels = c("Male", "Female")),
+  Age = factor(clin$Age, levels = c("> 40", "< 40")),
+  IDH = factor(clin$IDH.status, levels = c("WT", "Mut", "Unknown"))
+)
+
+# make sure rownames match sample IDs
+rownames(anno_df) <- colnames(mut_other)
+
+# colors
+anno_col <- list(
+  Sex = c(
+    Male   = "#4C72B0",
+    Female = "#DD8452"
+  ),
+  IDH = c(
+    WT  = "#C44E52",
+    Mut = "#55A868",
+    Unknown = "grey"
+  ),
+  Age = c(
+    '> 40'  = "#08306B",
+    '< 40' = "#C6DBEF"
+  )
+)
+
+# create annotation
+ha_meta <- HeatmapAnnotation(
+  df = anno_df,
+  col = anno_col,
+  annotation_name_side = "left"
+)
+
+ha_bar <- HeatmapAnnotation(
+  "Alterations" = anno_oncoprint_barplot()
+)
+
+top_anno <- c(ha_bar, ha_meta)
+p <- oncoPrint(
+  mut_other,
+  alter_fun = alter_fun,
+  col = col,
+  remove_empty_rows = TRUE,
+  remove_empty_columns = TRUE,
+  heatmap_legend_param = heatmap_legend_param,
+  row_names_gp = grid::gpar(fontsize = 7),
+  top_annotation = top_anno,
+  left_annotation = rowAnnotation(
+    rbar = anno_oncoprint_barplot(axis_param = list(direction = "reverse"))
+  ),
+  right_annotation = NULL
+)
+
+pdf(file.path(dir_output, 'fig2.pdf'), width = 6, height = 7)
+p
+dev.off()
