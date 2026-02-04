@@ -72,7 +72,6 @@ colnames(mut_dat)[1] <- 'Study'
 mut_dat <- mut_dat[!is.na(mut_dat$Study), ]
 length(unique(mut_dat$Study))
 
-
 ## remove NA columns in clinical data
 bad <- which(is.na(names(clin)) | names(clin) == "")
 bad
@@ -113,6 +112,7 @@ mut_dat <- mut_dat[!is.na(mut_dat$Study), ]
 mut_dat <- mut_dat[mut_dat$'Mutation Type' != 'Unclassified', ]
 mut_dat <- mut_dat[mut_dat$Gene != 'Multi-Gene', ]
 mut_dat <- mut_dat[order(mut_dat$Study), ]
+mut_dat <- mut_dat[mut_dat$Tier %in% c('I', 'II'), ]
 
 ## Option A: binary gene-level matrix
 mat_bin <- mut_dat %>%
@@ -155,7 +155,7 @@ mat_onco <- mut_dat %>%
 mat_onco <- mat_onco[, order(colnames(mat_onco))]
 
 ## Common patients  
-int <- intersect(clin$Study, colnames(mat_bin)) # 213 patients
+int <- intersect(clin$Study, colnames(mat_bin)) # 213 patients (all) & 199 for Tier 1 & II
 clin <- clin[clin$Study %in% int, ]
 clin <- as.data.frame(clin)
 rownames(clin) <- clin$Study
@@ -173,6 +173,3 @@ eset <- SummarizedExperiment(assay= list("gene_expression"=mat_onco),
                             colData=clin)
 
 save(eset, file = file.path(dir_output, 'se_mut_onco_clin.RData'))
-
-
-
