@@ -48,6 +48,8 @@ library(MultiAssayExperiment)
 library(dplyr)
 library(readxl)  
 library(tidyr)
+library(stringr)
+library(tibble)
 
 ####################################################
 ## Setup directories
@@ -63,14 +65,15 @@ clin <- readxl::read_xlsx(file.path(dir_input, 'Jan 21 2026 CNS Tumours NGS & Cl
                           sheet = 2, .name_repair = "minimal")
 colnames(clin)[1] <- 'Study'
 clin <- clin[!is.na(clin$Study), ] ## remove NAs for patients
-length(unique(clin$Study))   
+length(unique(clin$Study))   # 279 samples
 
 ## -- Step 2: mutation data
 mut_dat <- read_xlsx(file.path(dir_input, 'Jan 21 2026 CNS Tumours NGS & Clinical Data Lock.xlsx'),, 
                           sheet = 3, .name_repair = "minimal") 
 colnames(mut_dat)[1] <- 'Study'
 mut_dat <- mut_dat[!is.na(mut_dat$Study), ]
-length(unique(mut_dat$Study))
+mut_dat <- mut_dat[mut_dat$Tier %in% c('I', 'II'), ]
+length(unique(mut_dat$Study)) # 199 patients
 
 ## remove NA columns in clinical data
 bad <- which(is.na(names(clin)) | names(clin) == "")
@@ -109,13 +112,25 @@ clin <- clin[order(clin$Study), ]
 ## Create mutation matrix
 #################################################
 mut_dat <- mut_dat[!is.na(mut_dat$Study), ]
-mut_dat <- mut_dat[mut_dat$'Mutation Type' != 'Unclassified', ]
-mut_dat <- mut_dat[mut_dat$Gene != 'Multi-Gene', ]
+mut_dat <- mut_dat[mut_dat$'Mutation Type' != 'Unclassified', ] # 1 patient  
+mut_dat <- mut_dat[mut_dat$Gene != 'Multi-Gene', ] 
 mut_dat <- mut_dat[order(mut_dat$Study), ]
-mut_dat <- mut_dat[mut_dat$Tier %in% c('I', 'II'), ]
+
+mut_dat2 <- mut_dat %>%
+  mutate(
+    Mut_Class = case_when(
+      `Mutation Type` == "SNV/Indel" ~ "SNV/Indel",
+      `Mutation Type` == "Fusion" ~ "Fusion",
+      `Mutation Type` == "Copy Number Variant" &
+        str_detect(`Full Mutation Description`, "Amplification") ~ "Amplification",
+      `Mutation Type` == "Copy Number Variant" &
+        str_detect(`Full Mutation Description`, "Deletion") ~ "Deletion",
+      TRUE ~ NA_character_
+    )
+  )
 
 ## Option A: binary gene-level matrix
-mat_bin <- mut_dat %>%
+mat_bin <- mut_dat2 %>%
   mutate(
     Study = trimws(Study),
     Gene  = trimws(Gene),
@@ -132,27 +147,41 @@ mat_bin <- mut_dat %>%
 mat_bin <- mat_bin[, order(colnames(mat_bin))]
 
 ## Option B: oncoprint event-type matrix
-mat_onco <- mut_dat %>%
+mat_onco <- mut_dat2 %>%
   mutate(
-    Study = trimws(Study),
-    Gene  = trimws(Gene),
-    Type  = tolower(`Mutation Type`)   # optional: make labels cleaner
+    Study     = trimws(Study),
+    Gene      = trimws(Gene),
+    Mut_Class = trimws(Mut_Class),
+    Mut_Class = na_if(Mut_Class, "")
   ) %>%
-  filter(!is.na(Gene), Gene != "") %>%
+  filter(
+    !is.na(Study), Study != "",
+    !is.na(Gene),  Gene  != "",
+    !is.na(Mut_Class)
+  ) %>%
   group_by(Gene, Study) %>%
   summarise(
-    value = paste(sort(unique(Type)), collapse = ";"),
+    value = paste(sort(unique(Mut_Class)), collapse = ";"),
     .groups = "drop"
   ) %>%
   pivot_wider(
     names_from  = Study,
     values_from = value,
-    values_fill = ""
-  ) %>%
-  tibble::column_to_rownames("Gene") %>%
-  as.matrix()
+    values_fill = list(value = "")
+  )
 
-mat_onco <- mat_onco[, order(colnames(mat_onco))]
+mat_onco <- as.data.frame(mat_onco)
+rownames(mat_onco) <- mat_onco$Gene
+mat_onco$Gene <- NULL
+mat_onco <- as.matrix(mat_onco)
+
+mat_onco <- mat_onco[, sort(colnames(mat_onco)), drop = FALSE]
+
+which(mat_onco == "Amplification;Fusion;SNV/Indel", arr.ind = TRUE)
+mut_dat2 %>%
+  filter(Gene == rownames(mat_onco)[7]) %>%
+  filter(Study %in% c("C22-081","C23-131","C24-035","C24-045")) %>%
+  arrange(Study)
 
 ## Common patients  
 int <- intersect(clin$Study, colnames(mat_bin)) # 213 patients (all) & 199 for Tier 1 & II
