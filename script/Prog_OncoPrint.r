@@ -175,7 +175,7 @@ dev.off()
 ####################################################
 # sample-level metadata
 clin <- as.data.frame(clin)
-clin$Age <- ifelse(clin$Age >= 40, '> 40', '< 40')
+clin$Age <- ifelse(clin$Age >= 40, '>40', '<40')
 clin$IDH.status[clin$IDH.status == 'NA'] <- "Unknown"
 clin$IDH.status[clin$IDH.status == 'IDHmut'] <- "Mut"
 clin$IDH.status[clin$IDH.status == 'IDHwt'] <- "WT"
@@ -252,7 +252,7 @@ clin <- clin %>%
 
 anno_df <- data.frame(
   Sex = factor(clin$Sex, levels = c("Male", "Female")),
-  Age = factor(clin$Age, levels = c("> 40", "< 40")),
+  Age = factor(clin$Age, levels = c(">40", "<40")),
   IDH = factor(clin$IDH.status, levels = c("WT", "Mut", "Unknown")),
   Location = factor(clin$Location, levels = c('Lobar', 'Cerebellum', 'Thalamic', 'Other')),
   Histo = factor(clin$Histo, levels = c('Glioblastoma', 'Astrocytoma', 'Oligodendroglioma', 'Glioneuronal')),
@@ -274,8 +274,8 @@ anno_col <- list(
     Unknown = "#96A5A5FF"
   ),
   Age = c(
-    '> 40'  = "#08306B",
-    '< 40' = "#C6DBEF"
+    '>40'  = "#08306B",
+    '<40' = "#C6DBEF"
   ),
   Grade = c(
     'I/II'  = "#BC8E7DFF",
@@ -335,7 +335,7 @@ dev.off()
 # sample-level metadata
 clin <- as.data.frame(clin)
 clin_wt <- clin[clin$IDH.status == 'IDHwt', ]
-clin_wt$Age <- ifelse(clin_wt$Age >= 40, '> 40', '< 40')
+clin_wt$Age <- ifelse(clin_wt$Age >= 40, '>40', '<40')
 
 # primary location
 clin_wt <- clin_wt %>%
@@ -409,7 +409,7 @@ clin_wt <- clin_wt %>%
 
 anno_df <- data.frame(
   Sex = factor(clin_wt$Sex, levels = c("Male", "Female")),
-  Age = factor(clin_wt$Age, levels = c("> 40", "< 40")),
+  Age = factor(clin_wt$Age, levels = c(">40", "<40")),
   #IDH = factor(clin_wt$IDH.status, levels = c("WT", "Mut", "Unknown")),
   Location = factor(clin_wt$Location, levels = c('Lobar', 'Cerebellum', 'Thalamic', 'Other')),
   Histo = factor(clin_wt$Histo, levels = c('Glioblastoma', 'Astrocytoma', 'Oligodendroglioma', 'Glioneuronal')),
@@ -432,8 +432,8 @@ anno_col <- list(
  #   Unknown = "#96A5A5FF"
  # ),
   Age = c(
-    '> 40'  = "#08306B",
-    '< 40' = "#C6DBEF"
+    '>40'  = "#08306B",
+    '<40' = "#C6DBEF"
   ),
   Grade = c(
     'I/II'  = "#BC8E7DFF",
@@ -493,7 +493,7 @@ dev.off()
 # sample-level metadata
 clin <- as.data.frame(clin)
 clin_mut <- clin[clin$IDH.status == 'IDHmut', ]
-clin_mut$Age <- ifelse(clin_mut$Age >= 40, '> 40', '< 40')
+clin_mut$Age <- ifelse(clin_mut$Age >= 40, '>40', '<40')
 
 # primary location
 clin_mut <- clin_mut %>%
@@ -540,7 +540,7 @@ clin_mut <- clin_mut %>%
 
 anno_df <- data.frame(
   Sex = factor(clin_mut$Sex, levels = c("Male", "Female")),
-  Age = factor(clin_mut$Age, levels = c("> 40", "< 40")),
+  Age = factor(clin_mut$Age, levels = c(">40", "<40")),
   #IDH = factor(clin_wt$IDH.status, levels = c("WT", "Mut", "Unknown")),
   Location = factor(clin_mut$Location, levels = c('Lobar', 'Cerebellum')),
   Histo = factor(clin_mut$Histo, levels = c('Astrocytoma', 'Oligodendroglioma')),
@@ -563,8 +563,8 @@ anno_col <- list(
  #   Unknown = "#96A5A5FF"
  # ),
   Age = c(
-    '> 40'  = "#08306B",
-    '< 40' = "#C6DBEF"
+    '>40'  = "#08306B",
+    '<40' = "#C6DBEF"
   ),
   Grade = c(
     'I/II'  = "#BC8E7DFF",
@@ -608,6 +608,109 @@ p <- oncoPrint(
   right_annotation = NULL
 )
 
-pdf(file.path(dir_output, 'fig4_mut.pdf'), width = 5.3, height = 6)
+pdf(file.path(dir_output, 'fig4_mut.pdf'), width = 6, height = 7)
 p
 dev.off()
+
+###################################################
+## Bar plots: top mutations and sex/age
+###################################################
+load(file.path(dir_input, 'se_mut_bin_clin.RData'))
+mut <- assay(eset)
+
+## choose top mutations
+mut_freq <- rowMeans(mut == 1)
+
+genes <- names(mut_freq[mut_freq >= 0.10])
+mut_filt <- mut[genes, ]
+
+## convert to long format
+mut_long <- as.data.frame(t(mut_filt)) %>%
+  mutate(Sample = rownames(.)) %>%
+  pivot_longer(
+    cols = -Sample,
+    names_to = "Gene",
+    values_to = "Mutation"
+  )
+
+## merge with clinical age and sex variables
+mut_long <- mut_long %>%
+  left_join(
+    clin %>% 
+      mutate(Sample = Study) %>%
+      select(Sample, Age, Sex),
+    by = "Sample"
+  )
+
+###########################################################
+## Fishe exact test --- Age/sex and mutations
+###########################################################
+age_assoc <- mut_long %>%
+  group_by(Gene) %>%
+  summarise(
+    pval = fisher.test(table(Mutation, Age))$p.value
+  )
+
+age_assoc$fdr <- p.adjust(age_assoc$pval, method = "BH")
+write.csv(age_assoc, file = file.path(dir_output, 'mut_age.csv'))
+
+## Fishe exact test --- Sex and mutations
+sex_assoc <- mut_long %>%
+  group_by(Gene) %>%
+  summarise(
+    pval = fisher.test(table(Mutation, Sex))$p.value
+  )
+
+sex_assoc$fdr <- p.adjust(sex_assoc$pval, method = "BH")
+write.csv(sex_assoc, file = file.path(dir_output, 'mut_sex.csv'))
+
+## bar plot age
+gene_order <- mut_long %>%
+  group_by(Gene) %>%
+  summarise(overall = mean(Mutation)) %>%
+  arrange(desc(overall)) %>%
+  pull(Gene)
+
+plot_age <- mut_long %>%
+  group_by(Gene, Age) %>%
+  summarise(freq = mean(Mutation) * 100, .groups = "drop")
+
+plot_age$Gene <- factor(plot_age$Gene, levels = gene_order)
+
+pdf(file.path(dir_output, 'mut_age.pdf'), width = 7, height = 6)
+
+ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(
+    values = c(">40" = "#08306B",
+               "<40" = "#C6DBEF")
+  ) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(y = "Mutation frequency (%)", x = "", 
+       title = " ")
+
+dev.off()
+
+## bar plot sex
+plot_sex <- mut_long %>%
+  group_by(Gene, Sex) %>%
+  summarise(freq = mean(Mutation) * 100, .groups = "drop")
+
+plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order)
+
+pdf(file.path(dir_output, 'mut_sex.pdf'), width = 7, height = 6)
+
+ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(
+    values = c("Female" = "#DD8452",
+               "Male"   = "#4C72B0")
+  ) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(y = "Mutation frequency (%)", x = "", 
+       title = " ")
+
+dev.off()
+
