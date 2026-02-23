@@ -98,14 +98,14 @@ dir_output <- 'result/data'
 ## Load clinical CNS NGS data
 ####################################################
 ## -- Step 1: clinical data
-clin <- readxl::read_xlsx(file.path(dir_input, 'Jan 21 2026 CNS Tumours NGS & Clinical Data Lock.xlsx'), 
+clin <- readxl::read_xlsx(file.path(dir_input, 'Feb 18 2026 CNS Tumours NGS & Clinical Data Lock.xlsx'), 
                           sheet = 2, .name_repair = "minimal")
 colnames(clin)[1] <- 'Study'
 clin <- clin[!is.na(clin$Study), ] ## remove NAs for patients
 length(unique(clin$Study))   # 279 samples
 
 ## -- Step 2: mutation data
-mut_dat <- read_xlsx(file.path(dir_input, 'Jan 21 2026 CNS Tumours NGS & Clinical Data Lock.xlsx'),, 
+mut_dat <- read_xlsx(file.path(dir_input, 'Feb 18 2026 CNS Tumours NGS & Clinical Data Lock.xlsx'),
                           sheet = 3, .name_repair = "minimal") 
 colnames(mut_dat)[1] <- 'Study'
 mut_dat <- mut_dat[!is.na(mut_dat$Study), ]
@@ -214,11 +214,11 @@ mat_onco <- as.matrix(mat_onco)
 
 mat_onco <- mat_onco[, sort(colnames(mat_onco)), drop = FALSE]
 
-which(mat_onco == "Amplification;Fusion;SNV/Indel", arr.ind = TRUE)
-mut_dat2 %>%
-  filter(Gene == rownames(mat_onco)[7]) %>%
-  filter(Study %in% c("C22-081","C23-131","C24-035","C24-045")) %>%
-  arrange(Study)
+#which(mat_onco == "Amplification;Fusion;SNV/Indel", arr.ind = TRUE)
+#mut_dat2 %>%
+#  filter(Gene == rownames(mat_onco)[7]) %>%
+#  filter(Study %in% c("C22-081","C23-131","C24-035","C24-045")) %>%
+#  arrange(Study)
 
 ## Common patients  
 int <- intersect(clin$Study, colnames(mat_bin)) # 213 patients (all) & 199 for Tier 1 & II
