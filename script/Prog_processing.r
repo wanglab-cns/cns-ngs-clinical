@@ -1,82 +1,99 @@
 ############################################################
-## Script: CNS NGS clinical + mutation integration
+## Script: CNS NGS clinical–mutation integration
 ##         Binary and oncoprint mutation matrices
 ##         SummarizedExperiment export
 ##
 ## Purpose:
-##   Integrate CNS NGS clinical metadata with curated mutation calls
-##   from the CNS Tumours NGS & Clinical Data Lock workbook.
-##   Construct:
-##     (1) A binary gene-level mutation matrix (presence/absence)
-##     (2) An oncoprint-ready event-type matrix preserving alteration classes
-##   Harmonize common patients and export SummarizedExperiment objects
-##   for downstream modeling and visualization.
+##   Integrate curated clinical metadata with Tier I/II
+##   next-generation sequencing (NGS) mutation calls for
+##   central nervous system (CNS) tumor patients.
+##
+##   Construct two gene-level mutation representations:
+##     (1) A binary mutation matrix encoding presence/absence
+##         of any alteration per gene per patient.
+##     (2) An oncoprint-ready matrix preserving alteration
+##         classes and multi-hit events.
+##
+##   Harmonize patient identifiers across clinical and
+##   molecular data and export analysis-ready
+##   SummarizedExperiment objects for downstream modeling,
+##   survival analysis, clustering, and visualization.
+##
 ##
 ## Inputs:
-##   - data/Jan 21 2026 CNS Tumours NGS & Clinical Data Lock.xlsx
+##   - data/Feb 18 2026 CNS Tumours NGS & Clinical Data Lock.xlsx
 ##       • Sheet 2: Clinical metadata
-##       • Sheet 3: Mutation calls
+##       • Sheet 3: Curated mutation calls
+##
 ##
 ## Outputs:
-##   - result/data/se_mut_bin_clin.RData
-##       SummarizedExperiment with:
-##         assay: mat_bin (genes × patients; 0/1 any alteration)
-##         colData: curated clinical metadata
 ##
-##   - result/data/se_mut_onco_clin.RData
-##       SummarizedExperiment with:
-##         assay: mat_onco (genes × patients; "" or
-##                "type1;type2;..." per cell)
-##         colData: curated clinical metadata
+##   1) result/data/se_mut_bin_clin.RData
+##        SummarizedExperiment containing:
+##          - assay: binary gene-level matrix (0/1)
+##          - colData: curated clinical metadata
 ##
-## Key Processing Steps:
+##   2) result/data/se_mut_onco_clin.RData
+##        SummarizedExperiment containing:
+##          - assay: oncoprint event-type matrix
+##                   ("" or "type1;type2;...")
+##          - colData: curated clinical metadata
 ##
-##   1) Load clinical and mutation sheets; standardize patient ID column as 'Study'.
 ##
-##   2) Repair invalid/blank clinical column names to ensure compatibility
-##      with dplyr operations.
+## Processing Overview:
 ##
-##   3) Curate survival variables:
-##        • os.event: Dead = 1; Alive/LTF = 0; NA preserved
-##        • os.time: Survival (Months)
-##      Create analysis-ready variables (histology, IDH status, age).
+##   1) Data Import and Standardization
+##        Clinical and mutation sheets are imported from the
+##        NGS & Clinical Data Lock workbook. The patient
+##        identifier column is standardized as 'Study'.
+##        Invalid or blank column names in the clinical sheet
+##        are repaired to ensure compatibility with dplyr
+##        operations.
 ##
-##   4) Filter mutation records:
-##        • Keep Tier I and II events
-##        • Remove Unclassified mutation types
-##        • Remove 'Multi-Gene' entries
+##   2) Clinical Data Curation
+##        Survival variables are harmonized:
+##           - os.event: Dead = 1; Alive/LTF = 0; NA preserved
+##           - os.time:  Survival (Months)
 ##
-##   5) Recode mutation classes:
-##        • SNV/Indel  → SNV/Indel
-##        • Fusion     → Fusion
-##        • Copy Number Variant →
-##              - Amplification (if description contains "Amplification")
-##              - Deletion      (if description contains "Deletion")
+##        Key analysis variables are renamed and standardized,
+##        including histology, IDH status, and age at diagnosis.
+##        Clinical records are ordered by patient identifier.
 ##
-##   6) Construct mutation matrices:
+##   3) Mutation Filtering and Recoding
+##        Mutation calls are restricted to Tier I and Tier II
+##        events. Records labeled as "Unclassified" are removed.
 ##
-##        Option A — Binary matrix (mat_bin):
-##          • 1 if any alteration present for gene/patient
-##          • 0 otherwise
-##          • Multi-hit events are represented as 1
+##        Mutation types are recoded into harmonized classes:
+##           - SNV/Indel
+##           - Fusion
+##           - Amplification (copy number gains)
+##           - Deletion (copy number losses)
 ##
-##        Option B — Oncoprint matrix (mat_onco):
-##          • Preserve alteration types
-##          • Multiple events per gene/patient encoded as
-##            semicolon-separated strings (e.g., "Amplification;SNV/Indel")
-##          • Multi-hit events are not collapsed
+##   4) Binary Gene-Level Matrix (mat_bin)
+##        A gene × patient matrix is constructed where:
+##           - 1 indicates at least one alteration in the gene
+##           - 0 indicates no alteration
+##        Multiple alterations in the same gene/patient pair
+##        are collapsed to a single binary indicator.
 ##
-##   7) Harmonize common patients between clinical metadata and
-##      mutation matrices; ensure consistent ordering.
+##   5) Oncoprint Event-Type Matrix (mat_onco)
+##        A gene × patient matrix is constructed preserving
+##        alteration classes. Multiple events per gene/patient
+##        are concatenated as semicolon-separated strings
+##        (e.g., "Amplification;SNV/Indel").
+##        Multi-hit events are not collapsed.
 ##
-##   8) Export SummarizedExperiment objects for downstream survival
-##      modeling, clustering, and oncoprint visualization.
+##   6) Patient Harmonization
+##        Only patients present in both curated clinical data
+##        and mutation matrices are retained. Clinical metadata
+##        and mutation matrices are aligned and ordered
+##        consistently.
 ##
-## Notes:
-##   - Binary matrix encodes mutation presence only.
-##   - Oncoprint matrix preserves multi-hit events.
-##   - Mutation matrices include only patients with Tier I/II events.
-##   - Clinical metadata is subset to patients present in mutation matrices.
+##   7) SummarizedExperiment Export
+##        Two analysis-ready SummarizedExperiment objects are
+##        generated:
+##           - Binary mutation matrix + clinical metadata
+##           - Oncoprint matrix + clinical metadata
 ############################################################
 ####################################################
 ## Load libraries
@@ -150,7 +167,6 @@ clin <- clin[order(clin$Study), ]
 #################################################
 mut_dat <- mut_dat[!is.na(mut_dat$Study), ]
 mut_dat <- mut_dat[mut_dat$'Mutation Type' != 'Unclassified', ] # 1 patient  
-mut_dat <- mut_dat[mut_dat$Gene != 'Multi-Gene', ] 
 mut_dat <- mut_dat[order(mut_dat$Study), ]
 
 mut_dat2 <- mut_dat %>%
