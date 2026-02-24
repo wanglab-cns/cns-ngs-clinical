@@ -1,71 +1,90 @@
 #####################################################
-## Script: CNS NGS mutation and clinical variables – 
-##         Overall Survival (OS) Kaplan–Meier analysis
+## Script: CNS NGS Mutation and Clinical Variables –
+##         Overall Survival (OS) Kaplan–Meier Analysis
 ##
 ## Purpose:
-##   To evaluate associations between:
-##     (1) Clinical variables and OS
-##     (2) Gene-level binary mutation status (0/1 per patient) and OS
-##   Survival is analyzed using Kaplan–Meier estimation and 
-##   log-rank testing.
-##   OS is administratively censored at a fixed time horizon 
-##   (time.censor, in months), with a separate censoring time 
-##   applied for IDH-mutant patients when specified.
+##   Perform univariate survival analyses to evaluate associations
+##   between overall survival (OS) and:
+##
+##     (1) Clinical variables
+##     (2) Gene-level binary mutation status (0/1 per patient)
+##
+##   Survival distributions are estimated using Kaplan–Meier
+##   methodology and compared using the log-rank test.
+##
+##   Administrative censoring is applied at predefined time
+##   horizons:
+##       - time.censor (all patients / WT subgroup)
+##       - time.censor.mut (IDH-mutant subgroup)
+##
 ## Input:
 ##   - result/data/se_mut_bin_clin.RData
+##
 ##     SummarizedExperiment object containing:
-##       • assay: binary mutation matrix (genes × patients; 0 = WT, 1 = Mut)
-##       • colData: clinical metadata including:
-##           - os.time   (OS time in months)
-##           - os.event  (1 = death/event, 0 = censored)
-##           - Age
-##           - Sex
-##           - IDH.status
-##           - WHO.2021.Grade
-##           - Primary.location
-##           - Histology variables
+##       • assay:
+##           Binary mutation matrix (genes × patients)
+##           0 = Wild-type (WT), 1 = Mutant (Mut)
+##       • colData:
+##           Clinical metadata including:
+##             - os.time      (overall survival time, months)
+##             - os.event     (1 = event/death, 0 = censored)
+##             - Age
+##             - Sex
+##             - IDH.status
+##             - WHO.2021.Grade
+##             - Primary.location
+##             - Histology variables
+##
 ## Output:
-##   - Kaplan–Meier survival plots (PDF format) for:
-##     Clinical variables:
+##
+##   Kaplan–Meier survival plots (PDF format):
+##
+##   Clinical variables:
 ##       • Histology
 ##       • Tumor location
 ##       • WHO grade
 ##       • Age group
 ##       • Sex
 ##       • IDH mutation status
-##     Gene-level mutation status:
+##
+##   Gene-level mutation status:
 ##       • All patients
 ##       • IDH-WT subgroup
 ##       • IDH-Mut subgroup
-## Key steps:
-##   1) Load SummarizedExperiment object and extract:
-##        - Binary mutation matrix
-##        - Clinical metadata
-##   2) Harmonize and recode clinical variables:
-##        - Collapse small histology groups (<10 patients)
-##        - Standardize location and grade
-##        - Recode IDH and age groups
-##   3) Apply administrative censoring:
-##        - OS times truncated at time.censor (or time.censor.mut)
-##        - Status reset to censored (0) beyond censoring threshold
-##   4) Generate Kaplan–Meier curves:
-##        Surv(os.time, os.event) ~ variable
-##   5) For gene-level analyses:
+##
+##   Output directories:
+##       result/KM/clinical/all
+##       result/KM/clinical/wt
+##       result/KM/clinical/mut
+##       result/KM/mutation/all
+##       result/KM/mutation/wt
+##       result/KM/mutation/Mut
+##
+## Key Processing Steps:
+##
+##   1) Clinical Harmonization
+##        - Exclude samples with missing IDH status
+##        - Recode IDH (WT / Mut)
+##        - Dichotomize age (<40 vs ≥40)
+##        - Standardize tumor location and WHO grade
+##        - Collapse rare histology groups (<10 patients)
+##
+##   2) Administrative Censoring
+##        - OS times truncated at time.censor
+##        - IDH-mut subgroup truncated at time.censor.mut
+##        - Events beyond threshold reset to censored
+##
+##   3) Kaplan–Meier Estimation
+##        - Surv(os.time, os.event) ~ variable
+##        - Log-rank test for group comparison
+##        - Risk tables displayed
+##
+##   4) Gene-Level Analysis
+##        - Iterate across all genes
 ##        - Convert mutation status to WT vs Mut
-##        - Skip genes where one group has zero patients
-##        - Apply minimum group size filtering if specified
-##   6) Export survival plots with:
-##        - Risk tables
-##        - Log-rank p-values
-##        - Consistent color palettes
-## Notes:
-##   - Mutation status is coded as:
-##         0 = Wild-type (WT)
-##         1 = Mutant (Mut)
-##   - Genes with no variation (all WT or all Mut) are skipped.
-##   - Interpretation should consider mutation frequency thresholds
-##     (n1.cutoff, n0.cutoff) for stability of KM estimates.
-##   - This analysis is univariate (log-rank only).
+##        - Skip genes with:
+##              • No variation (all WT or all Mut)
+##              • Group size below n1.cutoff / n0.cutoff
 #####################################################
 ####################################################
 ## Load libraries
