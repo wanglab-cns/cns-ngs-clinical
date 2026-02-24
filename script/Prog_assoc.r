@@ -1,70 +1,65 @@
 #####################################################
 ## Script: CNS NGS gene-level mutation – OS association
 ##
-## Purpose:
-##   Evaluate associations between binary gene-level mutation
-##   status (0 = WT, 1 = Mut) and overall survival (OS) using
-##   Cox proportional hazards models.
+## Objective:
+##   Assess associations between binary gene-level mutation
+##   status (0 = wild-type, 1 = mutated) and overall survival (OS)
+##   using Cox proportional hazards regression models.
 ##
-##   Analyses include:
+##   Analyses performed:
 ##     1) Univariable Cox models (all patients)
 ##     2) Multivariable Cox models adjusted for clinical covariates
-##     3) IDH-stratified Cox models (IDH Mut and IDH WT separately)
+##     3) IDH-stratified analyses (IDH-mutant and IDH-wildtype separately)
 ##
-##   Overall survival is administratively censored at a fixed
-##   time horizon (time.censor, in months).
+##   Overall survival is administratively censored at a predefined
+##   time horizon (time.censor, months) to ensure comparable follow-up.
 ##
 ## Input:
 ##   - result/data/se_mut_bin_clin.RData
 ##       SummarizedExperiment object containing:
-##         • assay: binary mutation matrix (genes x patients; 0/1)
-##         • colData: clinical metadata including:
-##             - os.time   (OS time in months)
-##             - os.event  (1 = death/event, 0 = censored)
-##             - IDH status
+##         • assay: binary mutation matrix (genes × patients; 0/1)
+##         • colData: harmonized clinical metadata including:
+##             - os.time   : overall survival time (months)
+##             - os.event  : event indicator (1 = death, 0 = censored)
+##             - IDH.status
 ##             - Age
 ##             - Sex
-##             - WHO grade
-##             - Tumor location
-##             - Histology
+##             - WHO.2021.Grade
+##             - Primary.location
+##             - Histology annotations
 ##
 ## Output:
-##   CSV files with per-gene Cox results:
+##   Per-gene Cox regression results (CSV files):
 ##
 ##     - cox_os_all.csv
-##         Univariable Cox (all patients)
+##         Univariable models (all patients)
 ##
 ##     - cox_os_all_mv.csv
-##         Multivariable Cox adjusted for:
+##         Multivariable models adjusted for:
 ##         IDH + Age + Sex + Grade + Location + Histology
 ##
-##     - cox_os_IDH_mut.csv
-##         Univariable Cox within IDH Mut patients
+##     - cox_os_wt.csv
+##     - cox_os_wt_mv.csv
+##         Univariable and multivariable models within IDH-WT patients
 ##
-##     - cox_os_IDH_wt.csv
-##         Univariable Cox within IDH WT patients
+##     - cox_os_mut.csv
+##     - cox_os_mut_mv.csv
+##         Univariable and multivariable models within IDH-Mut patients
 ##
 ##   Each output includes:
 ##     gene, log(HR), SE, N, 95% CI (lower/upper),
-##     Wald p-value, and Benjamini–Hochberg FDR.
+##     Wald test p-value, and Benjamini–Hochberg FDR.
 ##
 ## Key Processing Steps:
-##   1) Extract binary mutation matrix and harmonized clinical data.
-##   2) Recode and collapse clinical variables where necessary.
-##   3) Apply administrative censoring at `time.censor` months.
+##   1) Extract mutation matrix and harmonized clinical variables.
+##   2) Recode and collapse clinical variables (age grouping,
+##      grade, histology, location).
+##   3) Apply administrative censoring at predefined time horizons.
 ##   4) For each gene:
-##        - Require minimum counts in mutated (n1.cutoff)
-##          and wild-type (n0.cutoff) groups.
-##        - Fit Cox PH model.
+##        - Require minimum mutated (n1.cutoff) and
+##          wild-type (n0.cutoff) sample counts.
+##        - Fit Cox proportional hazards model.
 ##   5) Adjust p-values across genes using BH FDR correction.
-##
-## Notes:
-##   - Binary mutation coding: 0 = WT, 1 = Mut.
-##   - Multivariable models may be unstable when mutation
-##     status is strongly correlated with IDH status or when
-##     event counts are low.
-##   - Interpretation should consider event-per-variable
-##     constraints and potential separation.
 #####################################################
 ####################################################
 ## Load libraries
