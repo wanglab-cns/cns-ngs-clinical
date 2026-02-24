@@ -91,11 +91,14 @@ dir_output <- 'result/assoc'
 load(file.path(dir_input, 'se_mut_bin_clin.RData'))
 mut <- assay(eset)
 clin <- as.data.frame(colData(eset))
+clin <- clin[clin$IDH.status != 'NA', ]
+clin$IDH.status <- ifelse(clin$IDH.status == 'IDHwt', 'WT', 'Mut') 
 
 ##############################################################
 ## co-mutation analysis (pairwise Fisher exact tests)
 ##############################################################
-## filter genes with sufficient mutation frequency
+## Step 1 --- All patients
+# filter genes with sufficient mutation frequency
 min_mut_freq <- 5
 
 mut_counts <- rowSums(mut == 1)
@@ -103,7 +106,6 @@ genes_keep <- names(mut_counts[mut_counts >= min_mut_freq])
 
 mut_filt <- mut[genes_keep, ]
 gene_pairs <- combn(rownames(mut_filt), 2)
-
 
 co_res <- lapply(1:ncol(gene_pairs), function(i) {
 
@@ -147,6 +149,7 @@ co_res <- lapply(1:ncol(gene_pairs), function(i) {
 })
 
 co_res <- do.call(rbind, co_res)
+co_res <- co_res[!is.na(co_res$OR), ]
 co_res <- co_res %>%
   group_by(gene1) %>%
   mutate(fdr = p.adjust(pval, method = "BH")) %>%
@@ -154,6 +157,129 @@ co_res <- co_res %>%
 
 write.csv(co_res, file = file.path(dir_output, 'coMut_res_all.csv'))
 
+## Step 2 --- WT patients
+# filter genes with sufficient mutation frequency
+min_mut_freq <- 5
+clin_wt <- clin[clin$IDH.status == 'WT', ]
+mut_wt <- mut[ , colnames(mut) %in% clin_wt$Study]
+
+mut_counts <- rowSums(mut_wt == 1)
+genes_keep <- names(mut_counts[mut_counts >= min_mut_freq])
+
+mut_filt <- mut_wt[genes_keep, ]
+gene_pairs <- combn(rownames(mut_filt), 2)
+
+co_res <- lapply(1:ncol(gene_pairs), function(i) {
+ 
+  g1 <- gene_pairs[1, i]
+  g2 <- gene_pairs[2, i]
+
+  vec1 <- as.numeric(mut_filt[g1, ])
+  vec2 <- as.numeric(mut_filt[g2, ])
+
+  tab <- table(vec1, vec2)
+
+  if(all(dim(tab) == c(2,2))) {
+
+    fit <- fisher.test(tab)
+
+    data.frame(
+      gene1 = g1,
+      gene2 = g2,
+      OR = as.numeric(fit$estimate),
+      pval = fit$p.value,
+      n11 = tab["1","1"],
+      n10 = tab["1","0"],
+      n01 = tab["0","1"],
+      n00 = tab["0","0"]
+    )
+
+  } else {
+    
+     data.frame(
+      gene1 = g1,
+      gene2 = g2,
+      OR = NA,
+      pval = NA,
+      n11 = NA,
+      n10 =NA,
+      n01 = NA,
+      n00 = NA
+    )
+
+  }
+})
+
+co_res <- do.call(rbind, co_res)
+co_res <- co_res[!is.na(co_res$OR), ]
+co_res <- co_res %>%
+  group_by(gene1) %>%
+  mutate(fdr = p.adjust(pval, method = "BH")) %>%
+  ungroup()
+
+write.csv(co_res, file = file.path(dir_output, 'coMut_res_wt.csv'))
+
+## Step 2 --- MUT patients
+# filter genes with sufficient mutation frequency
+min_mut_freq <- 5
+clin_mut <- clin[clin$IDH.status == 'Mut', ]
+mut_mut <- mut[ , colnames(mut) %in% clin_mut$Study]
+
+mut_counts <- rowSums(mut_mut == 1)
+genes_keep <- names(mut_counts[mut_counts >= min_mut_freq])
+
+mut_filt <- mut_wt[genes_keep, ]
+gene_pairs <- combn(rownames(mut_filt), 2)
+
+co_res <- lapply(1:ncol(gene_pairs), function(i) {
+ 
+  g1 <- gene_pairs[1, i]
+  g2 <- gene_pairs[2, i]
+
+  vec1 <- as.numeric(mut_filt[g1, ])
+  vec2 <- as.numeric(mut_filt[g2, ])
+
+  tab <- table(vec1, vec2)
+
+  if(all(dim(tab) == c(2,2))) {
+
+    fit <- fisher.test(tab)
+
+    data.frame(
+      gene1 = g1,
+      gene2 = g2,
+      OR = as.numeric(fit$estimate),
+      pval = fit$p.value,
+      n11 = tab["1","1"],
+      n10 = tab["1","0"],
+      n01 = tab["0","1"],
+      n00 = tab["0","0"]
+    )
+
+  } else {
+    
+     data.frame(
+      gene1 = g1,
+      gene2 = g2,
+      OR = NA,
+      pval = NA,
+      n11 = NA,
+      n10 =NA,
+      n01 = NA,
+      n00 = NA
+    )
+
+  }
+})
+
+co_res <- do.call(rbind, co_res)
+co_res <- co_res[!is.na(co_res$OR), ]
+co_res <- co_res %>%
+  group_by(gene1) %>%
+  mutate(fdr = p.adjust(pval, method = "BH")) %>%
+  ungroup()
+
+write.csv(co_res, file = file.path(dir_output, 'coMut_res_mut.csv'))
 #############################################################
 ## Visualize
 #############################################################
