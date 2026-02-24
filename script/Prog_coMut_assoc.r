@@ -1,71 +1,77 @@
-#####################################################
-## Script: CNS NGS gene-level mutation – OS association
+##############################################################
+## Script: CNS NGS gene-level co-mutation analysis
 ##
 ## Purpose:
-##   Evaluate associations between binary gene-level mutation
-##   status (0 = WT, 1 = Mut) and overall survival (OS) using
-##   Cox proportional hazards models.
+##   Assess pairwise gene co-mutation patterns using
+##   Fisher’s exact tests applied to binary mutation data
+##   (0 = WT, 1 = Mut).
 ##
-##   Analyses include:
-##     1) Univariable Cox models (all patients)
-##     2) Multivariable Cox models adjusted for clinical covariates
-##     3) IDH-stratified Cox models (IDH Mut and IDH WT separately)
-##
-##   Overall survival is administratively censored at a fixed
-##   time horizon (time.censor, in months).
+##   The analysis quantifies mutation co-occurrence or
+##   mutual exclusivity between gene pairs.
 ##
 ## Input:
 ##   - result/data/se_mut_bin_clin.RData
-##       SummarizedExperiment object containing:
-##         • assay: binary mutation matrix (genes x patients; 0/1)
-##         • colData: clinical metadata including:
-##             - os.time   (OS time in months)
-##             - os.event  (1 = death/event, 0 = censored)
-##             - IDH status
-##             - Age
-##             - Sex
-##             - WHO grade
-##             - Tumor location
-##             - Histology
+##       SummarizedExperiment containing:
+##         • assay: binary mutation matrix (genes × patients; 0/1)
+##         • colData: clinical metadata including IDH.status
+##
+## Analyses:
+##
+##   1) All patients
+##      - Filter genes with mutation frequency ≥ min_mut_freq
+##      - Construct pairwise 2×2 contingency tables
+##      - Apply Fisher’s exact test
+##
+##   2) IDH-stratified analysis
+##      - Repeat analysis separately in:
+##          • IDH-WT patients
+##          • IDH-Mut patients
+##
+## Statistical Framework:
+##
+##   For each gene pair (g1, g2), a 2×2 table is constructed:
+##
+##              g2 Mut   g2 WT
+##     g1 Mut      n11     n10
+##     g1 WT       n01     n00
+##
+##   Fisher’s exact test is applied to evaluate independence.
+##
+##   Odds Ratio (OR):
+##       OR = (n11 × n00) / (n10 × n01)
+##
+##       OR > 1  → co-occurrence
+##       OR < 1  → mutual exclusivity
+##
+##   Effect size visualization:
+##       log2(OR)
+##
+##   Multiple testing correction:
+##       Benjamini–Hochberg FDR
 ##
 ## Output:
-##   CSV files with per-gene Cox results:
 ##
-##     - cox_os_all.csv
-##         Univariable Cox (all patients)
+##   CSV files:
+##     - coMut_res_all.csv
+##     - coMut_res_wt.csv
+##     - coMut_res_mut.csv
 ##
-##     - cox_os_all_mv.csv
-##         Multivariable Cox adjusted for:
-##         IDH + Age + Sex + Grade + Location + Histology
+##     Each file includes:
+##       gene1, gene2,
+##       OR, pval,
+##       n11, n10, n01, n00,
+##       FDR
 ##
-##     - cox_os_IDH_mut.csv
-##         Univariable Cox within IDH Mut patients
+##   Figures (PDF):
+##     - volcano_coMut_all.pdf
+##     - volcano_coMut_wt.pdf
+##     - volcano_coMut_mut.pdf
 ##
-##     - cox_os_IDH_wt.csv
-##         Univariable Cox within IDH WT patients
-##
-##   Each output includes:
-##     gene, log(HR), SE, N, 95% CI (lower/upper),
-##     Wald p-value, and Benjamini–Hochberg FDR.
-##
-## Key Processing Steps:
-##   1) Extract binary mutation matrix and harmonized clinical data.
-##   2) Recode and collapse clinical variables where necessary.
-##   3) Apply administrative censoring at `time.censor` months.
-##   4) For each gene:
-##        - Require minimum counts in mutated (n1.cutoff)
-##          and wild-type (n0.cutoff) groups.
-##        - Fit Cox PH model.
-##   5) Adjust p-values across genes using BH FDR correction.
-##
-## Notes:
-##   - Binary mutation coding: 0 = WT, 1 = Mut.
-##   - Multivariable models may be unstable when mutation
-##     status is strongly correlated with IDH status or when
-##     event counts are low.
-##   - Interpretation should consider event-per-variable
-##     constraints and potential separation.
-#####################################################
+##     Volcano plots display:
+##       x-axis: log2(OR)
+##       y-axis: −log10(p-value)
+##       Significant pairs highlighted (FDR < 0.05)
+##############################################################
 ####################################################
 ## Load libraries
 ####################################################
