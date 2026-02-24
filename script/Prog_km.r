@@ -83,7 +83,7 @@ library(paletteer)
 ## Setup directories
 ####################################################
 dir_input <- 'result/data'
-dir_output <- 'result/Fig'
+dir_output <- 'result/KM'
 
 time.censor <- 36
 time.censor.mut <- 120
@@ -211,7 +211,7 @@ p_idh <- ggsurvplot(
   ylab = "Overall survival probability"
 ) 
 
-pdf(file.path(dir_output, 'clin/all', "KM_Histo_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/all', "KM_Histo_OS.pdf"), width = 5, height = 7)
 print(p_idh)
 dev.off()
 
@@ -235,7 +235,7 @@ p_idh <- ggsurvplot(
   ylab = "Overall survival probability"
 ) 
 
-pdf(file.path(dir_output, 'clin/all', "KM_Location_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/all', "KM_Location_OS.pdf"), width = 5, height = 7)
 print(p_idh)
 dev.off()
 
@@ -259,7 +259,7 @@ p_idh <- ggsurvplot(
   ylab = "Overall survival probability"
 ) 
 
-pdf(file.path(dir_output, 'clin/all', "KM_Grade_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/all', "KM_Grade_OS.pdf"), width = 5, height = 7)
 print(p_idh)
 dev.off()
 
@@ -283,7 +283,7 @@ p_idh <- ggsurvplot(
   ylab = "Overall survival probability"
 ) 
 
-pdf(file.path(dir_output, 'clin/all', "KM_Age_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/all', "KM_Age_OS.pdf"), width = 5, height = 7)
 print(p_idh)
 dev.off()
 
@@ -307,7 +307,7 @@ p_idh <- ggsurvplot(
   ylab = "Overall survival probability"
 )
 
-pdf(file.path(dir_output, 'clin/all', "KM_Sex_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/all', "KM_Sex_OS.pdf"), width = 5, height = 7)
 print(p_idh)
 dev.off()
 
@@ -331,7 +331,7 @@ p_idh <- ggsurvplot(
   ylab = "Overall survival probability"
 )
 
-pdf(file.path(dir_output, 'clin/all', "KM_IDH_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/all', "KM_IDH_OS.pdf"), width = 5, height = 7)
 print(p_idh)
 dev.off()
 
@@ -372,7 +372,7 @@ p_idh <- ggsurvplot(
   ylab = "Overall survival probability"
 ) 
 
-pdf(file.path(dir_output, 'clin/wt', "KM_Histo_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/wt', "KM_Histo_OS.pdf"), width = 5, height = 7)
 print(p_idh)
 dev.off()
 
@@ -396,7 +396,7 @@ p_idh <- ggsurvplot(
   ylab = "Overall survival probability"
 ) 
 
-pdf(file.path(dir_output, 'clin/wt', "KM_Location_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/wt', "KM_Location_OS.pdf"), width = 5, height = 7)
 print(p_idh)
 dev.off()
 
@@ -420,7 +420,7 @@ p_idh <- ggsurvplot(
   ylab = "Overall survival probability"
 ) 
 
-pdf(file.path(dir_output, 'clin/wt', "KM_Grade_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/wt', "KM_Grade_OS.pdf"), width = 5, height = 7)
 print(p_idh)
 dev.off()
 
@@ -444,7 +444,7 @@ p_idh <- ggsurvplot(
   ylab = "Overall survival probability"
 ) 
 
-pdf(file.path(dir_output, 'clin/wt', "KM_Age_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/wt', "KM_Age_OS.pdf"), width = 5, height = 7)
 print(p_idh)
 dev.off()
 
@@ -468,7 +468,7 @@ p_idh <- ggsurvplot(
   ylab = "Overall survival probability"
 )
 
-pdf(file.path(dir_output, 'clin/wt', "KM_Sex_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/wt', "KM_Sex_OS.pdf"), width = 5, height = 7)
 print(p_idh)
 dev.off()
 
@@ -508,7 +508,7 @@ p_idh <- ggsurvplot(
   ylab = "Overall survival probability"
 ) 
 
-pdf(file.path(dir_output, 'clin/mut', "KM_Histo_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/mut', "KM_Histo_OS.pdf"), width = 5, height = 7)
 print(p_idh)
 dev.off()
 
@@ -532,7 +532,7 @@ p_idh <- ggsurvplot(
   ylab = "Overall survival probability"
 ) 
 
-pdf(file.path(dir_output, 'clin/mut', "KM_Location_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/mut', "KM_Location_OS.pdf"), width = 5, height = 7)
 print(p_idh)
 dev.off()
 
@@ -556,7 +556,7 @@ p_idh <- ggsurvplot(
   ylab = "Overall survival probability"
 ) 
 
-pdf(file.path(dir_output, 'clin/mut', "KM_Grade_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/mut', "KM_Grade_OS.pdf"), width = 5, height = 7)
 print(p_idh)
 dev.off()
 
@@ -580,7 +580,7 @@ p_idh <- ggsurvplot(
   ylab = "Overall survival probability"
 ) 
 
-pdf(file.path(dir_output, 'clin/mut', "KM_Age_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/mut', "KM_Age_OS.pdf"), width = 5, height = 7)
 print(p_idh)
 dev.off()
 
@@ -604,7 +604,7 @@ p_idh <- ggsurvplot(
   ylab = "Overall survival probability"
 )
 
-pdf(file.path(dir_output, 'clin/mut', "KM_Sex_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/mut', "KM_Sex_OS.pdf"), width = 5, height = 7)
 print(p_idh)
 dev.off()
 
@@ -659,7 +659,7 @@ p_idh <- ggsurvplot(
   ylab = "Overall survival probability"
 ) 
 
-pdf(file.path(dir_output, 'mut/all', paste(paste('KM', colnames(df)[i], sep="_"), '.pdf', sep="")), width = 5, height = 7)
+pdf(file.path(dir_output, 'mutation/all', paste(paste('KM', colnames(df)[i], sep="_"), '.pdf', sep="")), width = 5, height = 7)
 print(p_idh)
 dev.off()
 
@@ -719,7 +719,7 @@ p_idh <- ggsurvplot(
   ylab = "Overall survival probability"
 ) 
 
-pdf(file.path(dir_output, 'mut/wt', paste(paste('KM', colnames(df)[i], sep="_"), '.pdf', sep="")), width = 5, height = 7)
+pdf(file.path(dir_output, 'mutation/wt', paste(paste('KM', colnames(df)[i], sep="_"), '.pdf', sep="")), width = 5, height = 7)
 print(p_idh)
 dev.off()
 
@@ -780,7 +780,7 @@ p_idh <- ggsurvplot(
   ylab = "Overall survival probability"
 ) 
 
-pdf(file.path(dir_output, 'mut/Mut', paste(paste('KM', colnames(df)[i], sep="_"), '.pdf', sep="")), width = 5, height = 7)
+pdf(file.path(dir_output, 'mutation/Mut', paste(paste('KM', colnames(df)[i], sep="_"), '.pdf', sep="")), width = 5, height = 7)
 print(p_idh)
 dev.off()
 
