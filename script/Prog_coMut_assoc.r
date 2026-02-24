@@ -89,7 +89,7 @@ library(ggrepel)
 ## Setup directories
 ####################################################
 dir_input <- 'result/data'
-dir_output <- 'result/assoc'
+dir_output <- 'result/coMut'
 
 #################################################
 ## Load data
@@ -302,7 +302,7 @@ vol_idh1 <- co_res %>%
     sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
   )
 
-pdf(file.path(dir_output, 'Fig', 'volcano_coMut_all.pdf'), width = 5, height = 4)
+pdf(file.path(dir_output,  'volcano_coMut_all.pdf'), width = 5, height = 4)
 
 ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
   geom_point(aes(color = sig), size = 2) +
@@ -338,7 +338,7 @@ vol_idh1 <- co_res %>%
     sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
   )
 
-pdf(file.path(dir_output, 'Fig', 'volcano_coMut_wt.pdf'), width = 5, height = 4)
+pdf(file.path(dir_output,  'volcano_coMut_wt.pdf'), width = 5, height = 4)
 
 ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
   geom_point(aes(color = sig), size = 2) +
@@ -374,7 +374,7 @@ vol_idh1 <- co_res %>%
     sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
   )
 
-pdf(file.path(dir_output, 'Fig', 'volcano_coMut_mut.pdf'), width = 5, height = 4)
+pdf(file.path(dir_output,  'volcano_coMut_mut.pdf'), width = 5, height = 4)
 
 ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
   geom_point(aes(color = sig), size = 2) +
