@@ -85,6 +85,7 @@ dir_input <- 'result/data'
 dir_output <- 'result/assoc'
 
 time.censor <- 36
+time.censor.mut <- 120
 n1.cutoff <- 5
 n0.cutoff <- 5
 
@@ -96,7 +97,6 @@ mut <- assay(eset)
 clin <- as.data.frame(colData(eset))
 clin <- clin[clin$IDH.status != 'NA', ]
 clin$Age <- ifelse(clin$Age >= 40, '>40', '<40')
-
 clin$IDH.status[clin$IDH.status == 'IDHmut'] <- "Mut"
 clin$IDH.status[clin$IDH.status == 'IDHwt'] <- "WT"
 clin$IDH.status <- factor(clin$IDH.status,
@@ -122,7 +122,8 @@ clin <- clin %>%
 clin <- clin %>%
   mutate(
     Grade = case_when(
-      WHO.2021.Grade %in% c(1, 2) ~ "I/II",
+      WHO.2021.Grade == 1 ~ "I",
+      WHO.2021.Grade == 2 ~ "II",
       WHO.2021.Grade == 3 ~ "III",
       WHO.2021.Grade == 4 ~ "IV",
       TRUE ~ NA_character_
@@ -189,7 +190,7 @@ clin$Age <- factor(
 
 clin$Grade <-  factor(
   clin$Grade,
-  levels = c("I/II", "III", "IV")
+  levels = c("I", "II", "III", "IV")
 )
 
 clin$Location <-  factor(
@@ -255,16 +256,124 @@ cox_res <- cox_res[!is.na(cox_res$hr), ]
 cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
 write.csv(cox_res, file = file.path(dir_output, 'cox_os_all.csv'), row.names=FALSE)
 
+## --- Step 2: WT patients 
+clin_wt <- clin[clin$IDH.status == 'WT', ]
+df <- mut[, colnames(mut) %in% clin_wt$Study]
+
+cox_res <- lapply(1:nrow(df), function(k){
+
+data <- data.frame( status=clin_wt$os.event , time=clin_wt$os.time , variable=df[k, ] )
+data <- data[!is.na(data$variable), ]
+data$time <- as.numeric(as.character(data$time))
+  
+for(i in 1:nrow(data)){
+    
+    if( !is.na(as.numeric(as.character(data[ i , "time" ]))) && as.numeric(as.character(data[ i , "time" ])) > time.censor ){
+      data[ i , "time" ] = time.censor
+      data[ i , "status" ] = 0
+      
+    }
+  }
+  
+  if( length( data$variable[ data$variable == 1 ] )>= n1.cutoff &
+      length( data$variable[ data$variable == 0 ] ) >= n0.cutoff ){
+    
+    cox <- coxph( formula= Surv( time , status ) ~ variable , data=data )
+    res <- data.frame(gene = rownames(df)[k],
+                      hr = summary(cox)$coefficients[, "coef"],
+                      se = summary(cox)$coefficients[, "se(coef)"],
+                      n = round(summary(cox)$n),
+                      low = summary(cox)$conf.int[, "lower .95"],
+                      up = summary(cox)$conf.int[, "upper .95"],
+                      pval = summary(cox)$coefficients[, "Pr(>|z|)"])
+
+  } else{
+    
+   res <- data.frame(gene = rownames(df)[k],
+                     hr = NA,
+                     se = NA,
+                     n = NA,
+                     low = NA,
+                     up = NA,
+                     pval = NA)
+    
+  }
+  
+  res
+
+})
+
+cox_res <- do.call(rbind, cox_res)
+cox_res <- cox_res[!is.na(cox_res$hr), ]
+cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
+write.csv(cox_res, file = file.path(dir_output, 'cox_os_wt.csv'), row.names=FALSE)
+
+## --- Step 3: Mut patients 
+clin_mut <- clin[clin$IDH.status == 'Mut', ]
+df <- mut[, colnames(mut) %in% clin_mut$Study]
+
+cox_res <- lapply(1:nrow(df), function(k){
+
+data <- data.frame( status=clin_mut$os.event , time=clin_mut$os.time , variable=df[k, ] )
+data <- data[!is.na(data$variable), ]
+data$time <- as.numeric(as.character(data$time))
+  
+for(i in 1:nrow(data)){
+    
+    if( !is.na(as.numeric(as.character(data[ i , "time" ]))) && as.numeric(as.character(data[ i , "time" ])) > time.censor.mut ){
+      data[ i , "time" ] = time.censor.mut
+      data[ i , "status" ] = 0
+      
+    }
+  }
+  
+  if( length( data$variable[ data$variable == 1 ] )>= n1.cutoff &
+      length( data$variable[ data$variable == 0 ] ) >= n0.cutoff ){
+    
+    cox <- coxph( formula= Surv( time , status ) ~ variable , data=data )
+    res <- data.frame(gene = rownames(df)[k],
+                      hr = summary(cox)$coefficients[, "coef"],
+                      se = summary(cox)$coefficients[, "se(coef)"],
+                      n = round(summary(cox)$n),
+                      low = summary(cox)$conf.int[, "lower .95"],
+                      up = summary(cox)$conf.int[, "upper .95"],
+                      pval = summary(cox)$coefficients[, "Pr(>|z|)"])
+
+  } else{
+    
+   res <- data.frame(gene = rownames(df)[k],
+                     hr = NA,
+                     se = NA,
+                     n = NA,
+                     low = NA,
+                     up = NA,
+                     pval = NA)
+    
+  }
+  
+  res
+
+})
+
+cox_res <- do.call(rbind, cox_res)
+cox_res <- cox_res[!is.na(cox_res$hr), ]
+cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
+write.csv(cox_res, file = file.path(dir_output, 'cox_os_mut.csv'), row.names=FALSE)
+
 ####################################################
-## OS association --> metadata adjustment
+## MV OS association --> metadata adjustment
 ####################################################
-## --- Step 2: all patients 
+## --- Step 1: all patients 
 df <- mut
 cox_res <- lapply(1:nrow(df), function(k){
 
 data <- data.frame( status=clin$os.event , time=clin$os.time , variable=df[k, ], 
-                    IDH =  clin$IDH.status, Age = clin$Age, Sex = clin$Sex,
-                    Grade = clin$Grade, Histo = clin$Histo, Location = clin$Location)
+                    IDH =  clin$IDH.status, 
+                    Age = clin$Age, 
+                    Sex = clin$Sex,
+                    Grade = clin$Grade, 
+                    Histo = clin$Histo, 
+                    Location = clin$Location )
 data <- data[!is.na(data$variable), ]
 data$time <- as.numeric(as.character(data$time))
   
@@ -311,73 +420,15 @@ cox_res <- cox_res[!is.na(cox_res$hr), ]
 cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
 write.csv(cox_res, file = file.path(dir_output, 'cox_os_all_mv.csv'), row.names=FALSE)
 
-####################################################
-## OS association --> stratify for IHD Mut
-####################################################
-## --- Step 1: IDH Mut patients
-df <- mut
-clin_mut <- clin[clin$IDH.status == 'Mut', ]
-df <- mut[, colnames(mut) %in% clin_mut$Study] # 49 patients
-
-cox_res <- lapply(1:nrow(df), function(k){
-
-data <- data.frame( status=clin_mut$os.event , time=clin_mut$os.time , variable=df[k, ])
-data <- data[!is.na(data$variable), ]
-data$time <- as.numeric(as.character(data$time))
-  
-for(i in 1:nrow(data)){
-    
-    if( !is.na(as.numeric(as.character(data[ i , "time" ]))) && as.numeric(as.character(data[ i , "time" ])) > time.censor ){
-      data[ i , "time" ] = time.censor
-      data[ i , "status" ] = 0
-      
-    }
-  }
-  
-  if( length( data$variable[ data$variable == 1 ] )>= n1.cutoff &
-      length( data$variable[ data$variable == 0 ] ) >= n0.cutoff ){
-    
-    cox <- coxph( formula= Surv( time , status ) ~ variable , data=data )
-    res <- data.frame(gene = rownames(df)[k],
-                      hr = summary(cox)$coefficients[, "coef"],
-                      se = summary(cox)$coefficients[, "se(coef)"],
-                      n = round(summary(cox)$n),
-                      low = summary(cox)$conf.int[, "lower .95"],
-                      up = summary(cox)$conf.int[, "upper .95"],
-                      pval = summary(cox)$coefficients[, "Pr(>|z|)"])
-
-  } else{
-    
-   res <- data.frame(gene = rownames(df)[k],
-                     hr = NA,
-                     se = NA,
-                     n = NA,
-                     low = NA,
-                     up = NA,
-                     pval = NA)
-    
-  }
-  
-  res
-
-})
-
-cox_res <- do.call(rbind, cox_res)
-cox_res <- cox_res[!is.na(cox_res$hr), ]
-cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
-write.csv(cox_res, file = file.path(dir_output, 'cox_os_IDH_mut.csv'), row.names=FALSE)
-
-####################################################
-## OS association --> stratify for IHD WT
-####################################################
-## --- Step 1: IDH WT patients
-df <- mut
+## --- Step 2: WT patients
 clin_wt <- clin[clin$IDH.status == 'WT', ]
-df <- mut[, colnames(mut) %in% clin_wt$Study] # 142 patients
+df <- mut[, colnames(mut) %in% clin_wt$Study]
 
 cox_res <- lapply(1:nrow(df), function(k){
 
-data <- data.frame( status=clin_wt$os.event , time=clin_wt$os.time , variable=df[k, ])
+data <- data.frame( status=clin_wt$os.event , time=clin_wt$os.time , variable=df[k, ], 
+                    Age = clin_wt$Age, Sex = clin_wt$Sex, Grade = clin_wt$Grade, 
+                    Histo = clin_wt$Histo, Location = clin_wt$Location)
 data <- data[!is.na(data$variable), ]
 data$time <- as.numeric(as.character(data$time))
   
@@ -393,14 +444,15 @@ for(i in 1:nrow(data)){
   if( length( data$variable[ data$variable == 1 ] )>= n1.cutoff &
       length( data$variable[ data$variable == 0 ] ) >= n0.cutoff ){
     
-    cox <- coxph( formula= Surv( time , status ) ~ variable , data=data )
+    cox <- coxph( formula= Surv( time , status ) ~ variable + Age + Sex 
+                                                   + Grade + Location + Histo, data=data )
     res <- data.frame(gene = rownames(df)[k],
-                      hr = summary(cox)$coefficients[, "coef"],
-                      se = summary(cox)$coefficients[, "se(coef)"],
+                      hr = summary(cox)$coefficients['variable', "coef"],
+                      se = summary(cox)$coefficients['variable', "se(coef)"],
                       n = round(summary(cox)$n),
-                      low = summary(cox)$conf.int[, "lower .95"],
-                      up = summary(cox)$conf.int[, "upper .95"],
-                      pval = summary(cox)$coefficients[, "Pr(>|z|)"])
+                      low = summary(cox)$conf.int['variable', "lower .95"],
+                      up = summary(cox)$conf.int['variable', "upper .95"],
+                      pval = summary(cox)$coefficients['variable', "Pr(>|z|)"])
 
   } else{
     
@@ -421,4 +473,59 @@ for(i in 1:nrow(data)){
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$hr), ]
 cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
-write.csv(cox_res, file = file.path(dir_output, 'cox_os_IDH_wt.csv'), row.names=FALSE)
+write.csv(cox_res, file = file.path(dir_output, 'cox_os_wt_mv.csv'), row.names=FALSE)
+
+## --- Step 3: Mut patients
+clin_mut <- clin[clin$IDH.status == 'Mut', ]
+df <- mut[, colnames(mut) %in% clin_mut$Study]
+
+cox_res <- lapply(1:nrow(df), function(k){
+
+data <- data.frame( status=clin_mut$os.event , time=clin_mut$os.time , variable=df[k, ], 
+                    Age = clin_mut$Age, Sex = clin_mut$Sex, Grade = clin_mut$Grade, 
+                    Histo = clin_mut$Histo, Location = clin_mut$Location)
+data <- data[!is.na(data$variable), ]
+data$time <- as.numeric(as.character(data$time))
+  
+for(i in 1:nrow(data)){
+    
+    if( !is.na(as.numeric(as.character(data[ i , "time" ]))) && as.numeric(as.character(data[ i , "time" ])) > time.censor.mut ){
+      data[ i , "time" ] = time.censor.mut
+      data[ i , "status" ] = 0
+      
+    }
+  }
+  
+  if( length( data$variable[ data$variable == 1 ] )>= n1.cutoff &
+      length( data$variable[ data$variable == 0 ] ) >= n0.cutoff ){
+    
+    cox <- coxph( formula= Surv( time , status ) ~ variable + Age + Sex 
+                                                   + Grade + Location + Histo, data=data )
+    res <- data.frame(gene = rownames(df)[k],
+                      hr = summary(cox)$coefficients['variable', "coef"],
+                      se = summary(cox)$coefficients['variable', "se(coef)"],
+                      n = round(summary(cox)$n),
+                      low = summary(cox)$conf.int['variable', "lower .95"],
+                      up = summary(cox)$conf.int['variable', "upper .95"],
+                      pval = summary(cox)$coefficients['variable', "Pr(>|z|)"])
+
+  } else{
+    
+   res <- data.frame(gene = rownames(df)[k],
+                     hr = NA,
+                     se = NA,
+                     n = NA,
+                     low = NA,
+                     up = NA,
+                     pval = NA)
+    
+  }
+  
+  res
+
+})
+
+cox_res <- do.call(rbind, cox_res)
+cox_res <- cox_res[!is.na(cox_res$hr), ]
+cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
+write.csv(cox_res, file = file.path(dir_output, 'cox_os_mut_mv.csv'), row.names=FALSE)
