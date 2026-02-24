@@ -2,43 +2,77 @@
 ## Script: CNS NGS OncoPrint (ComplexHeatmap)
 ##
 ## Purpose:
-##   Generate publication-quality OncoPrints from a curated CNS NGS
-##   mutation event matrix stored in a SummarizedExperiment object.
-##   The script standardizes alteration labels, enforces within-cell
-##   alteration priority, optionally collapses multi-event cells into
-##   a single "Other" category, and visualizes mutation frequencies
-##   with and without clinical annotations.
+##   Generate publication-quality OncoPrint visualizations
+##   from a curated CNS NGS mutation event matrix stored
+##   in a SummarizedExperiment object.
+##
+##   The script:
+##     • Standardizes alteration labels
+##     • Enforces consistent within-cell alteration priority
+##     • Preserves multi-hit events (no collapsing)
+##     • Integrates clinical metadata for annotation
+##     • Produces OncoPrints for:
+##         - All patients
+##         - IDH wild-type subset
+##         - IDH mutant subset
+##
 ##
 ## Input:
 ##   - result/data/se_mut_onco_clin.RData
 ##       SummarizedExperiment containing:
-##         assay: gene × sample character matrix
-##                ("" or semicolon-delimited alteration types)
-##         colData: sample-level clinical metadata
+##         assay:
+##           gene × sample character matrix
+##           ("" or semicolon-delimited alteration types)
+##         colData:
+##           harmonized clinical metadata
 ##
-## Output:
-##   - result/Fig/fig1.pdf
-##       OncoPrint of mutation events only (no clinical metadata)
-##   - result/Fig/fig2.pdf
-##       OncoPrint with clinical annotations (Sex, Age group, IDH status)
 ##
-## Key steps:
-##   1) Load the SummarizedExperiment and extract the mutation matrix
-##      and clinical metadata.
-##   2) Standardize alteration labels to a controlled vocabulary:
-##        snv/indel            → SNV/Indel
-##        copy number variant → CNV
-##        fusion              → Fusion
-##      and enforce a consistent within-cell priority:
-##        Fusion > CNV > SNV/Indel.
-##   3) Optionally collapse combined alteration labels
-##      (e.g., "Fusion;CNV", "CNV;SNV/Indel") into a single "Other"
-##      category to simplify visualization and legends.
-##   4) Define custom graphical functions for alteration rendering
-##      and generate OncoPrints using ComplexHeatmap.
-##   5) Add sample-level clinical annotations (Sex, Age group, IDH
-##      status) and alteration frequency barplots, and export figures
-##      as PDF files.
+## Output (4 figures):
+##
+##   - result/oncoprint/fig1.pdf
+##       OncoPrint (mutations only; no clinical annotations)
+##
+##   - result/oncoprint/fig2.pdf
+##       OncoPrint with clinical annotations (all patients)
+##
+##   - result/oncoprint/fig3_wt.pdf
+##       OncoPrint with annotations (IDH wild-type subset)
+##
+##   - result/oncoprint/fig4_mut.pdf
+##       OncoPrint with annotations (IDH mutant subset)
+##
+##
+## Key Processing Steps:
+##
+##   1) Mutation Label Harmonization
+##        - Standardize alteration labels to:
+##            SNV/Indel
+##            Amplification
+##            Fusion
+##            Deletion
+##
+##        - Enforce within-cell priority ordering:
+##            Fusion > Amplification > SNV/Indel > Deletion
+##
+##        - Preserve multiple alteration types per gene/sample
+##          as semicolon-separated entries (multi-hit retained).
+##
+##   2) OncoPrint Construction (ComplexHeatmap)
+##        - Custom graphical rendering for each alteration type
+##        - Row-level mutation frequency barplots
+##        - Removal of empty rows and columns
+##
+##   3) Clinical Annotation Harmonization
+##        - Age dichotomized (<40 vs ≥40)
+##        - IDH status recoded (WT / Mut / Unknown)
+##        - Tumor location grouped into major categories
+##        - Histology harmonized and rare groups collapsed
+##        - WHO 2021 grade formatted (I–IV)
+##
+##   4) Subset Analyses
+##        - Independent OncoPrints generated for:
+##            • IDH wild-type patients
+##            • IDH mutant patients
 #####################################################
 ####################################################
 ## Load libraries
@@ -54,7 +88,7 @@ library(paletteer)
 ## Setup directories
 ####################################################
 dir_input <- 'result/data'
-dir_output <- 'result/Fig'
+dir_output <- 'result/oncoprint'
 
 #################################################
 ## Load data
@@ -121,7 +155,7 @@ alter_fun <- list(
   
   background = function(x, y, w, h) {
   grid.rect(x, y, w, h,
-            gp = gpar(fill = NA, col = NA))
+            gp = gpar(fill =  "#f5f5f5", col = NA))
   },
 
   "SNV/Indel" = function(x, y, w, h) {
@@ -159,24 +193,27 @@ heatmap_legend_param <- list(
   nrow = 4,                             
   grid_width = unit(3, "mm"),             
   grid_height = unit(3, "mm"),
-  title_gp = gpar(fontsize = 9),          
-  labels_gp = gpar(fontsize = 7)          
+  title_gp = gpar(fontsize = 10, face='bold'),          
+  labels_gp = gpar(fontsize = 8)          
 )
 
 p <- oncoPrint(
   mut_fixed,
-  get_type = function(x) strsplit(x, ";")[[1]],
+  get_type = function(x) {
+  if(x == "") return(NULL)
+  strsplit(x, ";", fixed = TRUE)[[1]]
+},
   alter_fun = alter_fun,
   col = col,
   remove_empty_rows = TRUE,
   remove_empty_columns = TRUE,
   heatmap_legend_param = heatmap_legend_param,
-  row_names_gp = gpar(fontsize = 7),
+  row_names_gp = gpar(fontsize = 8),
   left_annotation = left_annotation,
   right_annotation = NULL
 )
 
-pdf(file.path(dir_output, 'fig1.pdf'),  width = 5, height = 6)
+pdf(file.path(dir_output, 'fig1.pdf'),  width = 7, height = 9)
 
 draw(
   p,
@@ -345,13 +382,16 @@ heatmap_legend_param <- list(
 
 p <- oncoPrint(
   mut_fixed,
-  get_type = function(x) strsplit(x, ";")[[1]],
+  get_type = function(x) {
+  if(x == "") return(NULL)
+  strsplit(x, ";", fixed = TRUE)[[1]]
+},
   alter_fun = alter_fun,
   col = col,
   remove_empty_rows = TRUE,
   remove_empty_columns = TRUE,
   heatmap_legend_param = heatmap_legend_param,
-  row_names_gp = grid::gpar(fontsize = 7),
+  row_names_gp = grid::gpar(fontsize = 8),
   top_annotation = top_anno,
   left_annotation = rowAnnotation(
     rbar = anno_oncoprint_barplot(axis_param = list(direction = "reverse"))
@@ -359,7 +399,7 @@ p <- oncoPrint(
   right_annotation = NULL
 )
 
-pdf(file.path(dir_output, 'fig2.pdf'), width = 7, height = 9)
+pdf(file.path(dir_output, 'fig2.pdf'), width = 7, height = 8)
 
 draw(
   p,
@@ -382,7 +422,7 @@ anno_df <- data.frame(
   #IDH = factor(clin_wt$IDH.status, levels = c("WT", "Mut", "Unknown")),
   Location = factor(clin_wt$Location, levels = c('Lobar', 'Cerebellum', 'Thalamic', 'Other')),
   Histo = factor(clin_wt$Histo, levels = c('Glioblastoma', 'Astrocytoma', 'Oligodendroglioma', 'Glioneuronal')),
-  Grade = factor(clin_wt$Grade, levels = c('I/II', 'III', 'IV'))
+  Grade = factor(clin_wt$Grade, levels = c('I', 'II', 'III', 'IV'))
 )
 
 # make sure rownames match sample IDs
@@ -469,7 +509,7 @@ p <- oncoPrint(
   right_annotation = NULL
 )
 
-pdf(file.path(dir_output, 'fig3_wt.pdf'), width = 7, height = 9)
+pdf(file.path(dir_output, 'fig3_wt.pdf'), width = 7, height = 8)
 
 draw(
   p,
@@ -492,7 +532,7 @@ anno_df <- data.frame(
   #IDH = factor(clin_wt$IDH.status, levels = c("WT", "Mut", "Unknown")),
   Location = factor(clin_mut$Location, levels = c('Lobar', 'Cerebellum')),
   Histo = factor(clin_mut$Histo, levels = c('Astrocytoma', 'Oligodendroglioma')),
-  Grade = factor(clin_mut$Grade, levels = c('I/II', 'III', 'IV'))
+  Grade = factor(clin_mut$Grade, levels = c('I', 'II', 'III', 'IV'))
 )
 
 # make sure rownames match sample IDs
@@ -579,7 +619,7 @@ p <- oncoPrint(
   right_annotation = NULL
 )
 
-pdf(file.path(dir_output, 'fig4_mut.pdf'), width = 6, height = 9)
+pdf(file.path(dir_output, 'fig4_mut.pdf'), width = 6, height = 5)
 
 draw(
   p,
