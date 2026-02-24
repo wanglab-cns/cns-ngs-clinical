@@ -155,7 +155,7 @@ co_res <- co_res %>%
   mutate(fdr = p.adjust(pval, method = "BH")) %>%
   ungroup()
 
-write.csv(co_res, file = file.path(dir_output, 'coMut_res_all.csv'))
+write.csv(co_res, file = file.path(dir_output, 'coMut_res_all.csv'), row.names=FALSE)
 
 ## Step 2 --- WT patients
 # filter genes with sufficient mutation frequency
@@ -217,7 +217,7 @@ co_res <- co_res %>%
   mutate(fdr = p.adjust(pval, method = "BH")) %>%
   ungroup()
 
-write.csv(co_res, file = file.path(dir_output, 'coMut_res_wt.csv'))
+write.csv(co_res, file = file.path(dir_output, 'coMut_res_wt.csv'), row.names=FALSE)
 
 ## Step 2 --- MUT patients
 # filter genes with sufficient mutation frequency
@@ -279,13 +279,16 @@ co_res <- co_res %>%
   mutate(fdr = p.adjust(pval, method = "BH")) %>%
   ungroup()
 
-write.csv(co_res, file = file.path(dir_output, 'coMut_res_mut.csv'))
+write.csv(co_res, file = file.path(dir_output, 'coMut_res_mut.csv'), row.names=FALSE)
+
 #############################################################
 ## Visualize
 #############################################################
+## Step 1 --- all patients
+co_res <- read.csv(file.path(dir_output, 'coMut_res_all.csv'))
 
 vol_idh1 <- co_res %>%
- # filter(gene1 == "IDH1") %>%
+  #filter(gene1 == "IDH1") %>%
   mutate(
     pair = paste(gene1, gene2, sep = "–"),
     log2_or = log2(ifelse(OR == 0, 1e-6, OR)),
@@ -293,8 +296,79 @@ vol_idh1 <- co_res %>%
     sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
   )
 
+pdf(file.path(dir_output, 'Fig', 'volcano_coMut_all.pdf'), width = 5, height = 4)
 
-pdf(file.path(dir_output, 'volcano_coMut.pdf'), width = 5, height = 4)
+ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
+  geom_point(aes(color = sig), size = 2) +
+  geom_text_repel(
+    data = subset(vol_idh1, fdr < 0.05),
+    aes(label = pair),
+    size = 2.5
+  ) +
+  #geom_vline(xintercept = 0, linetype = "dashed") +
+  scale_color_manual(
+    values = c("FDR < 0.05" = "#1d587a",   # light blue
+               "NS" = "grey70")
+  ) +
+  theme_classic() +
+  labs(
+    title = " ",
+    x = "log2(Odds Ratio)",
+    y = "-log10(p-value)",
+    color = ""
+  )
+dev.off()
+
+
+## Step 2 --- WT patients
+co_res <- read.csv(file.path(dir_output, 'coMut_res_wt.csv'))
+
+vol_idh1 <- co_res %>%
+  #filter(gene1 == "IDH1") %>%
+  mutate(
+    pair = paste(gene1, gene2, sep = "–"),
+    log2_or = log2(ifelse(OR == 0, 1e-6, OR)),
+    neglog10 = -log10(pval),
+    sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
+  )
+
+pdf(file.path(dir_output, 'Fig', 'volcano_coMut_wt.pdf'), width = 5, height = 4)
+
+ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
+  geom_point(aes(color = sig), size = 2) +
+  geom_text_repel(
+    data = subset(vol_idh1, fdr < 0.05),
+    aes(label = pair),
+    size = 2.5
+  ) +
+  #geom_vline(xintercept = 0, linetype = "dashed") +
+  scale_color_manual(
+    values = c("FDR < 0.05" = "#1d587a",   # light blue
+               "NS" = "grey70")
+  ) +
+  theme_classic() +
+  labs(
+    title = " ",
+    x = "log2(Odds Ratio)",
+    y = "-log10(p-value)",
+    color = ""
+  )
+dev.off()
+
+
+## Step 3 --- Mut patients
+co_res <- read.csv(file.path(dir_output, 'coMut_res_mut.csv'))
+
+vol_idh1 <- co_res %>%
+  #filter(gene1 == "IDH1") %>%
+  mutate(
+    pair = paste(gene1, gene2, sep = "–"),
+    log2_or = log2(ifelse(OR == 0, 1e-6, OR)),
+    neglog10 = -log10(pval),
+    sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
+  )
+
+pdf(file.path(dir_output, 'Fig', 'volcano_coMut_mut.pdf'), width = 5, height = 4)
 
 ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
   geom_point(aes(color = sig), size = 2) +
