@@ -76,12 +76,20 @@
 ##        Multiple alterations in the same gene/patient pair
 ##        are collapsed to a single binary indicator.
 ##
+##        IDH1 and IDH2 alterations are collapsed into a
+##        single "IDH" variable to reflect their shared
+##        biological role in glioma and to reduce sparsity
+##        in downstream modeling.
+##
 ##   5) Oncoprint Event-Type Matrix (mat_onco)
 ##        A gene × patient matrix is constructed preserving
 ##        alteration classes. Multiple events per gene/patient
 ##        are concatenated as semicolon-separated strings
 ##        (e.g., "Amplification;SNV/Indel").
-##        Multi-hit events are not collapsed.
+##
+##        IDH1 and IDH2 are merged into a single "IDH" row.
+##        When both genes are altered (rare), event types are
+##        combined and retained.
 ##
 ##   6) Patient Harmonization
 ##        Only patients present in both curated clinical data
@@ -230,12 +238,47 @@ mat_onco <- as.matrix(mat_onco)
 
 mat_onco <- mat_onco[, sort(colnames(mat_onco)), drop = FALSE]
 
-#which(mat_onco == "Amplification;Fusion;SNV/Indel", arr.ind = TRUE)
-#mut_dat2 %>%
-#  filter(Gene == rownames(mat_onco)[7]) %>%
-#  filter(Study %in% c("C22-081","C23-131","C24-035","C24-045")) %>%
-#  arrange(Study)
+#################################################
+## Merge IDH1 and IDH2 → IDH
+#################################################
+## ---- Binary matrix
+if(all(c("IDH1","IDH2") %in% rownames(mat_bin))){
 
+  idh_vec <- as.integer(
+    mat_bin["IDH1", ] == 1 | mat_bin["IDH2", ] == 1
+  )
+
+  mat_bin <- mat_bin[!rownames(mat_bin) %in% c("IDH1","IDH2"), , drop = FALSE]
+
+  mat_bin <- rbind(mat_bin, IDH = idh_vec)
+}
+
+## ---- Oncoprint matrix
+if(all(c("IDH1","IDH2") %in% rownames(mat_onco))){
+
+  idh1 <- mat_onco["IDH1", , drop = FALSE]
+  idh2 <- mat_onco["IDH2", , drop = FALSE]
+
+  idh_combined <- sapply(colnames(mat_onco), function(pt) {
+
+    vals <- unique(c(idh1[, pt], idh2[, pt]))
+    vals <- vals[vals != ""]
+
+    if(length(vals) == 0) {
+      ""
+    } else {
+      paste(sort(vals), collapse = ";")
+    }
+  })
+
+  mat_onco <- mat_onco[!rownames(mat_onco) %in% c("IDH1","IDH2"), ]
+  mat_onco <- rbind(mat_onco, IDH = idh_combined)
+
+}
+
+###############################################
+## Create SE objects
+###############################################
 ## Common patients  
 int <- intersect(clin$Study, colnames(mat_bin)) # 213 patients (all) & 199 for Tier 1 & II
 clin <- clin[clin$Study %in% int, ]
