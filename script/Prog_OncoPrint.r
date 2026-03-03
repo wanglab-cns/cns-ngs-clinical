@@ -429,7 +429,7 @@ anno_df <- data.frame(
   #IDH = factor(clin_wt$IDH_status, levels = c("WT", "Mut")),
   Therapy =  factor(clin_wt$Therapy_status, levels = c("Yes", "No")),
   Location = factor(clin_wt$Location, levels = c('Lobar', 'Cerebellum', 'Thalamic', 'Other')),
-  Histo = factor(clin_wt$Histo, levels = c('Glioblastoma', 'Astrocytoma', 'Oligodendroglioma', 'Glioneuronal', 'Other')),
+  Histo = factor(clin_wt$Histo, levels = c('Glioblastoma', 'Astrocytoma', 'Glioneuronal', 'Other')),
   Grade = factor(clin_wt$Grade, levels = c('I', 'II', 'III', 'IV'))
 )
 
@@ -466,7 +466,6 @@ anno_col <- list(
   Histo = c(
     'Glioblastoma'       = "#4A7169FF",
     'Astrocytoma'        = "#735231FF",
-    'Oligodendroglioma'  = "#E3CA97FF",
     'Glioneuronal'       = "#99B6BDFF",
     'Other'              = "#96A5A5FF"
   ),
@@ -544,7 +543,7 @@ anno_df <- data.frame(
   Therapy =  factor(clin_mut$Therapy_status, levels = c("Yes", "No")),
   Location = factor(clin_mut$Location, levels = c('Lobar', 'Cerebellum')),
   Histo = factor(clin_mut$Histo, levels = c('Astrocytoma', 'Oligodendroglioma')),
-  Grade = factor(clin_mut$Grade, levels = c('I', 'II', 'III', 'IV'))
+  Grade = factor(clin_mut$Grade, levels = c('II', 'III', 'IV'))
 )
 
 # make sure rownames match sample IDs
@@ -567,23 +566,17 @@ anno_col <- list(
     '<40' = "#C6DBEF"
   ),
   Grade = c(
-    'I'  = "#A8C3A0FF",
     'II'  = "#BC8E7DFF",
     'III' = "#FAE093FF",
     'IV' = "#7C7189FF"
   ),
   Location = c(
     'Lobar'  = "#A54B2DFF",
-    'Cerebellum' = "#577E2FFF",
-    'Thalamic'  = "#B49696FF",
-    'Other' = "#96A5A5FF"
+    'Cerebellum' = "#577E2FFF"
   ),
   Histo = c(
-    'Glioblastoma'       = "#4A7169FF",
     'Astrocytoma'        = "#735231FF",
-    'Oligodendroglioma'  = "#E3CA97FF",
-    'Glioneuronal'       = "#99B6BDFF",
-    'Other'              = "#96A5A5FF"
+    'Oligodendroglioma'  = "#E3CA97FF"
   ),
    Therapy = c(
     'Yes'       = "#846D86FF",
