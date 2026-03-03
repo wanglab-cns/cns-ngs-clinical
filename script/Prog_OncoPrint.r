@@ -1,16 +1,16 @@
 #####################################################
-## Script: CNS NGS OncoPrint (ComplexHeatmap)
+## Script: CNS NGS OncoPrint Visualization (ComplexHeatmap)
 ##
 ## Purpose:
 ##   Generate publication-quality OncoPrint visualizations
 ##   from a curated CNS NGS mutation event matrix stored
 ##   in a SummarizedExperiment object.
 ##
-##   The script:
-##     • Standardizes alteration labels
+##   This script:
+##     • Standardizes mutation alteration labels
 ##     • Enforces consistent within-cell alteration priority
 ##     • Preserves multi-hit events (no collapsing)
-##     • Integrates clinical metadata for annotation
+##     • Integrates harmonized clinical metadata
 ##     • Produces OncoPrints for:
 ##         - All patients
 ##         - IDH wild-type subset
@@ -24,13 +24,13 @@
 ##           gene × sample character matrix
 ##           ("" or semicolon-delimited alteration types)
 ##         colData:
-##           harmonized clinical metadata
+##           curated clinical metadata
 ##
 ##
 ## Output (4 figures):
 ##
 ##   - result/oncoprint/fig1.pdf
-##       OncoPrint (mutations only; no clinical annotations)
+##       OncoPrint (mutation events only; no clinical annotations)
 ##
 ##   - result/oncoprint/fig2.pdf
 ##       OncoPrint with clinical annotations (all patients)
@@ -60,11 +60,12 @@
 ##   2) OncoPrint Construction (ComplexHeatmap)
 ##        - Custom graphical rendering for each alteration type
 ##        - Row-level mutation frequency barplots
-##        - Removal of empty rows and columns
+##        - Removal of empty genes and samples
 ##
 ##   3) Clinical Annotation Harmonization
 ##        - Age dichotomized (<40 vs ≥40)
-##        - IDH status recoded (WT / Mut / Unknown)
+##        - IDH status recoded (WT / Mut)
+##        - Therapy status recoded (Yes / No)
 ##        - Tumor location grouped into major categories
 ##        - Histology harmonized and rare groups collapsed
 ##        - WHO 2021 grade formatted (I–IV)
@@ -229,9 +230,7 @@ dev.off()
 # sample-level metadata
 clin <- as.data.frame(clin)
 clin$Age <- ifelse(clin$Age >= 40, '>40', '<40')
-clin$IDH.status[clin$IDH.status == 'NA'] <- "Unknown"
-clin$IDH.status[clin$IDH.status == 'IDHmut'] <- "Mut"
-clin$IDH.status[clin$IDH.status == 'IDHwt'] <- "WT"
+clin$Therapy_status <- ifelse(clin$Therapy_status == 1, 'Yes', 'No')
 
 # primary location
 clin <- clin %>%
@@ -293,7 +292,7 @@ clin <- clin %>%
 histo_counts <- table(clin$Histo)
 
 # Identify small groups (<10 patients)
-small_groups <- names(histo_counts[histo_counts < 10])
+small_groups <- names(histo_counts[histo_counts <= 10]) 
 
 clin <- clin %>%
   mutate(
@@ -307,9 +306,10 @@ clin <- clin %>%
 anno_df <- data.frame(
   Sex = factor(clin$Sex, levels = c("Male", "Female")),
   Age = factor(clin$Age, levels = c(">40", "<40")),
-  IDH = factor(clin$IDH.status, levels = c("WT", "Mut", "Unknown")),
+  IDH = factor(clin$IDH_status, levels = c("WT", "Mut")),
+  Therapy =  factor(clin$Therapy_status, levels = c("Yes", "No")),
   Location = factor(clin$Location, levels = c('Lobar', 'Cerebellum', 'Thalamic', 'Other')),
-  Histo = factor(clin$Histo, levels = c('Glioblastoma', 'Astrocytoma', 'Oligodendroglioma', 'Glioneuronal')),
+  Histo = factor(clin$Histo, levels = c('Glioblastoma', 'Astrocytoma', 'Oligodendroglioma', 'Glioneuronal', 'Other')),
   Grade = factor(clin$Grade, levels = c('I', 'II', 'III', 'IV'))
 )
 
@@ -324,8 +324,7 @@ anno_col <- list(
   ),
   IDH = c(
     WT  = "#C44E52",
-    Mut = "#55A868",
-    Unknown = "#96A5A5FF"
+    Mut = "#55A868"
   ),
   Age = c(
     '>40'  = "#08306B",
@@ -349,6 +348,10 @@ anno_col <- list(
     'Oligodendroglioma'  = "#E3CA97FF",
     'Glioneuronal'       = "#99B6BDFF",
     'Other'              = "#96A5A5FF"
+  ),
+  Therapy = c(
+    'Yes'       = "#846D86FF",
+    'No'        = "#ABB2A5FF"
   )
 )
 
@@ -414,14 +417,15 @@ dev.off()
 ####################################################
 # sample-level metadata
 clin <- as.data.frame(clin)
-clin_wt <- clin[clin$IDH.status == 'WT', ]
+clin_wt <- clin[clin$IDH_status == 'WT', ]
 
 anno_df <- data.frame(
   Sex = factor(clin_wt$Sex, levels = c("Male", "Female")),
   Age = factor(clin_wt$Age, levels = c(">40", "<40")),
-  #IDH = factor(clin_wt$IDH.status, levels = c("WT", "Mut", "Unknown")),
+  #IDH = factor(clin_wt$IDH_status, levels = c("WT", "Mut")),
+  Therapy =  factor(clin_wt$Therapy_status, levels = c("Yes", "No")),
   Location = factor(clin_wt$Location, levels = c('Lobar', 'Cerebellum', 'Thalamic', 'Other')),
-  Histo = factor(clin_wt$Histo, levels = c('Glioblastoma', 'Astrocytoma', 'Oligodendroglioma', 'Glioneuronal')),
+  Histo = factor(clin_wt$Histo, levels = c('Glioblastoma', 'Astrocytoma', 'Oligodendroglioma', 'Glioneuronal', 'Other')),
   Grade = factor(clin_wt$Grade, levels = c('I', 'II', 'III', 'IV'))
 )
 
@@ -437,8 +441,7 @@ anno_col <- list(
   ),
  # IDH = c(
  #   WT  = "#C44E52",
- #   Mut = "#55A868",
- #   Unknown = "#96A5A5FF"
+ #   Mut = "#55A868"
  # ),
   Age = c(
     '>40'  = "#08306B",
@@ -462,6 +465,10 @@ anno_col <- list(
     'Oligodendroglioma'  = "#E3CA97FF",
     'Glioneuronal'       = "#99B6BDFF",
     'Other'              = "#96A5A5FF"
+  ),
+   Therapy = c(
+    'Yes'       = "#846D86FF",
+    'No'        = "#ABB2A5FF"
   )
 )
 
@@ -524,12 +531,13 @@ dev.off()
 ####################################################
 # sample-level metadata
 clin <- as.data.frame(clin)
-clin_mut <- clin[clin$IDH.status == 'Mut', ]
+clin_mut <- clin[clin$IDH_status == 'Mut', ]
 
 anno_df <- data.frame(
   Sex = factor(clin_mut$Sex, levels = c("Male", "Female")),
   Age = factor(clin_mut$Age, levels = c(">40", "<40")),
-  #IDH = factor(clin_wt$IDH.status, levels = c("WT", "Mut", "Unknown")),
+ #IDH = factor(clin_mut$IDH_status, levels = c("WT", "Mut")),
+  Therapy =  factor(clin_mut$Therapy_status, levels = c("Yes", "No")),
   Location = factor(clin_mut$Location, levels = c('Lobar', 'Cerebellum')),
   Histo = factor(clin_mut$Histo, levels = c('Astrocytoma', 'Oligodendroglioma')),
   Grade = factor(clin_mut$Grade, levels = c('I', 'II', 'III', 'IV'))
@@ -572,6 +580,10 @@ anno_col <- list(
     'Oligodendroglioma'  = "#E3CA97FF",
     'Glioneuronal'       = "#99B6BDFF",
     'Other'              = "#96A5A5FF"
+  ),
+   Therapy = c(
+    'Yes'       = "#846D86FF",
+    'No'        = "#ABB2A5FF"
   )
 )
 
@@ -626,358 +638,6 @@ draw(
   heatmap_legend_side = "right",
   annotation_legend_side = "right"
 )
-
-dev.off()
-
-###################################################
-## Bar plots: top mutations and sex/age
-###################################################
-load(file.path(dir_input, 'se_mut_bin_clin.RData'))
-mut <- assay(eset)
-clin <- as.data.frame(colData(eset))
-clin$Age <- ifelse(clin$Age >= 40, '>40', '<40')
-clin$IDH.status[clin$IDH.status == 'NA'] <- "Unknown"
-clin$IDH.status[clin$IDH.status == 'IDHmut'] <- "Mut"
-clin$IDH.status[clin$IDH.status == 'IDHwt'] <- "WT"
-
-## choose top mutations
-mut_freq <- rowMeans(mut == 1)
-
-genes <- names(mut_freq[mut_freq >= 0.1])
-mut_filt <- mut[genes, ]
-
-## convert to long format
-mut_long <- as.data.frame(t(mut_filt)) %>%
-  mutate(Sample = rownames(.)) %>%
-  pivot_longer(
-    cols = -Sample,
-    names_to = "Gene",
-    values_to = "Mutation"
-  )
-
-## merge with clinical age and sex variables
-mut_long <- mut_long %>%
-  left_join(
-    clin %>% 
-      mutate(Sample = Study) %>%
-      select(Sample, Age, Sex, IDH.status),
-    by = "Sample"
-  )
-
-###########################################################
-## Fishe exact test --- Age and mutations
-###########################################################
-## Step 1 --- all patients
-age_assoc <- mut_long %>%
-  group_by(Gene) %>%
-  summarise(
-    pval = fisher.test(table(Mutation, Age))$p.value
-  )
-
-age_assoc$fdr <- p.adjust(age_assoc$pval, method = "BH")
-write.csv(age_assoc, file = file.path(dir_output, 'mut_age.csv'))
-
-## bar plot age
-gene_order <- mut_long %>%
-  group_by(Gene) %>%
-  summarise(overall = mean(Mutation)) %>%
-  arrange(desc(overall)) %>%
-  pull(Gene)
-
-plot_age <- mut_long %>%
-  group_by(Gene, Age) %>%
-  summarise(freq = mean(Mutation) * 100, .groups = "drop")
-
-age_assoc <- age_assoc %>%
-  mutate(
-    sig = case_when(
-      pval < 0.001 ~ "***",
-      pval < 0.01  ~ "**",
-      pval < 0.05  ~ "*",
-      TRUE        ~ ""
-    )
-  )
-
-plot_age$Gene <- factor(plot_age$Gene, levels = gene_order)
-plot_age_sig <- plot_age %>%
-  group_by(Gene) %>%
-  summarise(y_pos = max(freq) + 5, .groups = "drop") %>%
-  left_join(age_assoc %>% select(Gene, sig), by = "Gene")
-
-pdf(file.path(dir_output, 'mut_age.pdf'), width = 7, height = 6)
-
-ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  scale_fill_manual(
-    values = c(">40" = "#08306B",
-               "<40" = "#C6DBEF")
-  ) +
-  geom_text(
-    data = plot_age_sig,
-    aes(x = Gene, y = y_pos, label = sig),
-    inherit.aes = FALSE,
-    size = 5
-  ) +
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  labs(y = "Mutation frequency (%)", x = "", 
-       title = " ")
-
-dev.off()
-
-## Step 2 --- Mutant patients
-mut_long_mut <- mut_long[mut_long$IDH.status == 'Mut', ]
-age_assoc <- mut_long_mut %>%
-  group_by(Gene) %>%
-  summarise(
-    pval = {
-      tbl <- table(Mutation, Age)
-      if (all(dim(tbl) == c(2, 2))) {
-        fisher.test(tbl)$p.value
-      } else {
-        NA_real_
-      }
-    },
-    .groups = "drop"
-  )
-
-age_assoc <- age_assoc[!is.na(age_assoc$pval), ]
-age_assoc$fdr <- p.adjust(age_assoc$pval, method = "BH")
-write.csv(age_assoc, file = file.path(dir_output, 'mut_age_mut.csv'))
-
-## bar plot age
-gene_order <- mut_long_mut %>%
-  group_by(Gene) %>%
-  summarise(overall = mean(Mutation)) %>%
-  arrange(desc(overall)) %>%
-  pull(Gene)
-
-plot_age <- mut_long_mut %>%
-  group_by(Gene, Age) %>%
-  summarise(freq = mean(Mutation) * 100, .groups = "drop")
-
-age_assoc <- age_assoc %>%
-  mutate(
-    sig = case_when(
-      pval < 0.001 ~ "***",
-      pval < 0.01  ~ "**",
-      pval < 0.05  ~ "*",
-      TRUE        ~ ""
-    )
-  )
-
-plot_age$Gene <- factor(plot_age$Gene, levels = gene_order)
-plot_age_sig <- plot_age %>%
-  group_by(Gene) %>%
-  summarise(y_pos = max(freq) + 5, .groups = "drop") %>%
-  left_join(age_assoc %>% select(Gene, sig), by = "Gene")
-
-pdf(file.path(dir_output, 'mut_age_mut.pdf'), width = 7, height = 6)
-
-ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  scale_fill_manual(
-    values = c(">40" = "#08306B",
-               "<40" = "#C6DBEF")
-  ) +
-  geom_text(
-    data = plot_age_sig,
-    aes(x = Gene, y = y_pos, label = sig),
-    inherit.aes = FALSE,
-    size = 5
-  ) +
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  labs(y = "Mutation frequency (%)", x = "", 
-       title = " ")
-
-dev.off()
-
-## Step 3 --- Wild type patients
-mut_long_wt <- mut_long[mut_long$IDH.status == 'WT', ]
-age_assoc <- mut_long_wt %>%
-  group_by(Gene) %>%
-  summarise(
-    pval = {
-      tbl <- table(Mutation, Age)
-      if (all(dim(tbl) == c(2, 2))) {
-        fisher.test(tbl)$p.value
-      } else {
-        NA_real_
-      }
-    },
-    .groups = "drop"
-  )
-
-age_assoc <- age_assoc[!is.na(age_assoc$pval), ]
-age_assoc$fdr <- p.adjust(age_assoc$pval, method = "BH")
-write.csv(age_assoc, file = file.path(dir_output, 'mut_age_wt.csv'))
-
-## bar plot age
-gene_order <- mut_long_wt %>%
-  group_by(Gene) %>%
-  summarise(overall = mean(Mutation)) %>%
-  arrange(desc(overall)) %>%
-  pull(Gene)
-
-plot_age <- mut_long_wt %>%
-  group_by(Gene, Age) %>%
-  summarise(freq = mean(Mutation) * 100, .groups = "drop")
-
-age_assoc <- age_assoc %>%
-  mutate(
-    sig = case_when(
-      pval < 0.001 ~ "***",
-      pval < 0.01  ~ "**",
-      pval < 0.05  ~ "*",
-      TRUE        ~ ""
-    )
-  )
-
-plot_age$Gene <- factor(plot_age$Gene, levels = gene_order)
-plot_age_sig <- plot_age %>%
-  group_by(Gene) %>%
-  summarise(y_pos = max(freq) + 5, .groups = "drop") %>%
-  left_join(age_assoc %>% select(Gene, sig), by = "Gene")
-
-pdf(file.path(dir_output, 'mut_age_wt.pdf'), width = 7, height = 6)
-
-ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  scale_fill_manual(
-    values = c(">40" = "#08306B",
-               "<40" = "#C6DBEF")
-  ) +
-  geom_text(
-    data = plot_age_sig,
-    aes(x = Gene, y = y_pos, label = sig),
-    inherit.aes = FALSE,
-    size = 5
-  ) +
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  labs(y = "Mutation frequency (%)", x = "", 
-       title = " ")
-
-dev.off()
-
-
-###########################################################
-## Fishe exact test --- Sex and mutations 
-###########################################################
-## Step 1 --- all patients
-sex_assoc <- mut_long %>%
-  group_by(Gene) %>%
-  summarise(
-    pval = fisher.test(table(Mutation, Sex))$p.value
-  )
-
-sex_assoc$fdr <- p.adjust(sex_assoc$pval, method = "BH")
-write.csv(sex_assoc, file = file.path(dir_output, 'mut_sex.csv'))
-
-## bar plot sex
-plot_sex <- mut_long %>%
-  group_by(Gene, Sex) %>%
-  summarise(freq = mean(Mutation) * 100, .groups = "drop")
-
-plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order)
-
-pdf(file.path(dir_output, 'mut_sex.pdf'), width = 7, height = 6)
-
-ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  scale_fill_manual(
-    values = c("Female" = "#DD8452",
-               "Male"   = "#4C72B0")
-  ) +
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  labs(y = "Mutation frequency (%)", x = "", 
-       title = " ")
-
-dev.off()
-
-## Step 2 --- mutant patients
-mut_long_mut <- mut_long[mut_long$IDH.status == 'Mut', ]
-sex_assoc <- mut_long_mut %>%
-  group_by(Gene) %>%
-  summarise(
-    pval = {
-      tbl <- table(Mutation, Sex)
-      if (all(dim(tbl) == c(2, 2))) {
-        fisher.test(tbl)$p.value
-      } else {
-        NA_real_
-      }
-    },
-    .groups = "drop"
-  )
-
-sex_assoc <- sex_assoc[!is.na(sex_assoc$pval), ]
-sex_assoc$fdr <- p.adjust(sex_assoc$pval, method = "BH")
-write.csv(sex_assoc, file = file.path(dir_output, 'mut_sex_mut.csv'))
-
-## bar plot sex
-plot_sex <- mut_long_mut %>%
-  group_by(Gene, Sex) %>%
-  summarise(freq = mean(Mutation) * 100, .groups = "drop")
-
-plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order)
-
-pdf(file.path(dir_output, 'mut_sex_mut.pdf'), width = 7, height = 6)
-
-ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  scale_fill_manual(
-    values = c("Female" = "#DD8452",
-               "Male"   = "#4C72B0")
-  ) +
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  labs(y = "Mutation frequency (%)", x = "", 
-       title = " ")
-
-dev.off()
-
-## Step 2 --- mutant patients
-mut_long_wt <- mut_long[mut_long$IDH.status == 'WT', ]
-sex_assoc <- mut_long_wt %>%
-  group_by(Gene) %>%
-  summarise(
-    pval = {
-      tbl <- table(Mutation, Sex)
-      if (all(dim(tbl) == c(2, 2))) {
-        fisher.test(tbl)$p.value
-      } else {
-        NA_real_
-      }
-    },
-    .groups = "drop"
-  )
-
-sex_assoc <- sex_assoc[!is.na(sex_assoc$pval), ]
-sex_assoc$fdr <- p.adjust(sex_assoc$pval, method = "BH")
-write.csv(sex_assoc, file = file.path(dir_output, 'mut_sex_wt.csv'))
-
-## bar plot sex
-plot_sex <- mut_long_wt %>%
-  group_by(Gene, Sex) %>%
-  summarise(freq = mean(Mutation) * 100, .groups = "drop")
-
-plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order)
-
-pdf(file.path(dir_output, 'mut_sex_wt.pdf'), width = 7, height = 6)
-
-ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  scale_fill_manual(
-    values = c("Female" = "#DD8452",
-               "Male"   = "#4C72B0")
-  ) +
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  labs(y = "Mutation frequency (%)", x = "", 
-       title = " ")
 
 dev.off()
 
