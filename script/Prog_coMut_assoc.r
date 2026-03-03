@@ -1,53 +1,60 @@
 ##############################################################
-## Script: CNS NGS gene-level co-mutation analysis
+## Script: CNS NGS Gene-Level Co-Mutation Analysis
 ##
 ## Purpose:
-##   Assess pairwise gene co-mutation patterns using
-##   Fisher’s exact tests applied to binary mutation data
-##   (0 = WT, 1 = Mut).
+##   Quantify pairwise gene co-mutation and mutual exclusivity
+##   patterns using Fisher’s exact test applied to binary
+##   mutation data (0 = wild-type, 1 = mutant).
 ##
-##   The analysis quantifies mutation co-occurrence or
-##   mutual exclusivity between gene pairs.
+##   The analysis evaluates statistical dependence between
+##   gene mutation events across patients.
+##
 ##
 ## Input:
 ##   - result/data/se_mut_bin_clin.RData
 ##       SummarizedExperiment containing:
-##         • assay: binary mutation matrix (genes × patients; 0/1)
-##         • colData: clinical metadata including IDH.status
+##         • assay: binary gene × patient mutation matrix (0/1)
+##         • colData: harmonized clinical metadata
+##             including IDH_status
 ##
-## Analyses:
 ##
-##   1) All patients
-##      - Filter genes with mutation frequency ≥ min_mut_freq
-##      - Construct pairwise 2×2 contingency tables
-##      - Apply Fisher’s exact test
+## Analytical Overview:
 ##
-##   2) IDH-stratified analysis
-##      - Repeat analysis separately in:
-##          • IDH-WT patients
-##          • IDH-Mut patients
+##   1) Gene Filtering
+##      - Genes with mutation frequency ≥ min_mut_freq
+##        are retained to reduce instability from rare events.
 ##
-## Statistical Framework:
-##
-##   For each gene pair (g1, g2), a 2×2 table is constructed:
+##   2) Pairwise Testing
+##      - All possible gene pairs are enumerated.
+##      - For each pair, a 2×2 contingency table is constructed:
 ##
 ##              g2 Mut   g2 WT
 ##     g1 Mut      n11     n10
 ##     g1 WT       n01     n00
 ##
-##   Fisher’s exact test is applied to evaluate independence.
+##      - Fisher’s exact test evaluates independence.
 ##
-##   Odds Ratio (OR):
-##       OR = (n11 × n00) / (n10 × n01)
+##   3) Effect Size Interpretation
+##      - Odds Ratio (OR):
+##            OR = (n11 × n00) / (n10 × n01)
 ##
-##       OR > 1  → co-occurrence
-##       OR < 1  → mutual exclusivity
+##            OR > 1  → co-occurrence enrichment
+##            OR < 1  → mutual exclusivity
 ##
-##   Effect size visualization:
-##       log2(OR)
+##      - Effect size visualized as log2(OR).
 ##
-##   Multiple testing correction:
-##       Benjamini–Hochberg FDR
+##   4) Multiple Testing Correction
+##      - Benjamini–Hochberg procedure applied
+##        across all tested gene pairs.
+##
+##
+## Stratified Analyses:
+##
+##   Analyses are repeated in:
+##      • All patients
+##      • IDH wild-type subgroup
+##      • IDH mutant subgroup
+##
 ##
 ## Output:
 ##
@@ -56,21 +63,33 @@
 ##     - coMut_res_wt.csv
 ##     - coMut_res_mut.csv
 ##
-##     Each file includes:
+##     Each file contains:
 ##       gene1, gene2,
 ##       OR, pval,
 ##       n11, n10, n01, n00,
-##       FDR
+##       fdr
+##
 ##
 ##   Figures (PDF):
-##     - volcano_coMut_all.pdf
-##     - volcano_coMut_wt.pdf
-##     - volcano_coMut_mut.pdf
 ##
-##     Volcano plots display:
-##       x-axis: log2(OR)
-##       y-axis: −log10(p-value)
-##       Significant pairs highlighted (FDR < 0.05)
+##     Volcano plots:
+##       - volcano_coMut_all.pdf
+##       - volcano_coMut_wt.pdf
+##       - volcano_coMut_mut.pdf
+##
+##         x-axis: log2(OR)
+##         y-axis: −log10(p-value)
+##         Significant pairs highlighted (FDR < 0.05)
+##
+##     UpSet plots:
+##       - upset_coMut_all.pdf
+##       - upset_coMut_wt.pdf
+##       - upset_coMut_mut.pdf
+##
+##         UpSet plots display mutation combination patterns
+##         across the top co-mutation network genes
+##         (ranked by significant interaction degree).
+##
 ##############################################################
 ####################################################
 ## Load libraries
@@ -84,6 +103,8 @@ library(tidyr)
 library(stringr)
 library(paletteer)
 library(ggrepel)
+library(UpSetR)
+library(grid)
 
 ####################################################
 ## Setup directories
@@ -413,5 +434,122 @@ ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
     legend.text = element_text(size = 8),
     legend.title = element_text(size = 9)
   )
+
+dev.off()
+
+#############################################################
+## Visualize ---- UpSet plot
+#############################################################
+## Step 1 --- all patients
+co_res <- read.csv(file.path(dir_output, 'coMut_res_all.csv'))
+sig_pairs <- subset(co_res, pval < 0.05)
+selected_genes <- unique(c(sig_pairs$gene1, sig_pairs$gene2))
+selected_genes <- intersect(selected_genes, rownames(mut))
+gene_freq <- rowSums(mut)
+
+selected_genes <- selected_genes[
+  gene_freq[selected_genes] >= 5
+]
+
+gene_degree <- table(c(sig_pairs$gene1, sig_pairs$gene2))
+gene_degree <- sort(gene_degree, decreasing = TRUE)
+
+selected_genes <- intersect(names(gene_degree), selected_genes)
+
+top5_genes <- head(selected_genes, 5)
+top5_genes  # check what you selected
+
+mut_top <- mut[top5_genes, , drop = FALSE]
+listInput <- lapply(rownames(mut_top), function(g) {
+  colnames(mut_top)[mut_top[g, ] == 1]
+})
+
+names(listInput) <- rownames(mut_top)
+col.id <- c('#855C75FF', '#736F4CFF', "#99B6BDFF", '#BF816BFF', '#4A7169FF')
+sets <- rownames(mut_top)
+sets.bar.color <- col.id
+
+pdf(file.path(dir_output,  'upset_coMut_all.pdf'), width = 8, height = 6)
+
+suppressWarnings(
+  upset.fun(fromList(listInput))
+)
+
+dev.off()
+
+
+## Step 2 --- WT patients
+co_res <- read.csv(file.path(dir_output, 'coMut_res_wt.csv'))
+
+sig_pairs <- subset(co_res, pval < 0.05)
+selected_genes <- unique(c(sig_pairs$gene1, sig_pairs$gene2))
+selected_genes <- intersect(selected_genes, rownames(mut))
+gene_freq <- rowSums(mut)
+
+selected_genes <- selected_genes[
+  gene_freq[selected_genes] >= 5
+]
+
+gene_degree <- table(c(sig_pairs$gene1, sig_pairs$gene2))
+gene_degree <- sort(gene_degree, decreasing = TRUE)
+
+selected_genes <- intersect(names(gene_degree), selected_genes)
+
+top5_genes <- head(selected_genes, 5)
+top5_genes  # check what you selected
+
+mut_top <- mut[top5_genes, , drop = FALSE]
+listInput <- lapply(rownames(mut_top), function(g) {
+  colnames(mut_top)[mut_top[g, ] == 1]
+})
+
+names(listInput) <- rownames(mut_top)
+col.id <- c('#855C75FF', '#736F4CFF', "#99B6BDFF", '#BF816BFF', '#4A7169FF')
+sets <- rownames(mut_top)
+sets.bar.color <- col.id
+
+pdf(file.path(dir_output,  'upset_coMut_wt.pdf'), width = 8, height = 6)
+
+suppressWarnings(
+  upset.fun(fromList(listInput))
+)
+
+dev.off()
+
+## Step 3 --- Mut patients
+co_res <- read.csv(file.path(dir_output, 'coMut_res_mut.csv'))
+
+sig_pairs <- subset(co_res, pval < 0.05)
+selected_genes <- unique(c(sig_pairs$gene1, sig_pairs$gene2))
+selected_genes <- intersect(selected_genes, rownames(mut))
+gene_freq <- rowSums(mut)
+
+selected_genes <- selected_genes[
+  gene_freq[selected_genes] >= 5
+]
+
+gene_degree <- table(c(sig_pairs$gene1, sig_pairs$gene2))
+gene_degree <- sort(gene_degree, decreasing = TRUE)
+
+selected_genes <- intersect(names(gene_degree), selected_genes)
+
+top5_genes <- head(selected_genes, 3)
+top5_genes  # check what you selected
+
+mut_top <- mut[top5_genes, , drop = FALSE]
+listInput <- lapply(rownames(mut_top), function(g) {
+  colnames(mut_top)[mut_top[g, ] == 1]
+})
+
+names(listInput) <- rownames(mut_top)
+col.id <- c('#855C75FF', '#736F4CFF', "#99B6BDFF")
+sets <- rownames(mut_top)
+sets.bar.color <- col.id
+
+pdf(file.path(dir_output,  'upset_coMut_mut.pdf'), width = 8, height = 6)
+
+suppressWarnings(
+  upset.fun(fromList(listInput))
+)
 
 dev.off()
