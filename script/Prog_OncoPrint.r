@@ -85,6 +85,31 @@ library(tidyr)
 library(stringr)
 library(paletteer)
 
+#################################################
+## functions
+#################################################
+
+fix_cell <- function(x) {
+  if (is.na(x) || x == "") return("")
+
+  parts <- strsplit(x, ";", fixed = TRUE)[[1]]
+  parts <- trimws(parts)
+  parts <- parts[parts != ""]
+  parts <- gsub("\\s+", " ", parts)
+
+  # map known labels
+  parts <- ifelse(parts %in% names(label_map),
+                  unname(label_map[parts]),
+                  parts)
+
+  # keep unique + consistent ordering
+  parts <- unique(parts)
+  ord <- match(parts, priority)
+  parts <- parts[order(is.na(ord), ord, parts)]
+
+  paste(parts, collapse = ";")
+}
+
 ####################################################
 ## Setup directories
 ####################################################
@@ -107,27 +132,6 @@ label_map <- c(
 )
 
 priority <- c("Fusion", "Amplification", "SNV/Indel", "Deletion")
-
-fix_cell <- function(x) {
-  if (is.na(x) || x == "") return("")
-
-  parts <- strsplit(x, ";", fixed = TRUE)[[1]]
-  parts <- trimws(parts)
-  parts <- parts[parts != ""]
-  parts <- gsub("\\s+", " ", parts)
-
-  # map known labels
-  parts <- ifelse(parts %in% names(label_map),
-                  unname(label_map[parts]),
-                  parts)
-
-  # keep unique + consistent ordering
-  parts <- unique(parts)
-  ord <- match(parts, priority)
-  parts <- parts[order(is.na(ord), ord, parts)]
-
-  paste(parts, collapse = ";")
-}
 
 mut_fixed <- mut
 mut_fixed[] <- vapply(mut, fix_cell, character(1))
