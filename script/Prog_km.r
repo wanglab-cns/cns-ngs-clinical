@@ -3,37 +3,41 @@
 ##         Overall Survival (OS) Kaplan–Meier Analysis
 ##
 ## Purpose:
-##   Perform univariate survival analyses to evaluate associations
-##   between overall survival (OS) and:
+##   Perform univariate survival analyses to evaluate
+##   associations between overall survival (OS) and:
 ##
 ##     (1) Clinical variables
 ##     (2) Gene-level binary mutation status (0/1 per patient)
 ##
-##   Survival distributions are estimated using Kaplan–Meier
-##   methodology and compared using the log-rank test.
+##   Survival distributions are estimated using the
+##   Kaplan–Meier method and compared using the log-rank test.
 ##
-##   Administrative censoring is applied at predefined time
-##   horizons:
-##       - time.censor (all patients / WT subgroup)
-##       - time.censor.mut (IDH-mutant subgroup)
+##   Administrative censoring is applied at predefined
+##   time horizons to improve interpretability of survival curves:
+##
+##       - time.censor      (all patients / IDH-WT subgroup)
+##       - time.censor.mut  (IDH-mutant subgroup)
+##
 ##
 ## Input:
 ##   - result/data/se_mut_bin_clin.RData
 ##
-##     SummarizedExperiment object containing:
+##     SummarizedExperiment containing:
 ##       • assay:
 ##           Binary mutation matrix (genes × patients)
 ##           0 = Wild-type (WT), 1 = Mutant (Mut)
 ##       • colData:
-##           Clinical metadata including:
-##             - os.time      (overall survival time, months)
-##             - os.event     (1 = event/death, 0 = censored)
+##           Curated clinical metadata including:
+##             - os.time        (overall survival time, months)
+##             - os.event       (1 = death, 0 = censored)
 ##             - Age
 ##             - Sex
-##             - IDH.status
+##             - IDH_status
 ##             - WHO.2021.Grade
 ##             - Primary.location
 ##             - Histology variables
+##             - Therapy_status
+##
 ##
 ## Output:
 ##
@@ -46,6 +50,7 @@
 ##       • Age group
 ##       • Sex
 ##       • IDH mutation status
+##       • Therapy status
 ##
 ##   Gene-level mutation status:
 ##       • All patients
@@ -58,7 +63,8 @@
 ##       result/KM/clinical/mut
 ##       result/KM/mutation/all
 ##       result/KM/mutation/wt
-##       result/KM/mutation/Mut
+##       result/KM/mutation/mut
+##
 ##
 ## Key Processing Steps:
 ##
@@ -67,12 +73,13 @@
 ##        - Recode IDH (WT / Mut)
 ##        - Dichotomize age (<40 vs ≥40)
 ##        - Standardize tumor location and WHO grade
+##        - Harmonize histology labels
 ##        - Collapse rare histology groups (<10 patients)
 ##
 ##   2) Administrative Censoring
-##        - OS times truncated at time.censor
-##        - IDH-mut subgroup truncated at time.censor.mut
-##        - Events beyond threshold reset to censored
+##        - Truncate OS times at predefined thresholds
+##        - Reset events beyond thresholds to censored
+##        - Apply subgroup-specific censoring limits
 ##
 ##   3) Kaplan–Meier Estimation
 ##        - Surv(os.time, os.event) ~ variable
@@ -84,7 +91,7 @@
 ##        - Convert mutation status to WT vs Mut
 ##        - Skip genes with:
 ##              • No variation (all WT or all Mut)
-##              • Group size below n1.cutoff / n0.cutoff
+##              • Group sizes below n1.cutoff / n0.cutoff
 #####################################################
 ####################################################
 ## Load libraries
@@ -115,13 +122,9 @@ n0.cutoff <- 5
 load(file.path(dir_input, 'se_mut_bin_clin.RData'))
 mut <- assay(eset)
 clin <- as.data.frame(colData(eset))
-clin <- clin[clin$IDH.status != 'NA', ]
 clin$Age <- ifelse(clin$Age >= 40, '>40', '<40')
+clin$Therapy_status <- ifelse(clin$Therapy_status == 1, 'Yes', 'No')
 
-clin$IDH.status[clin$IDH.status == 'IDHmut'] <- "Mut"
-clin$IDH.status[clin$IDH.status == 'IDHwt'] <- "WT"
-clin$IDH.status <- factor(clin$IDH.status,
-                          levels = c("WT", "Mut")) # 191 patients
 # primary location
 clin <- clin %>%
   mutate(
@@ -182,7 +185,7 @@ clin <- clin %>%
 histo_counts <- table(clin$Histo)
 
 # Identify small groups (<10 patients)
-small_groups <- names(histo_counts[histo_counts < 10])
+small_groups <- names(histo_counts[histo_counts <= 10])
 
 clin <- clin %>%
   mutate(
@@ -193,7 +196,7 @@ clin <- clin %>%
     )
   )
 
-mut <- mut[, colnames(mut) %in% clin$Study] # 191 patients
+mut <- mut[, colnames(mut) %in% clin$Study] # 199 patients
 
 ####################################################
 ## KM figure --- clinical variables (all patients)
@@ -331,7 +334,7 @@ print(p_idh)
 dev.off()
 
 ## IDH status
-data$variable <- clin$IDH.status
+data$variable <- clin$IDH_status
 data$variable <- factor(data$variable,
                         levels = c('WT', 'Mut'))
 surv_obj <- with(data, Surv(time, status))
@@ -354,11 +357,37 @@ pdf(file.path(dir_output, 'clinical/all', "KM_IDH_OS.pdf"), width = 5, height = 
 print(p_idh)
 dev.off()
 
+## Therapy status
+data$variable <- clin$Therapy_status
+data$variable <- factor(data$variable,
+                          levels = c("Yes", "No"))
+
+surv_obj <- with(data, Surv(time, status))
+fit_idh <- survfit(surv_obj ~ variable, data = data)
+
+p_idh <- ggsurvplot(
+  fit_idh,
+  data = data,
+  risk.table = TRUE,
+  pval = TRUE,
+  conf.int = FALSE,
+  legend.title = "Therapy status",
+  legend.labs = c("Yes", "No"),
+  palette = c("#846D86FF", "#ABB2A5FF"),
+  xlab = "Time (months)",
+  ylab = "Overall survival probability"
+)
+
+
+pdf(file.path(dir_output, 'clinical/all', "KM_Therapy_OS.pdf"), width = 5, height = 7)
+print(p_idh)
+dev.off()
+
 
 ####################################################
 ## KM figure --- clinical variables (WT patients)
 ####################################################
-clin_wt <- clin[clin$IDH.status == 'WT', ]
+clin_wt <- clin[clin$IDH_status == 'WT', ]
 data <- data.frame( status=clin_wt$os.event , time=clin_wt$os.time)
 data$time <- as.numeric(as.character(data$time))
   
@@ -491,10 +520,37 @@ pdf(file.path(dir_output, 'clinical/wt', "KM_Sex_OS.pdf"), width = 5, height = 7
 print(p_idh)
 dev.off()
 
+## Therapy status
+data$variable <- clin_wt$Therapy_status
+data$variable <- factor(data$variable,
+                          levels = c("Yes", "No"))
+
+surv_obj <- with(data, Surv(time, status))
+fit_idh <- survfit(surv_obj ~ variable, data = data)
+
+p_idh <- ggsurvplot(
+  fit_idh,
+  data = data,
+  risk.table = TRUE,
+  pval = TRUE,
+  conf.int = FALSE,
+  legend.title = "Therapy status",
+  legend.labs = c("Yes", "No"),
+  palette = c("#846D86FF", "#ABB2A5FF"),
+  xlab = "Time (months)",
+  ylab = "Overall survival probability"
+)
+
+
+pdf(file.path(dir_output, 'clinical/wt', "KM_Therapy_OS.pdf"), width = 5, height = 7)
+print(p_idh)
+dev.off()
+
+
 ####################################################
 ## KM figure --- clinical variables (Mut patients)
 ####################################################
-clin_mut <- clin[clin$IDH.status == 'Mut', ]
+clin_mut <- clin[clin$IDH_status == 'Mut', ]
 data <- data.frame( status=clin_mut$os.event , time=clin_mut$os.time)
 data$time <- as.numeric(as.character(data$time))
   
@@ -627,6 +683,32 @@ pdf(file.path(dir_output, 'clinical/mut', "KM_Sex_OS.pdf"), width = 5, height = 
 print(p_idh)
 dev.off()
 
+## Therapy status
+data$variable <- clin_mut$Therapy_status
+data$variable <- factor(data$variable,
+                          levels = c("Yes", "No"))
+
+surv_obj <- with(data, Surv(time, status))
+fit_idh <- survfit(surv_obj ~ variable, data = data)
+
+p_idh <- ggsurvplot(
+  fit_idh,
+  data = data,
+  risk.table = TRUE,
+  pval = TRUE,
+  conf.int = FALSE,
+  legend.title = "Therapy status",
+  legend.labs = c("Yes", "No"),
+  palette = c("#846D86FF", "#ABB2A5FF"),
+  xlab = "Time (months)",
+  ylab = "Overall survival probability"
+)
+
+
+pdf(file.path(dir_output, 'clinical/mut', "KM_Therapy_OS.pdf"), width = 5, height = 7)
+print(p_idh)
+dev.off()
+
 ####################################################
 ## KM figure --- mutation data (all patients)
 ####################################################
@@ -687,7 +769,7 @@ dev.off()
 ####################################################
 ## KM figure --- mutation data (WT patients)
 ####################################################
-clin_wt <- clin[clin$IDH.status == 'WT', ]
+clin_wt <- clin[clin$IDH_status == 'WT', ]
 data <- data.frame( status=clin_wt$os.event , time=clin_wt$os.time)
 data$time <- as.numeric(as.character(data$time))
 mut_wt <- mut[, colnames(mut) %in% clin_wt$Study]
@@ -748,7 +830,7 @@ dev.off()
 ####################################################
 ## KM figure --- mutation data (Mut patients)
 ####################################################
-clin_mut <- clin[clin$IDH.status == 'Mut', ]
+clin_mut <- clin[clin$IDH_status == 'Mut', ]
 data <- data.frame( status=clin_mut$os.event , time=clin_mut$os.time)
 data$time <- as.numeric(as.character(data$time))
 mut_mut <- mut[, colnames(mut) %in% clin_mut$Study]
@@ -799,7 +881,7 @@ p_idh <- ggsurvplot(
   ylab = "Overall survival probability"
 ) 
 
-pdf(file.path(dir_output, 'mutation/Mut', paste(paste('KM', colnames(df)[i], sep="_"), '.pdf', sep="")), width = 5, height = 7)
+pdf(file.path(dir_output, 'mutation/mut', paste(paste('KM', colnames(df)[i], sep="_"), '.pdf', sep="")), width = 5, height = 7)
 print(p_idh)
 dev.off()
 
