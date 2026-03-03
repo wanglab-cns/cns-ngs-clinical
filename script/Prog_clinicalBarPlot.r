@@ -79,6 +79,7 @@ library(dplyr)
 library(tidyr)
 library(stringr)
 library(paletteer)
+library(ggplot2)
 
 ####################################################
 ## Setup directories
@@ -93,53 +94,24 @@ load(file.path(dir_input, 'se_mut_bin_clin.RData'))
 mut <- assay(eset)
 clin <- as.data.frame(colData(eset))
 clin$Age <- ifelse(clin$Age >= 40, '>40', '<40')
-clin$IDH.status[clin$IDH.status == 'NA'] <- "Unknown"
-clin$IDH.status[clin$IDH.status == 'IDHmut'] <- "Mut"
-clin$IDH.status[clin$IDH.status == 'IDHwt'] <- "WT"
+clin$Therapy_status <- ifelse(clin$Therapy_status == 1, 'Yes', 'No')
 
-# Fix oncoprint labels
-label_map <- c(
-  "SNV/Indel"     = "SNV/Indel",
-  "Amplification" = "Amplification",
-  "Fusion"        = "Fusion",
-  "Deletion"      = "Deletion"
-)
+## ---- Binary matrix
+if(all(c("IDH1","IDH2") %in% rownames(mut))){
 
-priority <- c("Fusion", "Amplification", "SNV/Indel", "Deletion")
+  idh_vec <- as.integer(
+    mut["IDH1", ] == 1 | mut["IDH2", ] == 1
+  )
+  mut <- mut[!rownames(mut) %in% c("IDH1","IDH2"), , drop = FALSE]
+  mut <- rbind(mut, IDH = idh_vec)
 
-fix_cell <- function(x) {
-  if (is.na(x) || x == "") return("")
-
-  parts <- strsplit(x, ";", fixed = TRUE)[[1]]
-  parts <- trimws(parts)
-  parts <- parts[parts != ""]
-  parts <- gsub("\\s+", " ", parts)
-
-  # map known labels
-  parts <- ifelse(parts %in% names(label_map),
-                  unname(label_map[parts]),
-                  parts)
-
-  # keep unique + consistent ordering
-  parts <- unique(parts)
-  ord <- match(parts, priority)
-  parts <- parts[order(is.na(ord), ord, parts)]
-
-  paste(parts, collapse = ";")
 }
-
-mut_fixed <- mut
-mut_fixed[] <- vapply(mut, fix_cell, character(1))
-
-## check
-mut_fixed[1:4, 1:6]
-table(mut_fixed)
 
 ###################################################
 ## Bar plots: top mutations and sex/age
 ###################################################
 ## choose top mutations
-mut_freq <- rowMeans(mut_fixed == 1)
+mut_freq <- rowMeans(mut == 1)
 
 genes <- names(mut_freq[mut_freq >= 0.05])
 mut_filt <- mut[genes, ]
