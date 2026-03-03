@@ -177,7 +177,9 @@ clin <- clin %>%
       `Was temozolomide given concurrent to radiotherapy?` == "Yes", 1, 0),
     
     Therapy_status = ifelse(
-      RT_Treated == 1 | Concurrent_TMZ == 1, 1, 0)
+      coalesce(RT_Treated, 0) == 1 | 
+      coalesce(Concurrent_TMZ, 0) == 1,
+      1, 0)
   )
 
 #################################################
