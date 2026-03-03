@@ -97,8 +97,6 @@ dir_output <- 'result/coMut'
 load(file.path(dir_input, 'se_mut_bin_clin.RData'))
 mut <- assay(eset)
 clin <- as.data.frame(colData(eset))
-clin <- clin[clin$IDH.status != 'NA', ]
-clin$IDH.status <- ifelse(clin$IDH.status == 'IDHwt', 'WT', 'Mut') 
 
 ##############################################################
 ## co-mutation analysis (pairwise Fisher exact tests)
@@ -166,7 +164,7 @@ write.csv(co_res, file = file.path(dir_output, 'coMut_res_all.csv'), row.names=F
 ## Step 2 --- WT patients
 # filter genes with sufficient mutation frequency
 min_mut_freq <- 5
-clin_wt <- clin[clin$IDH.status == 'WT', ]
+clin_wt <- clin[clin$IDH_status == 'WT', ]
 mut_wt <- mut[ , colnames(mut) %in% clin_wt$Study]
 
 mut_counts <- rowSums(mut_wt == 1)
@@ -228,7 +226,7 @@ write.csv(co_res, file = file.path(dir_output, 'coMut_res_wt.csv'), row.names=FA
 ## Step 2 --- MUT patients
 # filter genes with sufficient mutation frequency
 min_mut_freq <- 5
-clin_mut <- clin[clin$IDH.status == 'Mut', ]
+clin_mut <- clin[clin$IDH_status == 'Mut', ]
 mut_mut <- mut[ , colnames(mut) %in% clin_mut$Study]
 
 mut_counts <- rowSums(mut_mut == 1)
@@ -288,7 +286,7 @@ co_res <- co_res %>%
 write.csv(co_res, file = file.path(dir_output, 'coMut_res_mut.csv'), row.names=FALSE)
 
 #############################################################
-## Visualize
+## Visualize ---- volcano plot
 #############################################################
 ## Step 1 --- all patients
 co_res <- read.csv(file.path(dir_output, 'coMut_res_all.csv'))
@@ -311,9 +309,8 @@ ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
     aes(label = pair),
     size = 2.5
   ) +
-  #geom_vline(xintercept = 0, linetype = "dashed") +
   scale_color_manual(
-    values = c("FDR < 0.05" = "#1d587a",   # light blue
+    values = c("FDR < 0.05" = "#1d587a",
                "NS" = "grey70")
   ) +
   theme_classic() +
@@ -322,7 +319,15 @@ ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
     x = "log2(Odds Ratio)",
     y = "-log10(p-value)",
     color = ""
+  ) +
+  theme(
+    axis.title = element_text(size = 10),
+    axis.text  = element_text(size = 8),
+   # plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    legend.text = element_text(size = 8),
+    legend.title = element_text(size = 9)
   )
+
 dev.off()
 
 
@@ -347,9 +352,8 @@ ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
     aes(label = pair),
     size = 2.5
   ) +
-  #geom_vline(xintercept = 0, linetype = "dashed") +
   scale_color_manual(
-    values = c("FDR < 0.05" = "#1d587a",   # light blue
+    values = c("FDR < 0.05" = "#1d587a",
                "NS" = "grey70")
   ) +
   theme_classic() +
@@ -358,7 +362,15 @@ ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
     x = "log2(Odds Ratio)",
     y = "-log10(p-value)",
     color = ""
+  ) +
+  theme(
+    axis.title = element_text(size = 10),
+    axis.text  = element_text(size = 8),
+   # plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    legend.text = element_text(size = 8),
+    legend.title = element_text(size = 9)
   )
+
 dev.off()
 
 
@@ -383,9 +395,8 @@ ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
     aes(label = pair),
     size = 2.5
   ) +
-  #geom_vline(xintercept = 0, linetype = "dashed") +
   scale_color_manual(
-    values = c("FDR < 0.05" = "#1d587a",   # light blue
+    values = c("FDR < 0.05" = "#1d587a",
                "NS" = "grey70")
   ) +
   theme_classic() +
@@ -394,5 +405,13 @@ ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
     x = "log2(Odds Ratio)",
     y = "-log10(p-value)",
     color = ""
+  ) +
+  theme(
+    axis.title = element_text(size = 10),
+    axis.text  = element_text(size = 8),
+   # plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    legend.text = element_text(size = 8),
+    legend.title = element_text(size = 9)
   )
+
 dev.off()
