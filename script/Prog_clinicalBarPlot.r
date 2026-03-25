@@ -85,7 +85,7 @@ library(ggplot2)
 ## Setup directories
 ####################################################
 dir_input <- 'result/data'
-dir_output <- 'result/clinicalBarPlot'
+dir_output <- 'result/barPlot'
 
 #################################################
 ## Load data
@@ -94,7 +94,6 @@ load(file.path(dir_input, 'se_mut_bin_clin.RData'))
 mut <- assay(eset)
 clin <- as.data.frame(colData(eset))
 clin$Age <- ifelse(clin$Age >= 40, '>40', '<40')
-clin$Therapy_status <- ifelse(clin$Therapy_status == 1, 'Yes', 'No')
 
 ## ---- Binary matrix
 if(all(c("IDH1","IDH2") %in% rownames(mut))){
@@ -130,7 +129,7 @@ mut_long <- mut_long %>%
   left_join(
     clin %>% 
       mutate(Sample = Study) %>%
-      select(Sample, Age, Sex, IDH.status),
+      select(Sample, Age, Sex, IDH_status),
     by = "Sample"
   )
 
@@ -196,7 +195,7 @@ ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
 dev.off()
 
 ## Step 2 --- Mutant patients
-mut_long_mut <- mut_long[mut_long$IDH.status == 'Mut', ]
+mut_long_mut <- mut_long[mut_long$IDH_status == 'Mut', ]
 age_assoc <- mut_long_mut %>%
   group_by(Gene) %>%
   summarise(
@@ -264,7 +263,7 @@ ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
 dev.off()
 
 ## Step 3 --- Wild type patients
-mut_long_wt <- mut_long[mut_long$IDH.status == 'WT', ]
+mut_long_wt <- mut_long[mut_long$IDH_status == 'WT', ]
 age_assoc <- mut_long_wt %>%
   group_by(Gene) %>%
   summarise(
@@ -367,7 +366,7 @@ ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
 dev.off()
 
 ## Step 2 --- mutant patients
-mut_long_mut <- mut_long[mut_long$IDH.status == 'Mut', ]
+mut_long_mut <- mut_long[mut_long$IDH_status == 'Mut', ]
 sex_assoc <- mut_long_mut %>%
   group_by(Gene) %>%
   summarise(
@@ -409,7 +408,7 @@ ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
 dev.off()
 
 ## Step 2 --- mutant patients
-mut_long_wt <- mut_long[mut_long$IDH.status == 'WT', ]
+mut_long_wt <- mut_long[mut_long$IDH_status == 'WT', ]
 sex_assoc <- mut_long_wt %>%
   group_by(Gene) %>%
   summarise(
