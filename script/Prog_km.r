@@ -122,6 +122,7 @@ n0.cutoff <- 5
 load(file.path(dir_input, 'se_mut_bin_clin.RData'))
 mut <- assay(eset)
 clin <- as.data.frame(colData(eset))
+
 clin$Age <- ifelse(clin$Age >= 40, '>40', '<40')
 clin$Therapy_status <- ifelse(clin$Therapy_status == 1, 'Yes', 'No')
 
@@ -155,30 +156,24 @@ clin <- clin %>%
   )
 
 # Histology
-clin$Histo <- coalesce(clin$LGG, clin$HGG)
-clin$Histo <- str_squish(clin$Histo)   # remove extra spaces
-clin$Histo <- str_to_sentence(clin$Histo)
+# clin$Histo <- coalesce(clin$LGG, clin$HGG)
+clin$Histo <- clin$histo
 clin <- clin %>%
   mutate(
     Histo = str_squish(Histo),
-    Histo = str_to_sentence(Histo),
+    Histo = str_to_lower(Histo),   # normalize first
     
     Histo = case_when(
-      str_detect(Histo, "Glioblastoma") ~ "Glioblastoma",
       
-      str_detect(Histo, "Diffuse hemispheric") ~ "Diffuse hemispheric",
-      str_detect(Histo, "Diffuse midline") ~ "Diffuse midline",
-      str_detect(Histo, "Diffuse high") ~ "Diffuse high-grade",
-      str_detect(Histo, "Diffuse low") ~ "Diffuse low-grade",
-      
-      str_detect(Histo, "Astrocytoma") ~ "Astrocytoma",
-      str_detect(Histo, "Oligodendroglioma") ~ "Oligodendroglioma",
-      str_detect(Histo, "Glioneuronal") ~ "Glioneuronal",
-      str_detect(Histo, "Pilocytic") ~ "Pilocytic astrocytoma",
-      str_detect(Histo, "Pleomorphic") ~ "Pleomorphic xanthoastrocytoma",
-      str_detect(Histo, "Ependymoma") ~ "Ependymoma",
-      
-      TRUE ~ Histo
+      str_detect(Histo, "glioblastoma") ~ "Glioblastoma",
+      str_detect(Histo, "oligodendroglioma") ~ "Oligodendroglioma",
+      str_detect(Histo, "astrocytoma") ~ "Astrocytoma",
+      str_detect(Histo, "ependymoma") ~ "Ependymoma",
+      str_detect(Histo, "glioneuronal") ~ "Glioneuronal tumor",
+      str_detect(Histo, "circumscribed glioma") ~ "Circumscribed glioma",
+      str_detect(Histo, "pediatric-type high.?grade glioma") ~ "Pediatric-type HGG",
+      str_detect(Histo, "pediatric-type low.?grade glioma") ~ "Pediatric-type LGG",
+      TRUE ~ str_to_sentence(Histo)  # keep original but clean formatting
     )
   )
 
@@ -216,7 +211,8 @@ for(i in 1:nrow(data)){
 ## Histology status
 data$variable <- clin$Histo
 data$variable <- factor(data$variable,
-                        levels = c('Glioblastoma', 'Astrocytoma', 'Glioneuronal', 'Oligodendroglioma',  'Other'))
+                        levels = c("Glioblastoma", "Astrocytoma", "Oligodendroglioma", 
+                                   "Glioneuronal tumor", "Circumscribed glioma", "Other"))
 surv_obj <- with(data, Surv(time, status))
 fit_idh <- survfit(surv_obj ~ variable, data = data)
 
@@ -227,13 +223,14 @@ p_idh <- ggsurvplot(
   pval = TRUE,
   conf.int = FALSE,
   legend.title = "Histology status",
-  legend.labs = c("Glioblastoma", "Astrocytoma", "Oligodendroglioma", "Glioneuronal",  "Other"),
-  palette = c("#4A7169FF", "#735231FF", "#E3CA97FF", "#99B6BDFF", "#96A5A5FF"),
+  legend.labs = c("Glioblastoma", "Astrocytoma", "Oligodendroglioma", 
+                   "Glioneuronal tumor", "Circumscribed glioma", "Other"),
+  palette = c("#4A7169FF", "#735231FF", "#E3CA97FF", "#99B6BDFF", "#E76254FF", "#96A5A5FF"),
   xlab = "Time (months)",
   ylab = "Overall survival probability"
 ) 
 
-pdf(file.path(dir_output, 'clinical/all', "KM_Histo_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/all', "KM_Histo_OS.pdf"), width = 7, height = 8)
 print(p_idh)
 dev.off()
 
@@ -383,7 +380,6 @@ pdf(file.path(dir_output, 'clinical/all', "KM_Therapy_OS.pdf"), width = 5, heigh
 print(p_idh)
 dev.off()
 
-
 ####################################################
 ## KM figure --- clinical variables (WT patients)
 ####################################################
@@ -403,7 +399,8 @@ for(i in 1:nrow(data)){
 ## Histology status
 data$variable <- clin_wt$Histo
 data$variable <- factor(data$variable,
-                        levels = c('Glioblastoma', 'Astrocytoma', 'Glioneuronal', 'Other'))
+                        levels = c("Glioblastoma", "Astrocytoma", 
+                                   "Glioneuronal tumor", "Circumscribed glioma", "Other"))
 surv_obj <- with(data, Surv(time, status))
 fit_idh <- survfit(surv_obj ~ variable, data = data)
 
@@ -414,8 +411,9 @@ p_idh <- ggsurvplot(
   pval = TRUE,
   conf.int = FALSE,
   legend.title = "Histology status",
-  legend.labs = c("Glioblastoma", "Astrocytoma", "Glioneuronal",  "Other"),
-  palette = c("#4A7169FF", "#735231FF",  "#99B6BDFF", "#96A5A5FF"),
+  legend.labs = c("Glioblastoma", "Astrocytoma",  
+                   "Glioneuronal tumor", "Circumscribed glioma", "Other"),
+  palette = c("#4A7169FF", "#735231FF", "#99B6BDFF", "#E76254FF", "#96A5A5FF"),
   xlab = "Time (months)",
   ylab = "Overall survival probability"
 ) 
@@ -463,7 +461,7 @@ p_idh <- ggsurvplot(
   conf.int = FALSE,
   legend.title = "Grade status",
   legend.labs = c("I", "II", "III", "IV"),
-  palette = c(,"#A8C3A0FF", "#BC8E7DFF", "#FAE093FF", "#7C7189FF"),
+  palette = c("#A8C3A0FF", "#BC8E7DFF", "#FAE093FF", "#7C7189FF"),
   xlab = "Time (months)",
   ylab = "Overall survival probability"
 ) 
@@ -541,11 +539,9 @@ p_idh <- ggsurvplot(
   ylab = "Overall survival probability"
 )
 
-
 pdf(file.path(dir_output, 'clinical/wt', "KM_Therapy_OS.pdf"), width = 5, height = 7)
 print(p_idh)
 dev.off()
-
 
 ####################################################
 ## KM figure --- clinical variables (Mut patients)
@@ -712,6 +708,17 @@ dev.off()
 ####################################################
 ## KM figure --- mutation data (all patients)
 ####################################################
+## ---- Binary matrix
+if(all(c("IDH1","IDH2") %in% rownames(mut))){
+
+  idh_vec <- as.integer(
+    mut["IDH1", ] == 1 | mut["IDH2", ] == 1
+  )
+  mut <- mut[!rownames(mut) %in% c("IDH1","IDH2"), , drop = FALSE]
+  mut <- rbind(mut, IDH = idh_vec)
+
+}
+
 data <- data.frame( status=clin$os.event , time=clin$os.time)
 data$time <- as.numeric(as.character(data$time))
 df <- t(mut)
