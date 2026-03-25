@@ -90,28 +90,18 @@ n0.cutoff <- 5
 load(file.path(dir_input, 'se_mut_bin_clin.RData'))
 mut <- assay(eset)
 clin <- as.data.frame(colData(eset))
-clin <- clin[clin$IDH.status != 'NA', ]
 clin$Age <- ifelse(clin$Age >= 40, '>40', '<40')
-clin$IDH.status[clin$IDH.status == 'IDHmut'] <- "Mut"
-clin$IDH.status[clin$IDH.status == 'IDHwt'] <- "WT"
-clin$IDH.status <- factor(clin$IDH.status,
-                          levels = c("WT", "Mut"))
-# primary location
-clin <- clin %>%
-  mutate(
-    Primary.location = str_squish(Primary.location),
-    Primary.location = str_to_title(Primary.location)
-  )
 
-clin <- clin %>%
-  mutate(
-    Location = case_when(
-      Primary.location == "Lobar" ~ "Lobar",
-      Primary.location == "Cerebellum" ~ "Cerebellum",
-      Primary.location == "Thalamic" ~ "Thalamic",
-      TRUE ~ "Other"
-    )
+## ---- Binary matrix
+if(all(c("IDH1","IDH2") %in% rownames(mut))){
+
+  idh_vec <- as.integer(
+    mut["IDH1", ] == 1 | mut["IDH2", ] == 1
   )
+  mut <- mut[!rownames(mut) %in% c("IDH1","IDH2"), , drop = FALSE]
+  mut <- rbind(mut, IDH = idh_vec)
+
+}
 
 # Grade
 clin <- clin %>%
@@ -126,30 +116,24 @@ clin <- clin %>%
   )
 
 # Histology
-clin$Histo <- coalesce(clin$LGG, clin$HGG)
-clin$Histo <- str_squish(clin$Histo)   # remove extra spaces
-clin$Histo <- str_to_sentence(clin$Histo)
+# clin$Histo <- coalesce(clin$LGG, clin$HGG)
+clin$Histo <- clin$histo
 clin <- clin %>%
   mutate(
     Histo = str_squish(Histo),
-    Histo = str_to_sentence(Histo),
+    Histo = str_to_lower(Histo),   # normalize first
     
     Histo = case_when(
-      str_detect(Histo, "Glioblastoma") ~ "Glioblastoma",
       
-      str_detect(Histo, "Diffuse hemispheric") ~ "Diffuse hemispheric",
-      str_detect(Histo, "Diffuse midline") ~ "Diffuse midline",
-      str_detect(Histo, "Diffuse high") ~ "Diffuse high-grade",
-      str_detect(Histo, "Diffuse low") ~ "Diffuse low-grade",
-      
-      str_detect(Histo, "Astrocytoma") ~ "Astrocytoma",
-      str_detect(Histo, "Oligodendroglioma") ~ "Oligodendroglioma",
-      str_detect(Histo, "Glioneuronal") ~ "Glioneuronal",
-      str_detect(Histo, "Pilocytic") ~ "Pilocytic astrocytoma",
-      str_detect(Histo, "Pleomorphic") ~ "Pleomorphic xanthoastrocytoma",
-      str_detect(Histo, "Ependymoma") ~ "Ependymoma",
-      
-      TRUE ~ Histo
+      str_detect(Histo, "glioblastoma") ~ "Glioblastoma",
+      str_detect(Histo, "oligodendroglioma") ~ "Oligodendroglioma",
+      str_detect(Histo, "astrocytoma") ~ "Astrocytoma",
+      str_detect(Histo, "ependymoma") ~ "Ependymoma",
+      str_detect(Histo, "glioneuronal") ~ "Glioneuronal tumor",
+      str_detect(Histo, "circumscribed glioma") ~ "Circumscribed glioma",
+      str_detect(Histo, "pediatric-type high.?grade glioma") ~ "Pediatric-type HGG",
+      str_detect(Histo, "pediatric-type low.?grade glioma") ~ "Pediatric-type LGG",
+      TRUE ~ str_to_sentence(Histo)  # keep original but clean formatting
     )
   )
 
@@ -167,9 +151,9 @@ clin <- clin %>%
     )
   )
 
-mut <- mut[, colnames(mut) %in% clin$Study] # 191 patients
-clin$IDH.status <- factor(
-  clin$IDH.status,
+mut <- mut[, colnames(mut) %in% clin$Study] # 199 patients
+clin$IDH_status <- factor(
+  clin$IDH_status,
   levels = c("WT", "Mut")
 )
 
@@ -188,14 +172,9 @@ clin$Grade <-  factor(
   levels = c("I", "II", "III", "IV")
 )
 
-clin$Location <-  factor(
-  clin$Location,
-  levels = c("Lobar", "Cerebellum", "Thalamic", "Other")
-)
-
 clin$Histo <- factor(
   clin$Histo,
-  levels = c("Glioblastoma", "Astrocytoma", "Glioneuronal", "Oligodendroglioma", "Other")
+  levels = c("Glioblastoma", "Astrocytoma", "Glioneuronal tumor", "Oligodendroglioma", "Circumscribed glioma", "Other")
 )
 
 ####################################################
@@ -252,7 +231,7 @@ cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
 write.csv(cox_res, file = file.path(dir_output, 'cox_os_all.csv'), row.names=FALSE)
 
 ## --- Step 2: WT patients 
-clin_wt <- clin[clin$IDH.status == 'WT', ]
+clin_wt <- clin[clin$IDH_status == 'WT', ]
 df <- mut[, colnames(mut) %in% clin_wt$Study]
 
 cox_res <- lapply(1:nrow(df), function(k){
@@ -304,7 +283,7 @@ cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
 write.csv(cox_res, file = file.path(dir_output, 'cox_os_wt.csv'), row.names=FALSE)
 
 ## --- Step 3: Mut patients 
-clin_mut <- clin[clin$IDH.status == 'Mut', ]
+clin_mut <- clin[clin$IDH_status == 'Mut', ]
 df <- mut[, colnames(mut) %in% clin_mut$Study]
 
 cox_res <- lapply(1:nrow(df), function(k){
@@ -362,13 +341,13 @@ write.csv(cox_res, file = file.path(dir_output, 'cox_os_mut.csv'), row.names=FAL
 df <- mut
 cox_res <- lapply(1:nrow(df), function(k){
 
-data <- data.frame( status=clin$os.event , time=clin$os.time , variable=df[k, ], 
-                    IDH =  clin$IDH.status, 
+data <- data.frame( status=clin$os.event , 
+                    time=clin$os.time , 
+                    variable=df[k, ], 
+                    IDH =  clin$IDH_status, 
                     Age = clin$Age, 
-                    Sex = clin$Sex,
                     Grade = clin$Grade, 
-                    Histo = clin$Histo, 
-                    Location = clin$Location )
+                    Histo = clin$Histo)
 data <- data[!is.na(data$variable), ]
 data$time <- as.numeric(as.character(data$time))
   
@@ -384,8 +363,8 @@ for(i in 1:nrow(data)){
   if( length( data$variable[ data$variable == 1 ] )>= n1.cutoff &
       length( data$variable[ data$variable == 0 ] ) >= n0.cutoff ){
     
-    cox <- coxph( formula= Surv( time , status ) ~ variable + IDH + Age + Sex 
-                                                   + Grade + Location + Histo, data=data )
+    cox <- coxph( formula= Surv( time , status ) ~ variable + IDH + Age  
+                                                   + Grade + Histo, data=data )
     res <- data.frame(gene = rownames(df)[k],
                       hr = summary(cox)$coefficients['variable', "coef"],
                       se = summary(cox)$coefficients['variable', "se(coef)"],
@@ -416,14 +395,17 @@ cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
 write.csv(cox_res, file = file.path(dir_output, 'cox_os_all_mv.csv'), row.names=FALSE)
 
 ## --- Step 2: WT patients
-clin_wt <- clin[clin$IDH.status == 'WT', ]
+clin_wt <- clin[clin$IDH_status == 'WT', ]
 df <- mut[, colnames(mut) %in% clin_wt$Study]
 
 cox_res <- lapply(1:nrow(df), function(k){
 
-data <- data.frame( status=clin_wt$os.event , time=clin_wt$os.time , variable=df[k, ], 
-                    Age = clin_wt$Age, Sex = clin_wt$Sex, Grade = clin_wt$Grade, 
-                    Histo = clin_wt$Histo, Location = clin_wt$Location)
+data <- data.frame( status=clin_wt$os.event , 
+                    time=clin_wt$os.time , 
+                    variable=df[k, ], 
+                    Age = clin_wt$Age, 
+                    Grade = clin_wt$Grade,
+                    Histo = clin_wt$Histo)
 data <- data[!is.na(data$variable), ]
 data$time <- as.numeric(as.character(data$time))
   
@@ -439,8 +421,7 @@ for(i in 1:nrow(data)){
   if( length( data$variable[ data$variable == 1 ] )>= n1.cutoff &
       length( data$variable[ data$variable == 0 ] ) >= n0.cutoff ){
     
-    cox <- coxph( formula= Surv( time , status ) ~ variable + Age + Sex 
-                                                   + Grade + Location + Histo, data=data )
+    cox <- coxph( formula= Surv( time , status ) ~ variable + Age + Grade + Histo, data=data )
     res <- data.frame(gene = rownames(df)[k],
                       hr = summary(cox)$coefficients['variable', "coef"],
                       se = summary(cox)$coefficients['variable', "se(coef)"],
@@ -471,14 +452,16 @@ cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
 write.csv(cox_res, file = file.path(dir_output, 'cox_os_wt_mv.csv'), row.names=FALSE)
 
 ## --- Step 3: Mut patients
-clin_mut <- clin[clin$IDH.status == 'Mut', ]
+clin_mut <- clin[clin$IDH_status == 'Mut', ]
 df <- mut[, colnames(mut) %in% clin_mut$Study]
 
 cox_res <- lapply(1:nrow(df), function(k){
 
-data <- data.frame( status=clin_mut$os.event , time=clin_mut$os.time , variable=df[k, ], 
-                    Age = clin_mut$Age, Sex = clin_mut$Sex, Grade = clin_mut$Grade, 
-                    Histo = clin_mut$Histo, Location = clin_mut$Location)
+data <- data.frame( status=clin_mut$os.event , 
+                    time=clin_mut$os.time , 
+                    variable=df[k, ], 
+                    Age = clin_mut$Age, 
+                    Grade = clin_mut$Grade)
 data <- data[!is.na(data$variable), ]
 data$time <- as.numeric(as.character(data$time))
   
@@ -494,8 +477,7 @@ for(i in 1:nrow(data)){
   if( length( data$variable[ data$variable == 1 ] )>= n1.cutoff &
       length( data$variable[ data$variable == 0 ] ) >= n0.cutoff ){
     
-    cox <- coxph( formula= Surv( time , status ) ~ variable + Age + Sex 
-                                                   + Grade + Location + Histo, data=data )
+    cox <- coxph( formula= Surv( time , status ) ~ variable + Age + Grade, data=data )
     res <- data.frame(gene = rownames(df)[k],
                       hr = summary(cox)$coefficients['variable', "coef"],
                       se = summary(cox)$coefficients['variable', "se(coef)"],
