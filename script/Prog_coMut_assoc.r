@@ -119,6 +119,17 @@ load(file.path(dir_input, 'se_mut_bin_clin.RData'))
 mut <- assay(eset)
 clin <- as.data.frame(colData(eset))
 
+## ---- Binary matrix
+if(all(c("IDH1","IDH2") %in% rownames(mut))){
+
+  idh_vec <- as.integer(
+    mut["IDH1", ] == 1 | mut["IDH2", ] == 1
+  )
+  mut <- mut[!rownames(mut) %in% c("IDH1","IDH2"), , drop = FALSE]
+  mut <- rbind(mut, IDH = idh_vec)
+
+}
+
 ##############################################################
 ## co-mutation analysis (pairwise Fisher exact tests)
 ##############################################################
