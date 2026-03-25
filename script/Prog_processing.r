@@ -25,6 +25,10 @@
 ##       • Sheet 2: Clinical metadata
 ##       • Sheet 3: Curated mutation calls
 ##
+##   - data/clin.xlsx
+##       • Curated clinical updates including refined histology
+##         annotations (Histo_updated)
+##
 ##
 ## Outputs:
 ##
@@ -56,11 +60,19 @@
 ##           - os.time:  Survival (Months)
 ##
 ##        Key analysis variables are standardized,
-##        including histology, IDH status, age at diagnosis,
-##        and therapy status (binary indicator for RT and/or
-##        concurrent temozolomide).
+##        including histology, IDH status (derived from SNV/Indel
+##        mutations in IDH1/IDH2), age at diagnosis, and therapy
+##        status (binary indicator for RT and/or concurrent
+##        temozolomide).
 ##
-##   3) Mutation Filtering and Recoding
+##   3) External Clinical Annotation Integration
+##        Updated histology annotations are imported from an
+##        external clinical dataset (clin.xlsx). The variable
+##        Histo_updated is merged into the main clinical dataset
+##        using the patient identifier ('Study') and stored as
+##        'histo' for downstream analysis.
+##
+##   4) Mutation Filtering and Recoding
 ##        Mutation calls are restricted to Tier I and Tier II
 ##        events. Records labeled as "Unclassified" are removed.
 ##
@@ -70,32 +82,32 @@
 ##           - Amplification (copy number gains)
 ##           - Deletion (copy number losses)
 ##
-##   4) Binary Gene-Level Mutation Matrix (mat_bin)
+##   5) Binary Gene-Level Mutation Matrix (mat_bin)
 ##        A gene × patient matrix is constructed where:
 ##           - 1 indicates ≥1 alteration in the gene
 ##           - 0 indicates no alteration
 ##        Multiple alterations in the same gene/patient pair
 ##        are collapsed to a single binary indicator.
 ##
-##   5) Oncoprint Event-Type Matrix (mat_onco)
+##   6) Oncoprint Event-Type Matrix (mat_onco)
 ##        A gene × patient matrix is constructed preserving
 ##        alteration classes. Multiple events per gene/patient
 ##        are concatenated as semicolon-separated strings
 ##        (e.g., "Amplification;SNV/Indel").
 ##
-##   6) IDH Derivation
+##   7) IDH Derivation
 ##        Patient-level IDH status is derived based on the
 ##        presence of IDH1 or IDH2 SNV/Indel alterations.
 ##        Status is encoded as Mut or WT and appended to
 ##        clinical metadata.
 ##
-##   7) Patient Harmonization
+##   8) Patient Harmonization
 ##        Only patients present in both curated clinical data
 ##        and mutation matrices are retained. Clinical metadata
 ##        and mutation matrices are aligned and ordered
 ##        consistently.
 ##
-##   8) SummarizedExperiment Export
+##   9) SummarizedExperiment Export
 ##        Two analysis-ready SummarizedExperiment objects are
 ##        generated:
 ##           - Binary mutation matrix + clinical metadata
@@ -163,7 +175,7 @@ clin <- clin %>%
 
 ## rename variable 
 clin$os.time <- clin$'Survival (Months)'
-clin$histo <- clin$"Histology"
+#clin$histo <- clin$"Histology"
 clin$Age <- clin$'Age at diagnosis'
 clin <- clin[order(clin$Study), ]
 
@@ -307,6 +319,9 @@ mat_onco <- mat_onco[, sort(colnames(mat_onco)), drop = FALSE]
 ## Create SE objects
 ###############################################
 ## Common patients  
+clin_updated <- readxl::read_xlsx(file.path(dir_input, 'clin.xlsx'))
+clin_updated <- clin_updated[order(clin_updated$Study), ]
+
 int <- intersect(clin$Study, colnames(mat_bin)) # 213 patients (all) & 199 for Tier 1 & II
 clin <- clin[clin$Study %in% int, ]
 clin <- as.data.frame(clin)
@@ -317,15 +332,20 @@ mat_onco <- mat_onco[, colnames(mat_onco) %in% int]
 clin <- clin %>%
   left_join(IDH_status, by = "Study")
 
+clin <- clin %>%
+  left_join(
+    clin_updated %>% 
+      select(Study, histo = Histo_updated),
+    by = "Study"
+  )
+
 ## SE object
 eset <- SummarizedExperiment(assay= list("gene_expression"=mat_bin),    
                             colData=clin)
-
 save(eset, file = file.path(dir_output, 'se_mut_bin_clin.RData'))
 
 eset <- SummarizedExperiment(assay= list("gene_expression"=mat_onco),    
                             colData=clin)
-
 save(eset, file = file.path(dir_output, 'se_mut_onco_clin.RData'))
 
 
