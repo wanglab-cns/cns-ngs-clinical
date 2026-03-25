@@ -149,8 +149,8 @@ table(mut_fixed)
 #mut_other[mut_other %in% combo_levels] <- "Multi-hit"
 
 col <- c(
-  "SNV/Indel"     = "#68855CFF",
-  "Amplification" = "#A06177FF",
+  "SNV/Indel"     = "#A06177FF",
+  "Amplification" = "#68855CFF",
   "Fusion"        = "#A5693CFF",
   "Deletion"      = "#526A83FF"
  # "Multi-hit"     = "#D9AF6BFF"
@@ -218,7 +218,7 @@ p <- oncoPrint(
   right_annotation = NULL
 )
 
-pdf(file.path(dir_output, 'fig1.pdf'),  width = 7, height = 9)
+pdf(file.path(dir_output, 'fig1.pdf'),  width = 7, height = 8)
 
 draw(
   p,
@@ -249,7 +249,7 @@ clin <- clin %>%
       Primary.location == "Lobar" ~ "Lobar",
       Primary.location == "Cerebellum" ~ "Cerebellum",
       Primary.location == "Thalamic" ~ "Thalamic",
-      TRUE ~ "Other"
+      TRUE ~ "Other" # Spinal Cord, Intraventricular, Brainstem, Suprasellar
     )
   )
 
@@ -266,46 +266,40 @@ clin <- clin %>%
   )
 
 # Histology
-clin$Histo <- coalesce(clin$LGG, clin$HGG)
-clin$Histo <- str_squish(clin$Histo)   # remove extra spaces
-clin$Histo <- str_to_sentence(clin$Histo)
+# clin$Histo <- coalesce(clin$LGG, clin$HGG)
+clin$Histo <- clin$histo
 clin <- clin %>%
   mutate(
     Histo = str_squish(Histo),
-    Histo = str_to_sentence(Histo),
+    Histo = str_to_lower(Histo),   # normalize first
     
     Histo = case_when(
-      str_detect(Histo, "Glioblastoma") ~ "Glioblastoma",
       
-      str_detect(Histo, "Diffuse hemispheric") ~ "Diffuse hemispheric",
-      str_detect(Histo, "Diffuse midline") ~ "Diffuse midline",
-      str_detect(Histo, "Diffuse high") ~ "Diffuse high-grade",
-      str_detect(Histo, "Diffuse low") ~ "Diffuse low-grade",
-      
-      str_detect(Histo, "Astrocytoma") ~ "Astrocytoma",
-      str_detect(Histo, "Oligodendroglioma") ~ "Oligodendroglioma",
-      str_detect(Histo, "Glioneuronal") ~ "Glioneuronal",
-      str_detect(Histo, "Pilocytic") ~ "Pilocytic astrocytoma",
-      str_detect(Histo, "Pleomorphic") ~ "Pleomorphic xanthoastrocytoma",
-      str_detect(Histo, "Ependymoma") ~ "Ependymoma",
-      
-      TRUE ~ Histo
+      str_detect(Histo, "glioblastoma") ~ "Glioblastoma",
+      str_detect(Histo, "oligodendroglioma") ~ "Oligodendroglioma",
+      str_detect(Histo, "astrocytoma") ~ "Astrocytoma",
+      str_detect(Histo, "ependymoma") ~ "Ependymoma",
+      str_detect(Histo, "glioneuronal") ~ "Glioneuronal tumor",
+      str_detect(Histo, "circumscribed glioma") ~ "Circumscribed glioma",
+      str_detect(Histo, "pediatric-type high.?grade glioma") ~ "Pediatric-type HGG",
+      str_detect(Histo, "pediatric-type low.?grade glioma") ~ "Pediatric-type LGG",
+      TRUE ~ str_to_sentence(Histo)  # keep original but clean formatting
     )
   )
 
-histo_counts <- table(clin$Histo)
+# histo_counts <- table(clin$Histo)
 
 # Identify small groups (<10 patients)
-small_groups <- names(histo_counts[histo_counts <= 10]) 
+# small_groups <- names(histo_counts[histo_counts <= 10]) 
 
-clin <- clin %>%
-  mutate(
-    Histo = ifelse(
-      Histo %in% small_groups,
-      "Other",
-      Histo
-    )
-  )
+# clin <- clin %>%
+#  mutate(
+#    Histo = ifelse(
+#      Histo %in% small_groups,
+#      "Other",
+#      Histo
+#    )
+#  )
 
 anno_df <- data.frame(
   Sex = factor(clin$Sex, levels = c("Male", "Female")),
@@ -313,7 +307,9 @@ anno_df <- data.frame(
   IDH = factor(clin$IDH_status, levels = c("WT", "Mut")),
   Therapy =  factor(clin$Therapy_status, levels = c("Yes", "No")),
   Location = factor(clin$Location, levels = c('Lobar', 'Cerebellum', 'Thalamic', 'Other')),
-  Histo = factor(clin$Histo, levels = c('Glioblastoma', 'Astrocytoma', 'Oligodendroglioma', 'Glioneuronal', 'Other')),
+  Histo = factor(clin$Histo, levels = c('Glioblastoma', 'Astrocytoma', 'Circumscribed glioma',
+                                        'Glioneuronal tumor', 'Oligodendroglioma',  'Pediatric-type HGG',
+                                        'Pediatric-type LGG', 'Ependymoma')),
   Grade = factor(clin$Grade, levels = c('I', 'II', 'III', 'IV'))
 )
 
@@ -347,11 +343,14 @@ anno_col <- list(
     'Other' = "#96A5A5FF"
   ),
   Histo = c(
-    'Glioblastoma'       = "#4A7169FF",
-    'Astrocytoma'        = "#735231FF",
-    'Oligodendroglioma'  = "#E3CA97FF",
-    'Glioneuronal'       = "#99B6BDFF",
-    'Other'              = "#96A5A5FF"
+    'Glioblastoma'          = "#4A7169FF",
+    'Astrocytoma'           = "#735231FF",
+    'Circumscribed glioma'  = "#E76254FF", 
+    'Glioneuronal tumor'    = "#99B6BDFF",
+    'Oligodendroglioma'     = "#E3CA97FF",
+    'Pediatric-type HGG'    = "#B49696FF",
+    'Pediatric-type LGG'    = "#AAC197FF",
+    'Ependymoma'            = "#96A5A5FF" 
   ),
   Therapy = c(
     'Yes'       = "#846D86FF",
@@ -429,7 +428,9 @@ anno_df <- data.frame(
   #IDH = factor(clin_wt$IDH_status, levels = c("WT", "Mut")),
   Therapy =  factor(clin_wt$Therapy_status, levels = c("Yes", "No")),
   Location = factor(clin_wt$Location, levels = c('Lobar', 'Cerebellum', 'Thalamic', 'Other')),
-  Histo = factor(clin_wt$Histo, levels = c('Glioblastoma', 'Astrocytoma', 'Glioneuronal', 'Other')),
+  Histo = factor(clin_wt$Histo, c('Glioblastoma', 'Astrocytoma', 'Circumscribed glioma',
+                                  'Glioneuronal tumor', 'Pediatric-type HGG', 'Pediatric-type LGG', 
+                                  'Ependymoma')),
   Grade = factor(clin_wt$Grade, levels = c('I', 'II', 'III', 'IV'))
 )
 
@@ -464,10 +465,14 @@ anno_col <- list(
     'Other' = "#96A5A5FF"
   ),
   Histo = c(
-    'Glioblastoma'       = "#4A7169FF",
-    'Astrocytoma'        = "#735231FF",
-    'Glioneuronal'       = "#99B6BDFF",
-    'Other'              = "#96A5A5FF"
+    'Glioblastoma'          = "#4A7169FF",
+    'Astrocytoma'           = "#735231FF",
+    'Circumscribed glioma'  = "#E76254FF", 
+    'Glioneuronal tumor'    = "#99B6BDFF",
+  #  'Oligodendroglioma'     = "#E3CA97FF",
+    'Pediatric-type HGG'    = "#B49696FF",
+    'Pediatric-type LGG'    = "#AAC197FF",
+    'Ependymoma'            = "#96A5A5FF"
   ),
    Therapy = c(
     'Yes'       = "#846D86FF",
@@ -575,8 +580,8 @@ anno_col <- list(
     'Cerebellum' = "#577E2FFF"
   ),
   Histo = c(
-    'Astrocytoma'        = "#735231FF",
-    'Oligodendroglioma'  = "#E3CA97FF"
+    'Astrocytoma'           = "#735231FF",
+    'Oligodendroglioma'     = "#E3CA97FF"
   ),
    Therapy = c(
     'Yes'       = "#846D86FF",
