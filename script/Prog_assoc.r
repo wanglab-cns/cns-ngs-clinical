@@ -81,8 +81,8 @@ dir_output <- 'result/assoc'
 
 time.censor <- 36
 time.censor.mut <- 120
-n1.cutoff <- 5
-n0.cutoff <- 5
+n1.cutoff <- 3
+n0.cutoff <- 3
 
 #################################################
 ## Load data
@@ -348,6 +348,7 @@ data <- data.frame( status=clin$os.event ,
                     Age = clin$Age, 
                     Grade = clin$Grade, 
                     Histo = clin$Histo)
+                    
 data <- data[!is.na(data$variable), ]
 data$time <- as.numeric(as.character(data$time))
   
