@@ -107,11 +107,9 @@
 ##        and mutation matrices are aligned and ordered
 ##        consistently.
 ##
-##   9) SummarizedExperiment Export
-##        Two analysis-ready SummarizedExperiment objects are
-##        generated:
-##           - Binary mutation matrix + clinical metadata
-##           - Oncoprint matrix + clinical metadata
+##   9) MultiAssayExperiment Export
+##        Two SummarizedExperiment objects (binary and oncoprint) are combined into a single
+##        MultiAssayExperiment with shared clinical metadata.
 ############################################################
 ####################################################
 ## Load libraries
@@ -142,6 +140,7 @@ length(unique(clin$Study))   # 279 samples
 ## -- Step 2: mutation data
 mut_dat <- read_xlsx(file.path(dir_input, 'Feb 18 2026 CNS Tumours NGS & Clinical Data Lock.xlsx'),
                           sheet = 3, .name_repair = "minimal") 
+
 colnames(mut_dat)[1] <- 'Study'
 mut_dat <- mut_dat[!is.na(mut_dat$Study), ]
 mut_dat <- mut_dat[mut_dat$Tier %in% c('I', 'II'), ]
@@ -165,33 +164,44 @@ any(is.na(names(clin)) | names(clin) == "")
 #################################################
 ## OS event
 clin <- clin %>%
+  mutate(`Survival Status` = recode(`Survival Status`,
+                                   "Ailve" = "Alive"))
+
+clin <- clin %>%
   mutate(
     os.event = case_when(
       is.na(`Survival Status`) ~ NA_integer_,
       `Survival Status` == "Dead" ~ 1L,
-      TRUE ~ 0L
+      `Survival Status` %in% c("Alive", "LTF") ~ 0L,
+      TRUE ~ NA_integer_  # catches unexpected values
     )
   )
 
 ## rename variable 
 clin$os.time <- clin$'Survival (Months)'
-#clin$histo <- clin$"Histology"
 clin$Age <- clin$'Age at diagnosis'
 clin <- clin[order(clin$Study), ]
 
 ## therapy status 
 clin <- clin %>%
   mutate(
-    RT_Treated = ifelse(
-      `Was patient treated with radiotherapy?.1` == "Yes", 1, 0),
+    RT_Treated = case_when(
+      `Was patient treated with radiotherapy?.1` == "Yes" ~ 1L,
+      `Was patient treated with radiotherapy?.1` == "No"  ~ 0L,
+      TRUE ~ NA_integer_
+    ),
     
-    Concurrent_TMZ = ifelse(
-      `Was temozolomide given concurrent to radiotherapy?` == "Yes", 1, 0),
+    Concurrent_TMZ = case_when(
+      `Was temozolomide given concurrent to radiotherapy?` == "Yes" ~ 1L,
+      `Was temozolomide given concurrent to radiotherapy?` == "No"  ~ 0L,
+      TRUE ~ NA_integer_
+    ),
     
-    Therapy_status = ifelse(
-      coalesce(RT_Treated, 0) == 1 | 
-      coalesce(Concurrent_TMZ, 0) == 1,
-      1, 0)
+    Therapy_status = case_when(
+      RT_Treated == 1 | Concurrent_TMZ == 1 ~ 1L,
+      RT_Treated == 0 & Concurrent_TMZ == 0 ~ 0L,
+      TRUE ~ NA_integer_
+    )
   )
 
 #################################################
@@ -206,7 +216,7 @@ IDH_status <- mut_dat %>%
   group_by(`Study`) %>%
   summarise(
     IDH_status = ifelse(
-      any(Gene %in% c("IDH1", "IDH2") & `Mutation Type` == "SNV/Indel"),
+      any(Gene %in% c("IDH1", "IDH2") & `Mutation Type` == "SNV/Indel"), 
       "Mut",
       "WT"
     ),
@@ -222,9 +232,9 @@ mut_dat2 <- mut_dat %>%
       `Mutation Type` == "SNV/Indel" ~ "SNV/Indel",
       `Mutation Type` == "Fusion" ~ "Fusion",
       `Mutation Type` == "Copy Number Variant" &
-        str_detect(`Full Mutation Description`, "Amplification") ~ "Amplification",
+        str_detect(`Full Mutation Description`, regex("amplification|gain", ignore_case = TRUE)) ~ "Amplification",
       `Mutation Type` == "Copy Number Variant" &
-        str_detect(`Full Mutation Description`, "Deletion") ~ "Deletion",
+        str_detect(`Full Mutation Description`, regex("deletion|loss", ignore_case = TRUE)) ~ "Deletion",
       TRUE ~ NA_character_
     )
   )
@@ -236,7 +246,7 @@ mat_bin <- mut_dat2 %>%
     Gene  = trimws(Gene),
     Gene  = dplyr::na_if(Gene, "")
   ) %>%
-  filter(!is.na(Study), Study != "", !is.na(Gene)) %>%
+  filter(!is.na(Study), Study != "", !is.na(Gene), !is.na(Mut_Class)) %>%
   transmute(patient = Study, gene = Gene) %>%
   distinct() %>%
   mutate(value = 1L) %>%
@@ -247,6 +257,7 @@ mat_bin <- mut_dat2 %>%
 mat_bin <- mat_bin[, order(colnames(mat_bin))]
 
 ## Option B: oncoprint event-type matrix
+mut_order <- c("SNV/Indel", "Fusion", "Amplification", "Deletion")
 mat_onco <- mut_dat2 %>%
   mutate(
     Study     = trimws(Study),
@@ -261,7 +272,10 @@ mat_onco <- mut_dat2 %>%
   ) %>%
   group_by(Gene, Study) %>%
   summarise(
-    value = paste(sort(unique(Mut_Class)), collapse = ";"),
+    value = paste(
+      mut_order[mut_order %in% unique(Mut_Class)],
+      collapse = ";"
+    ),
     .groups = "drop"
   ) %>%
   pivot_wider(
@@ -269,51 +283,13 @@ mat_onco <- mut_dat2 %>%
     values_from = value,
     values_fill = list(value = "")
   )
-
+  
 mat_onco <- as.data.frame(mat_onco)
 rownames(mat_onco) <- mat_onco$Gene
 mat_onco$Gene <- NULL
 mat_onco <- as.matrix(mat_onco)
 
 mat_onco <- mat_onco[, sort(colnames(mat_onco)), drop = FALSE]
-
-#################################################
-## Merge IDH1 and IDH2 → IDH
-#################################################
-## ---- Binary matrix
-#if(all(c("IDH1","IDH2") %in% rownames(mat_bin))){
-
-#  idh_vec <- as.integer(
-#    mat_bin["IDH1", ] == 1 | mat_bin["IDH2", ] == 1
-#  )
-
-#  mat_bin <- mat_bin[!rownames(mat_bin) %in% c("IDH1","IDH2"), , drop = FALSE]
-
-#  mat_bin <- rbind(mat_bin, IDH = idh_vec)
-#}
-
-## ---- Oncoprint matrix
-#if(all(c("IDH1","IDH2") %in% rownames(mat_onco))){
-
-#  idh1 <- mat_onco["IDH1", , drop = FALSE]
-#  idh2 <- mat_onco["IDH2", , drop = FALSE]
-
-#  idh_combined <- sapply(colnames(mat_onco), function(pt) {
-
-#    vals <- unique(c(idh1[, pt], idh2[, pt]))
-#    vals <- vals[vals != ""]
-
-#    if(length(vals) == 0) {
-#      ""
-#    } else {
-#      paste(sort(vals), collapse = ";")
-#    }
-#  })
-
-#  mat_onco <- mat_onco[!rownames(mat_onco) %in% c("IDH1","IDH2"), ]
-#  mat_onco <- rbind(mat_onco, IDH = idh_combined)
-
-#}
 
 ###############################################
 ## Create SE objects
@@ -339,15 +315,29 @@ clin <- clin %>%
     by = "Study"
   )
 
-## SE object
-eset <- SummarizedExperiment(assay= list("gene_expression"=mat_bin),    
-                            colData=clin)
-save(eset, file = file.path(dir_output, 'se_mut_bin_clin.RData'))
+rownames(clin) <- clin$Study
+###################################################################
+## MAE object
+###################################################################
+# Create SE objects
+se_bin <- SummarizedExperiment(
+  assays = list(binary = mat_bin),
+  colData = clin
+)
 
-eset <- SummarizedExperiment(assay= list("gene_expression"=mat_onco),    
-                            colData=clin)
-save(eset, file = file.path(dir_output, 'se_mut_onco_clin.RData'))
+se_onco <- SummarizedExperiment(
+  assays = list(oncoprint = mat_onco),
+  colData = clin
+)
 
+# Combine into MAE
+mae <- MultiAssayExperiment(
+  experiments = list(
+    mut_binary = se_bin,
+    mut_oncoprint = se_onco
+  ),
+  colData = clin
+)
 
-
-
+# Save
+save(mae, file = file.path(dir_output, "mae_mut_clin.RData"))
