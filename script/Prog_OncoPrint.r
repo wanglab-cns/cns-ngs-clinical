@@ -19,7 +19,7 @@
 ##
 ## Input:
 ##   - result/data/mae_mut_clin.RData
-##       MAE object containing:
+##       MultiAssayExperiment object containing:
 ##         assay:
 ##           gene × sample character matrix
 ##           ("" or semicolon-delimited alteration types)
