@@ -143,39 +143,6 @@ clin$Grade <- ifelse(clin$Grade %in% c('I', 'II'), 'Low', 'High')
 
 # Histology
 clin$Histo <- clin$histo
-clin <- clin %>%
-  mutate(
-    Histo = str_squish(Histo),
-    Histo = str_to_lower(Histo),   # normalize first
-    
-    Histo = case_when(
-      
-      str_detect(Histo, "glioblastoma") ~ "Glioblastoma",
-      str_detect(Histo, "oligodendroglioma") ~ "Oligodendroglioma",
-      str_detect(Histo, "astrocytoma") ~ "Astrocytoma",
-      str_detect(Histo, "ependymoma") ~ "Ependymoma",
-      str_detect(Histo, "glioneuronal") ~ "Glioneuronal tumor",
-      str_detect(Histo, "circumscribed glioma") ~ "Circumscribed glioma",
-      str_detect(Histo, "pediatric-type high.?grade glioma") ~ "Pediatric-type HGG",
-      str_detect(Histo, "pediatric-type low.?grade glioma") ~ "Pediatric-type LGG",
-      TRUE ~ str_to_sentence(Histo)  # keep original but clean formatting
-    )
-  )
-
-histo_counts <- table(clin$Histo)
-
-# Identify small groups (<10 patients)
-small_groups <- names(histo_counts[histo_counts < 10])
-
-clin <- clin %>%
-  mutate(
-    Histo = ifelse(
-      Histo %in% small_groups,
-      "Other",
-      Histo
-    )
-  )
-
 clin$Histo <- ifelse(
   clin$Histo == "Glioblastoma",
   "GBM",
