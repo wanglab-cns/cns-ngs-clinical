@@ -119,9 +119,9 @@ dir_output <- 'result/oncoprint'
 #################################################
 ## Load data
 #################################################
-load(file.path(dir_input, 'se_mut_onco_clin.RData'))
-mut <- assay(eset)
-clin <- colData(eset)
+load(file.path(dir_input, 'mae_mut_clin.RData'))
+mut <- assay(mae[['mut_oncoprint']])
+clin <- colData(mae[['mut_oncoprint']])
 
 # Fix oncoprint labels
 label_map <- c(
@@ -287,26 +287,12 @@ clin <- clin %>%
     )
   )
 
-# histo_counts <- table(clin$Histo)
-
-# Identify small groups (<10 patients)
-# small_groups <- names(histo_counts[histo_counts <= 10]) 
-
-# clin <- clin %>%
-#  mutate(
-#    Histo = ifelse(
-#      Histo %in% small_groups,
-#      "Other",
-#      Histo
-#    )
-#  )
-
 anno_df <- data.frame(
   Sex = factor(clin$Sex, levels = c("Male", "Female")),
   Age = factor(clin$Age, levels = c(">40", "<40")),
   IDH = factor(clin$IDH_status, levels = c("WT", "Mut")),
-  Therapy =  factor(clin$Therapy_status, levels = c("Yes", "No")),
-  Location = factor(clin$Location, levels = c('Lobar', 'Cerebellum', 'Thalamic', 'Other')),
+#  Therapy =  factor(clin$Therapy_status, levels = c("Yes", "No")),
+#  Location = factor(clin$Location, levels = c('Lobar', 'Cerebellum', 'Thalamic', 'Other')),
   Histo = factor(clin$Histo, levels = c('Glioblastoma', 'Astrocytoma', 'Circumscribed glioma',
                                         'Glioneuronal tumor', 'Oligodendroglioma',  'Pediatric-type HGG',
                                         'Pediatric-type LGG', 'Ependymoma')),
@@ -336,12 +322,12 @@ anno_col <- list(
     'III' = "#FAE093FF",
     'IV' = "#7C7189FF"
   ),
-  Location = c(
-    'Lobar'  = "#A54B2DFF",
-    'Cerebellum' = "#577E2FFF",
-    'Thalamic'  = "#B49696FF",
-    'Other' = "#96A5A5FF"
-  ),
+ # Location = c(
+ #   'Lobar'  = "#A54B2DFF",
+ #   'Cerebellum' = "#577E2FFF",
+ #   'Thalamic'  = "#B49696FF",
+ #   'Other' = "#96A5A5FF"
+ # ),
   Histo = c(
     'Glioblastoma'          = "#4A7169FF",
     'Astrocytoma'           = "#735231FF",
@@ -351,11 +337,11 @@ anno_col <- list(
     'Pediatric-type HGG'    = "#B49696FF",
     'Pediatric-type LGG'    = "#AAC197FF",
     'Ependymoma'            = "#96A5A5FF" 
-  ),
-  Therapy = c(
-    'Yes'       = "#846D86FF",
-    'No'        = "#ABB2A5FF"
   )
+ # Therapy = c(
+ #   'Yes'       = "#846D86FF",
+ #   'No'        = "#ABB2A5FF"
+ # )
 )
 
 # create annotation
@@ -426,8 +412,8 @@ anno_df <- data.frame(
   Sex = factor(clin_wt$Sex, levels = c("Male", "Female")),
   Age = factor(clin_wt$Age, levels = c(">40", "<40")),
   #IDH = factor(clin_wt$IDH_status, levels = c("WT", "Mut")),
-  Therapy =  factor(clin_wt$Therapy_status, levels = c("Yes", "No")),
-  Location = factor(clin_wt$Location, levels = c('Lobar', 'Cerebellum', 'Thalamic', 'Other')),
+  #Therapy =  factor(clin_wt$Therapy_status, levels = c("Yes", "No")),
+  #Location = factor(clin_wt$Location, levels = c('Lobar', 'Cerebellum', 'Thalamic', 'Other')),
   Histo = factor(clin_wt$Histo, c('Glioblastoma', 'Astrocytoma', 'Circumscribed glioma',
                                   'Glioneuronal tumor', 'Pediatric-type HGG', 'Pediatric-type LGG', 
                                   'Ependymoma')),
@@ -458,12 +444,12 @@ anno_col <- list(
     'III' = "#FAE093FF",
     'IV' = "#7C7189FF"
   ),
-  Location = c(
-    'Lobar'  = "#A54B2DFF",
-    'Cerebellum' = "#577E2FFF",
-    'Thalamic'  = "#B49696FF",
-    'Other' = "#96A5A5FF"
-  ),
+ # Location = c(
+ #   'Lobar'  = "#A54B2DFF",
+ #   'Cerebellum' = "#577E2FFF",
+ #   'Thalamic'  = "#B49696FF",
+ #   'Other' = "#96A5A5FF"
+ # ),
   Histo = c(
     'Glioblastoma'          = "#4A7169FF",
     'Astrocytoma'           = "#735231FF",
@@ -473,11 +459,11 @@ anno_col <- list(
     'Pediatric-type HGG'    = "#B49696FF",
     'Pediatric-type LGG'    = "#AAC197FF",
     'Ependymoma'            = "#96A5A5FF"
-  ),
-   Therapy = c(
-    'Yes'       = "#846D86FF",
-    'No'        = "#ABB2A5FF"
   )
+  # Therapy = c(
+  #  'Yes'       = "#846D86FF",
+  #  'No'        = "#ABB2A5FF"
+  #)
 )
 
 # create annotation
@@ -524,7 +510,7 @@ p <- oncoPrint(
   right_annotation = NULL
 )
 
-pdf(file.path(dir_output, 'fig3_wt.pdf'), width = 7, height = 8)
+pdf(file.path(dir_output, 'fig3_wt.pdf'), width = 6.5, height = 7)
 
 draw(
   p,
@@ -545,8 +531,8 @@ anno_df <- data.frame(
   Sex = factor(clin_mut$Sex, levels = c("Male", "Female")),
   Age = factor(clin_mut$Age, levels = c(">40", "<40")),
  #IDH = factor(clin_mut$IDH_status, levels = c("WT", "Mut")),
-  Therapy =  factor(clin_mut$Therapy_status, levels = c("Yes", "No")),
-  Location = factor(clin_mut$Location, levels = c('Lobar', 'Cerebellum')),
+ # Therapy =  factor(clin_mut$Therapy_status, levels = c("Yes", "No")),
+ # Location = factor(clin_mut$Location, levels = c('Lobar', 'Cerebellum')),
   Histo = factor(clin_mut$Histo, levels = c('Astrocytoma', 'Oligodendroglioma')),
   Grade = factor(clin_mut$Grade, levels = c('II', 'III', 'IV'))
 )
@@ -575,18 +561,18 @@ anno_col <- list(
     'III' = "#FAE093FF",
     'IV' = "#7C7189FF"
   ),
-  Location = c(
-    'Lobar'  = "#A54B2DFF",
-    'Cerebellum' = "#577E2FFF"
-  ),
+ # Location = c(
+ #   'Lobar'  = "#A54B2DFF",
+ #   'Cerebellum' = "#577E2FFF"
+ # ),
   Histo = c(
     'Astrocytoma'           = "#735231FF",
     'Oligodendroglioma'     = "#E3CA97FF"
-  ),
-   Therapy = c(
-    'Yes'       = "#846D86FF",
-    'No'        = "#ABB2A5FF"
   )
+  # Therapy = c(
+  #  'Yes'       = "#846D86FF",
+  #  'No'        = "#ABB2A5FF"
+  #)
 )
 
 # create annotation
@@ -633,7 +619,7 @@ p <- oncoPrint(
   right_annotation = NULL
 )
 
-pdf(file.path(dir_output, 'fig4_mut.pdf'), width = 6, height = 5)
+pdf(file.path(dir_output, 'fig4_mut.pdf'), width = 6.5, height = 5)
 
 draw(
   p,
