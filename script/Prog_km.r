@@ -20,9 +20,9 @@
 ##
 ##
 ## Input:
-##   - result/data/se_mut_bin_clin.RData
+##   - result/data/mae_mut_clin.RData
 ##
-##     SummarizedExperiment containing:
+##     MultiAssayExperiment containing:
 ##       • assay:
 ##           Binary mutation matrix (genes × patients)
 ##           0 = Wild-type (WT), 1 = Mutant (Mut)
@@ -111,37 +111,19 @@ library(paletteer)
 dir_input <- 'result/data'
 dir_output <- 'result/KM'
 
-time.censor <- 36
-time.censor.mut <- 120
+time.censor <- 36 # censoring for os including all patients or WT patients
+time.censor.mut <- 120 # censoring for os including Mut patients
 n1.cutoff <- 5
 n0.cutoff <- 5
 
 #################################################
 ## Load data
 #################################################
-load(file.path(dir_input, 'se_mut_bin_clin.RData'))
-mut <- assay(eset)
-clin <- as.data.frame(colData(eset))
+load(file.path(dir_input, 'mae_mut_clin.RData'))
+mut <- assay(mae[['mut_binary']])
+clin <- as.data.frame(colData(mae[['mut_binary']]))
 
 clin$Age <- ifelse(clin$Age >= 40, '>40', '<40')
-clin$Therapy_status <- ifelse(clin$Therapy_status == 1, 'Yes', 'No')
-
-# primary location
-clin <- clin %>%
-  mutate(
-    Primary.location = str_squish(Primary.location),
-    Primary.location = str_to_title(Primary.location)
-  )
-
-clin <- clin %>%
-  mutate(
-    Location = case_when(
-      Primary.location == "Lobar" ~ "Lobar",
-      Primary.location == "Cerebellum" ~ "Cerebellum",
-      Primary.location == "Thalamic" ~ "Thalamic",
-      TRUE ~ "Other"
-    )
-  )
 
 # Grade
 clin <- clin %>%
@@ -191,7 +173,7 @@ clin <- clin %>%
     )
   )
 
-mut <- mut[, colnames(mut) %in% clin$Study] # 199 patients
+mut <- mut[, colnames(mut) %in% clin$Study] # 199 patients and 39 gene-mutations
 
 ####################################################
 ## KM figure --- clinical variables (all patients)
@@ -227,34 +209,23 @@ p_idh <- ggsurvplot(
                    "Glioneuronal tumor", "Circumscribed glioma", "Other"),
   palette = c("#4A7169FF", "#735231FF", "#E3CA97FF", "#99B6BDFF", "#E76254FF", "#96A5A5FF"),
   xlab = "Time (months)",
-  ylab = "Overall survival probability"
+  ylab = "Overall survival probability",
+ ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
 ) 
 
-pdf(file.path(dir_output, 'clinical/all', "KM_Histo_OS.pdf"), width = 7, height = 8)
-print(p_idh)
-dev.off()
-
-## Location status
-data$variable <- clin$Location
-data$variable <- factor(data$variable,
-                        levels = c('Lobar', 'Cerebellum', 'Thalamic', 'Other'))
-surv_obj <- with(data, Surv(time, status))
-fit_idh <- survfit(surv_obj ~ variable, data = data)
-
-p_idh <- ggsurvplot(
-  fit_idh,
-  data = data,
-  risk.table = TRUE,
-  pval = TRUE,
-  conf.int = FALSE,
-  legend.title = "Location status",
-  legend.labs = c("Lobar", "Cerebellum", "Thalamic", "Other"),
-  palette = c("#A54B2DFF", "#577E2FFF", "#B49696FF", "#96A5A5FF"),
-  xlab = "Time (months)",
-  ylab = "Overall survival probability"
-) 
-
-pdf(file.path(dir_output, 'clinical/all', "KM_Location_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/all', "KM_Histo_OS.pdf"), width = 5.5, height = 6)
 print(p_idh)
 dev.off()
 
@@ -275,10 +246,23 @@ p_idh <- ggsurvplot(
   legend.labs = c("I", "II", "III", "IV"),
   palette = c("#A8C3A0FF", "#BC8E7DFF", "#FAE093FF", "#7C7189FF"),
   xlab = "Time (months)",
-  ylab = "Overall survival probability"
+  ylab = "Overall survival probability",
+  ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
 ) 
 
-pdf(file.path(dir_output, 'clinical/all', "KM_Grade_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/all', "KM_Grade_OS.pdf"), width = 5, height = 5)
 print(p_idh)
 dev.off()
 
@@ -296,13 +280,26 @@ p_idh <- ggsurvplot(
   pval = TRUE,
   conf.int = FALSE,
   legend.title = "Age status",
-  legend.labs = c("younger", "older"),
+  legend.labs = c(">40", "<40"),
   palette = c("#08306B", "#C6DBEF"),
   xlab = "Time (months)",
-  ylab = "Overall survival probability"
+  ylab = "Overall survival probability",
+  ggtheme = theme_bw(base_size = 10) +
+    theme(
+     panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
 ) 
 
-pdf(file.path(dir_output, 'clinical/all', "KM_Age_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/all', "KM_Age_OS.pdf"), width = 5, height = 5)
 print(p_idh)
 dev.off()
 
@@ -323,10 +320,23 @@ p_idh <- ggsurvplot(
   legend.labs = c("Female", "Male"),
   palette = c("#4C72B0", "#DD8452"),
   xlab = "Time (months)",
-  ylab = "Overall survival probability"
+  ylab = "Overall survival probability",
+   ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
 )
 
-pdf(file.path(dir_output, 'clinical/all', "KM_Sex_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/all', "KM_Sex_OS.pdf"), width = 5, height = 5)
 print(p_idh)
 dev.off()
 
@@ -347,36 +357,23 @@ p_idh <- ggsurvplot(
   legend.labs = c("WT", "Mut"),
   palette = c("#C44E52", "#55A868"),
   xlab = "Time (months)",
-  ylab = "Overall survival probability"
+  ylab = "Overall survival probability",
+   ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
 )
 
-pdf(file.path(dir_output, 'clinical/all', "KM_IDH_OS.pdf"), width = 5, height = 7)
-print(p_idh)
-dev.off()
-
-## Therapy status
-data$variable <- clin$Therapy_status
-data$variable <- factor(data$variable,
-                          levels = c("Yes", "No"))
-
-surv_obj <- with(data, Surv(time, status))
-fit_idh <- survfit(surv_obj ~ variable, data = data)
-
-p_idh <- ggsurvplot(
-  fit_idh,
-  data = data,
-  risk.table = TRUE,
-  pval = TRUE,
-  conf.int = FALSE,
-  legend.title = "Therapy status",
-  legend.labs = c("Yes", "No"),
-  palette = c("#846D86FF", "#ABB2A5FF"),
-  xlab = "Time (months)",
-  ylab = "Overall survival probability"
-)
-
-
-pdf(file.path(dir_output, 'clinical/all', "KM_Therapy_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/all', "KM_IDH_OS.pdf"), width = 5, height = 5)
 print(p_idh)
 dev.off()
 
@@ -415,34 +412,23 @@ p_idh <- ggsurvplot(
                    "Glioneuronal tumor", "Circumscribed glioma", "Other"),
   palette = c("#4A7169FF", "#735231FF", "#99B6BDFF", "#E76254FF", "#96A5A5FF"),
   xlab = "Time (months)",
-  ylab = "Overall survival probability"
+  ylab = "Overall survival probability",
+   ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
 ) 
 
-pdf(file.path(dir_output, 'clinical/wt', "KM_Histo_OS.pdf"), width = 5, height = 7)
-print(p_idh)
-dev.off()
-
-## Location status
-data$variable <- clin_wt$Location
-data$variable <- factor(data$variable,
-                        levels = c('Lobar', 'Cerebellum', 'Thalamic', 'Other'))
-surv_obj <- with(data, Surv(time, status))
-fit_idh <- survfit(surv_obj ~ variable, data = data)
-
-p_idh <- ggsurvplot(
-  fit_idh,
-  data = data,
-  risk.table = TRUE,
-  pval = TRUE,
-  conf.int = FALSE,
-  legend.title = "Location status",
-  legend.labs = c("Lobar", "Cerebellum", "Thalamic", "Other"),
-  palette = c("#A54B2DFF", "#577E2FFF", "#B49696FF", "#96A5A5FF"),
-  xlab = "Time (months)",
-  ylab = "Overall survival probability"
-) 
-
-pdf(file.path(dir_output, 'clinical/wt', "KM_Location_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/wt', "KM_Histo_OS.pdf"), width = 6, height = 6)
 print(p_idh)
 dev.off()
 
@@ -463,10 +449,23 @@ p_idh <- ggsurvplot(
   legend.labs = c("I", "II", "III", "IV"),
   palette = c("#A8C3A0FF", "#BC8E7DFF", "#FAE093FF", "#7C7189FF"),
   xlab = "Time (months)",
-  ylab = "Overall survival probability"
+  ylab = "Overall survival probability",
+   ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
 ) 
 
-pdf(file.path(dir_output, 'clinical/wt', "KM_Grade_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/wt', "KM_Grade_OS.pdf"), width = 5, height = 5)
 print(p_idh)
 dev.off()
 
@@ -484,13 +483,25 @@ p_idh <- ggsurvplot(
   pval = TRUE,
   conf.int = FALSE,
   legend.title = "Age status",
-  legend.labs = c("younger", "older"),
+  legend.labs = c(">40", "<40"),
   palette = c("#08306B", "#C6DBEF"),
   xlab = "Time (months)",
-  ylab = "Overall survival probability"
+  ylab = "Overall survival probability", ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
 ) 
 
-pdf(file.path(dir_output, 'clinical/wt', "KM_Age_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/wt', "KM_Age_OS.pdf"), width = 5, height = 5)
 print(p_idh)
 dev.off()
 
@@ -511,35 +522,23 @@ p_idh <- ggsurvplot(
   legend.labs = c("Female", "Male"),
   palette = c("#4C72B0", "#DD8452"),
   xlab = "Time (months)",
-  ylab = "Overall survival probability"
+  ylab = "Overall survival probability",
+   ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
 )
 
-pdf(file.path(dir_output, 'clinical/wt', "KM_Sex_OS.pdf"), width = 5, height = 7)
-print(p_idh)
-dev.off()
-
-## Therapy status
-data$variable <- clin_wt$Therapy_status
-data$variable <- factor(data$variable,
-                          levels = c("Yes", "No"))
-
-surv_obj <- with(data, Surv(time, status))
-fit_idh <- survfit(surv_obj ~ variable, data = data)
-
-p_idh <- ggsurvplot(
-  fit_idh,
-  data = data,
-  risk.table = TRUE,
-  pval = TRUE,
-  conf.int = FALSE,
-  legend.title = "Therapy status",
-  legend.labs = c("Yes", "No"),
-  palette = c("#846D86FF", "#ABB2A5FF"),
-  xlab = "Time (months)",
-  ylab = "Overall survival probability"
-)
-
-pdf(file.path(dir_output, 'clinical/wt', "KM_Therapy_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/wt', "KM_Sex_OS.pdf"), width = 5, height = 5)
 print(p_idh)
 dev.off()
 
@@ -576,34 +575,23 @@ p_idh <- ggsurvplot(
   legend.labs = c("Astrocytoma", "Oligodendroglioma"),
   palette = c( "#735231FF", "#E3CA97FF"),
   xlab = "Time (months)",
-  ylab = "Overall survival probability"
+  ylab = "Overall survival probability",
+   ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
 ) 
 
-pdf(file.path(dir_output, 'clinical/mut', "KM_Histo_OS.pdf"), width = 5, height = 7)
-print(p_idh)
-dev.off()
-
-## Location status
-data$variable <- clin_mut$Location
-data$variable <- factor(data$variable,
-                        levels = c('Lobar', 'Cerebellum'))
-surv_obj <- with(data, Surv(time, status))
-fit_idh <- survfit(surv_obj ~ variable, data = data)
-
-p_idh <- ggsurvplot(
-  fit_idh,
-  data = data,
-  risk.table = TRUE,
-  pval = TRUE,
-  conf.int = FALSE,
-  legend.title = "Location status",
-  legend.labs = c("Lobar", "Cerebellum"),
-  palette = c("#A54B2DFF", "#577E2FFF"),
-  xlab = "Time (months)",
-  ylab = "Overall survival probability"
-) 
-
-pdf(file.path(dir_output, 'clinical/mut', "KM_Location_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/mut', "KM_Histo_OS.pdf"), width = 5, height = 5)
 print(p_idh)
 dev.off()
 
@@ -624,10 +612,23 @@ p_idh <- ggsurvplot(
   legend.labs = c("II", "III", "IV"),
   palette = c( "#BC8E7DFF", "#FAE093FF", "#7C7189FF"),
   xlab = "Time (months)",
-  ylab = "Overall survival probability"
+  ylab = "Overall survival probability",
+   ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
 ) 
 
-pdf(file.path(dir_output, 'clinical/mut', "KM_Grade_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/mut', "KM_Grade_OS.pdf"), width = 5, height = 5)
 print(p_idh)
 dev.off()
 
@@ -645,13 +646,26 @@ p_idh <- ggsurvplot(
   pval = TRUE,
   conf.int = FALSE,
   legend.title = "Age status",
-  legend.labs = c("younger", "older"),
+  legend.labs = c(">40", "<40"),
   palette = c("#08306B", "#C6DBEF"),
   xlab = "Time (months)",
-  ylab = "Overall survival probability"
+  ylab = "Overall survival probability",
+   ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
 ) 
 
-pdf(file.path(dir_output, 'clinical/mut', "KM_Age_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/mut', "KM_Age_OS.pdf"), width = 5, height = 5)
 print(p_idh)
 dev.off()
 
@@ -672,38 +686,26 @@ p_idh <- ggsurvplot(
   legend.labs = c("Female", "Male"),
   palette = c("#4C72B0", "#DD8452"),
   xlab = "Time (months)",
-  ylab = "Overall survival probability"
+  ylab = "Overall survival probability",
+   ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 9),
+      legend.text = element_text(size = 8),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
 )
 
-pdf(file.path(dir_output, 'clinical/mut', "KM_Sex_OS.pdf"), width = 5, height = 7)
+pdf(file.path(dir_output, 'clinical/mut', "KM_Sex_OS.pdf"), width = 5, height = 5)
 print(p_idh)
 dev.off()
 
-## Therapy status
-data$variable <- clin_mut$Therapy_status
-data$variable <- factor(data$variable,
-                          levels = c("Yes", "No"))
-
-surv_obj <- with(data, Surv(time, status))
-fit_idh <- survfit(surv_obj ~ variable, data = data)
-
-p_idh <- ggsurvplot(
-  fit_idh,
-  data = data,
-  risk.table = TRUE,
-  pval = TRUE,
-  conf.int = FALSE,
-  legend.title = "Therapy status",
-  legend.labs = c("Yes", "No"),
-  palette = c("#846D86FF", "#ABB2A5FF"),
-  xlab = "Time (months)",
-  ylab = "Overall survival probability"
-)
-
-
-pdf(file.path(dir_output, 'clinical/mut', "KM_Therapy_OS.pdf"), width = 5, height = 7)
-print(p_idh)
-dev.off()
 
 ####################################################
 ## KM figure --- mutation data (all patients)
@@ -726,7 +728,7 @@ df <- t(mut)
 for(i in 1:nrow(data)){
     
     if( !is.na(as.numeric(as.character(data[ i , "time" ]))) && as.numeric(as.character(data[ i , "time" ])) > time.censor ){
-      data[ i , "time" ] = time.censor.mut
+      data[ i , "time" ] = time.censor
       data[ i , "status" ] = 0
       
     }
@@ -761,13 +763,26 @@ p_idh <- ggsurvplot(
   pval = TRUE,
   conf.int = FALSE,
   legend.title = "Mutation status",
-  legend.labs = c("Mut", "WT"),
+  legend.labs = c("WT", "Mut"),
   palette = c("#A12A19FF", "#1E466EFF"),
   xlab = "Time (months)",
-  ylab = "Overall survival probability"
+  ylab = "Overall survival probability",
+   ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
 ) 
 
-pdf(file.path(dir_output, 'mutation/all', paste(paste('KM', colnames(df)[i], sep="_"), '.pdf', sep="")), width = 5, height = 7)
+pdf(file.path(dir_output, 'mutation/all', paste(paste('KM', colnames(df)[i], sep="_"), '.pdf', sep="")), width = 5, height = 5)
 print(p_idh)
 dev.off()
 
@@ -776,7 +791,7 @@ dev.off()
 ####################################################
 ## KM figure --- mutation data (WT patients)
 ####################################################
-clin_wt <- clin[clin$IDH_status == 'WT', ]
+clin_wt <- clin[clin$IDH_status == 'WT', ] # 152 WT patients
 data <- data.frame( status=clin_wt$os.event , time=clin_wt$os.time)
 data$time <- as.numeric(as.character(data$time))
 mut_wt <- mut[, colnames(mut) %in% clin_wt$Study]
@@ -790,7 +805,6 @@ for(i in 1:nrow(data)){
       
     }
   }  
-
 
 for(i in 1:ncol(df)){
 
@@ -821,13 +835,26 @@ p_idh <- ggsurvplot(
   pval = TRUE,
   conf.int = FALSE,
   legend.title = "Mutation status",
-  legend.labs = c("Mut", "WT"),
+  legend.labs = c("WT", "Mut"),
   palette = c("#A12A19FF", "#1E466EFF"),
   xlab = "Time (months)",
-  ylab = "Overall survival probability"
+  ylab = "Overall survival probability",
+   ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
 ) 
 
-pdf(file.path(dir_output, 'mutation/wt', paste(paste('KM', colnames(df)[i], sep="_"), '.pdf', sep="")), width = 5, height = 7)
+pdf(file.path(dir_output, 'mutation/wt', paste(paste('KM', colnames(df)[i], sep="_"), '.pdf', sep="")), width = 5, height = 5)
 print(p_idh)
 dev.off()
 
@@ -882,13 +909,26 @@ p_idh <- ggsurvplot(
   pval = TRUE,
   conf.int = FALSE,
   legend.title = "Mutation status",
-  legend.labs = c("Mut", "WT"),
+  legend.labs = c("WT", "Mut"),
   palette = c("#A12A19FF", "#1E466EFF"),
   xlab = "Time (months)",
-  ylab = "Overall survival probability"
+  ylab = "Overall survival probability",
+   ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
 ) 
 
-pdf(file.path(dir_output, 'mutation/mut', paste(paste('KM', colnames(df)[i], sep="_"), '.pdf', sep="")), width = 5, height = 7)
+pdf(file.path(dir_output, 'mutation/mut', paste(paste('KM', colnames(df)[i], sep="_"), '.pdf', sep="")), width = 5, height = 5)
 print(p_idh)
 dev.off()
 
