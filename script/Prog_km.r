@@ -123,7 +123,23 @@ load(file.path(dir_input, 'mae_mut_clin.RData'))
 mut <- assay(mae[['mut_binary']])
 clin <- as.data.frame(colData(mae[['mut_binary']]))
 
+# Age
 clin$Age <- ifelse(clin$Age >= 40, '>40', '<40')
+
+# ECOG
+clin$ECOG <- clin$ECOG.Performance.Status
+clin$ECOG <- substr(clin$ECOG, 1, 1)
+
+# MGMT
+clin$MGMT <- clin$MGMT.methylation
+clin$MGMT <- case_when(
+  str_detect(clin$MGMT, "Methylated") ~ "M",
+  str_detect(clin$MGMT, "Unmethylated") ~ "U",
+  TRUE ~ "Unknown"
+)
+
+# Recesion
+clin$Resection <- clin$Extent.of.surgical.resection
 
 # Grade
 clin <- clin %>%
@@ -172,6 +188,21 @@ clin <- clin %>%
       Histo
     )
   )
+
+clin$MGMT <- factor(
+  clin$MGMT,
+  levels = c("M", "U", "Unknown")
+  )
+
+clin$ECOG <- factor(
+  clin$ECOG,
+  levels = c("1", "0", "2", "3")
+  )
+
+clin$Resection <- factor(
+  clin$Resection,
+  levels = c("Subtotal", "Biopsy", "Total")
+  ) 
 
 mut <- mut[, colnames(mut) %in% clin$Study] # 199 patients and 39 gene-mutations
 
@@ -377,6 +408,124 @@ pdf(file.path(dir_output, 'clinical/all', "KM_IDH_OS.pdf"), width = 5, height = 
 print(p_idh)
 dev.off()
 
+## MGMT
+data$variable <- clin$MGMT
+data$variable <- factor(
+  data$variable,
+  levels = c("M", "U", "Unknown")
+   )
+surv_obj <- with(data, Surv(time, status))
+fit_idh <- survfit(surv_obj ~ variable, data = data)
+
+p_idh <- ggsurvplot(
+  fit_idh,
+  data = data,
+  risk.table = TRUE,
+  pval = TRUE,
+  conf.int = FALSE,
+  legend.title = "MGMT",
+  legend.labs = c("M", "U", 'Unknown'),
+  palette = c("#E76254FF", "#376795FF", "#697878FF"),
+  xlab = "Time (months)",
+  ylab = "Overall survival probability",
+   ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
+)
+
+pdf(file.path(dir_output, 'clinical/all', "KM_MGMT_OS.pdf"), width = 5, height = 5)
+print(p_idh)
+dev.off()
+
+## ECOG
+data$variable <- clin$ECOG
+data$variable <- factor(
+  data$variable,
+  levels = c("0", "1", "2", "3")
+   )
+surv_obj <- with(data, Surv(time, status))
+fit_idh <- survfit(surv_obj ~ variable, data = data)
+
+p_idh <- ggsurvplot(
+  fit_idh,
+  data = data,
+  risk.table = TRUE,
+  pval = TRUE,
+  conf.int = FALSE,
+  legend.title = "ECOG",
+  legend.labs = c("0", "1", "2", "3"),
+  palette = c("#5A4B3CFF", "#4B5A69FF", "#A5872DFF", '#937D61FF', '#D88C27FF'),
+  xlab = "Time (months)",
+  ylab = "Overall survival probability",
+   ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
+)
+
+pdf(file.path(dir_output, 'clinical/all', "KM_ECOG_OS.pdf"), width = 5, height = 5)
+print(p_idh)
+dev.off()
+
+# Resection
+data$variable <- clin$Resection
+data$variable <- factor(
+  data$variable,
+  levels = c("Subtotal", "Biopsy", "Total")
+   )
+
+surv_obj <- with(data, Surv(time, status))
+fit_idh <- survfit(surv_obj ~ variable, data = data)
+
+p_idh <- ggsurvplot(
+  fit_idh,
+  data = data,
+  risk.table = TRUE,
+  pval = TRUE,
+  conf.int = FALSE,
+  legend.title = "Resection",
+  legend.labs = c("Subtotal", "Biopsy", "Total"),
+  palette = c("#D04E59FF", "#2F3D70FF", "#BC8E7DFF"),
+  xlab = "Time (months)",
+  ylab = "Overall survival probability",
+   ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
+)
+
+pdf(file.path(dir_output, 'clinical/all', "KM_Resection_OS.pdf"), width = 5, height = 5)
+print(p_idh)
+dev.off()
+
 ####################################################
 ## KM figure --- clinical variables (WT patients)
 ####################################################
@@ -542,6 +691,124 @@ pdf(file.path(dir_output, 'clinical/wt', "KM_Sex_OS.pdf"), width = 5, height = 5
 print(p_idh)
 dev.off()
 
+
+## MGMT
+data$variable <- clin_wt$MGMT
+data$variable <- factor(
+  data$variable,
+  levels = c("M", "U", "Unknown")
+   )
+surv_obj <- with(data, Surv(time, status))
+fit_idh <- survfit(surv_obj ~ variable, data = data)
+
+p_idh <- ggsurvplot(
+  fit_idh,
+  data = data,
+  risk.table = TRUE,
+  pval = TRUE,
+  conf.int = FALSE,
+  legend.title = "MGMT",
+  legend.labs = c("M", "U", 'Unknown'),
+  palette = c("#E76254FF", "#376795FF", "#697878FF"),
+  xlab = "Time (months)",
+  ylab = "Overall survival probability",
+   ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
+)
+
+pdf(file.path(dir_output, 'clinical/wt', "KM_MGMT_OS.pdf"), width = 5, height = 5)
+print(p_idh)
+dev.off()
+
+## ECOG
+data$variable <- clin_wt$ECOG
+data$variable <- factor(
+  data$variable,
+  levels = c("0", "1", "2", "3")
+   )
+surv_obj <- with(data, Surv(time, status))
+fit_idh <- survfit(surv_obj ~ variable, data = data)
+
+p_idh <- ggsurvplot(
+  fit_idh,
+  data = data,
+  risk.table = TRUE,
+  pval = TRUE,
+  conf.int = FALSE,
+  legend.title = "ECOG",
+  legend.labs = c("0", "1", "2", "3"),
+  palette = c("#5A4B3CFF", "#4B5A69FF", "#A5872DFF", '#937D61FF', '#D88C27FF'),
+  xlab = "Time (months)",
+  ylab = "Overall survival probability",
+   ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
+)
+
+pdf(file.path(dir_output, 'clinical/wt', "KM_ECOG_OS.pdf"), width = 5, height = 5)
+print(p_idh)
+dev.off()
+
+# Resection
+data$variable <- clin_wt$Resection
+data$variable <- factor(
+  data$variable,
+  levels = c("Subtotal", "Biopsy", "Total")
+   )
+
+surv_obj <- with(data, Surv(time, status))
+fit_idh <- survfit(surv_obj ~ variable, data = data)
+
+p_idh <- ggsurvplot(
+  fit_idh,
+  data = data,
+  risk.table = TRUE,
+  pval = TRUE,
+  conf.int = FALSE,
+  legend.title = "Resection",
+  legend.labs = c("Subtotal", "Biopsy", "Total"),
+  palette = c("#D04E59FF", "#2F3D70FF", "#BC8E7DFF"),
+  xlab = "Time (months)",
+  ylab = "Overall survival probability",
+   ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
+)
+
+pdf(file.path(dir_output, 'clinical/wt', "KM_Resection_OS.pdf"), width = 5, height = 5)
+print(p_idh)
+dev.off()
 ####################################################
 ## KM figure --- clinical variables (Mut patients)
 ####################################################
@@ -706,6 +973,123 @@ pdf(file.path(dir_output, 'clinical/mut', "KM_Sex_OS.pdf"), width = 5, height = 
 print(p_idh)
 dev.off()
 
+## MGMT
+data$variable <- clin_mut$MGMT
+data$variable <- factor(
+  data$variable,
+  levels = c("M", "U", "Unknown")
+   )
+surv_obj <- with(data, Surv(time, status))
+fit_idh <- survfit(surv_obj ~ variable, data = data)
+
+p_idh <- ggsurvplot(
+  fit_idh,
+  data = data,
+  risk.table = TRUE,
+  pval = TRUE,
+  conf.int = FALSE,
+  legend.title = "MGMT",
+  legend.labs = c("M", "U", 'Unknown'),
+  palette = c("#E76254FF", "#376795FF", "#697878FF"),
+  xlab = "Time (months)",
+  ylab = "Overall survival probability",
+   ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
+)
+
+pdf(file.path(dir_output, 'clinical/mut', "KM_MGMT_OS.pdf"), width = 5, height = 5)
+print(p_idh)
+dev.off()
+
+## ECOG
+data$variable <- clin_mut$ECOG
+data$variable <- factor(
+  data$variable,
+  levels = c("0", "1")
+   )
+surv_obj <- with(data, Surv(time, status))
+fit_idh <- survfit(surv_obj ~ variable, data = data)
+
+p_idh <- ggsurvplot(
+  fit_idh,
+  data = data,
+  risk.table = TRUE,
+  pval = TRUE,
+  conf.int = FALSE,
+  legend.title = "ECOG",
+  legend.labs = c("0", "1"),
+  palette = c("#5A4B3CFF", "#4B5A69FF"),
+  xlab = "Time (months)",
+  ylab = "Overall survival probability",
+   ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
+)
+
+pdf(file.path(dir_output, 'clinical/mut', "KM_ECOG_OS.pdf"), width = 5, height = 5)
+print(p_idh)
+dev.off()
+
+# Resection
+data$variable <- clin_mut$Resection
+data$variable <- factor(
+  data$variable,
+  levels = c("Subtotal", "Biopsy", "Total")
+   )
+
+surv_obj <- with(data, Surv(time, status))
+fit_idh <- survfit(surv_obj ~ variable, data = data)
+
+p_idh <- ggsurvplot(
+  fit_idh,
+  data = data,
+  risk.table = TRUE,
+  pval = TRUE,
+  conf.int = FALSE,
+  legend.title = "Resection",
+  legend.labs = c("Subtotal", "Biopsy", "Total"),
+  palette = c("#D04E59FF", "#2F3D70FF", "#BC8E7DFF"),
+  xlab = "Time (months)",
+  ylab = "Overall survival probability",
+   ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
+)
+
+pdf(file.path(dir_output, 'clinical/mut', "KM_Resection_OS.pdf"), width = 5, height = 5)
+print(p_idh)
+dev.off()
 
 ####################################################
 ## KM figure --- mutation data (all patients)
