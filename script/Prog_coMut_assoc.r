@@ -12,7 +12,7 @@
 ##
 ## Input:
 ##   - result/data/se_mut_bin_clin.RData
-##       SummarizedExperiment containing:
+##       MultiAssayExperiment containing:
 ##         • assay: binary gene × patient mutation matrix (0/1)
 ##         • colData: harmonized clinical metadata
 ##             including IDH_status
@@ -115,9 +115,9 @@ dir_output <- 'result/coMut'
 #################################################
 ## Load data
 #################################################
-load(file.path(dir_input, 'se_mut_bin_clin.RData'))
-mut <- assay(eset)
-clin <- as.data.frame(colData(eset))
+load(file.path(dir_input, 'mae_mut_clin.RData'))
+mut <- assay(mae[['mut_binary']])
+clin <- colData(mae[['mut_binary']])
 
 ## ---- Binary matrix
 if(all(c("IDH1","IDH2") %in% rownames(mut))){
@@ -353,15 +353,14 @@ ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
     color = ""
   ) +
   theme(
-    axis.title = element_text(size = 10),
+    axis.title = element_text(size = 9),
     axis.text  = element_text(size = 8),
    # plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
     legend.text = element_text(size = 8),
-    legend.title = element_text(size = 9)
+    legend.title = element_text(size = 8)
   )
 
 dev.off()
-
 
 ## Step 2 --- WT patients
 co_res <- read.csv(file.path(dir_output, 'coMut_res_wt.csv'))
@@ -396,7 +395,7 @@ ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
     color = ""
   ) +
   theme(
-    axis.title = element_text(size = 10),
+    axis.title = element_text(size = 9),
     axis.text  = element_text(size = 8),
    # plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
     legend.text = element_text(size = 8),
@@ -404,7 +403,6 @@ ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
   )
 
 dev.off()
-
 
 ## Step 3 --- Mut patients
 co_res <- read.csv(file.path(dir_output, 'coMut_res_mut.csv'))
@@ -439,7 +437,7 @@ ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
     color = ""
   ) +
   theme(
-    axis.title = element_text(size = 10),
+    axis.title = element_text(size = 9),
     axis.text  = element_text(size = 8),
    # plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
     legend.text = element_text(size = 8),
@@ -453,6 +451,7 @@ dev.off()
 #############################################################
 ## Step 1 --- all patients
 co_res <- read.csv(file.path(dir_output, 'coMut_res_all.csv'))
+co_res <- co_res[order(co_res$pval), ]
 sig_pairs <- subset(co_res, pval < 0.05)
 selected_genes <- unique(c(sig_pairs$gene1, sig_pairs$gene2))
 selected_genes <- intersect(selected_genes, rownames(mut))
@@ -464,7 +463,6 @@ selected_genes <- selected_genes[
 
 gene_degree <- table(c(sig_pairs$gene1, sig_pairs$gene2))
 gene_degree <- sort(gene_degree, decreasing = TRUE)
-
 selected_genes <- intersect(names(gene_degree), selected_genes)
 
 top5_genes <- head(selected_genes, 5)
@@ -479,8 +477,10 @@ names(listInput) <- rownames(mut_top)
 col.id <- c('#855C75FF', '#736F4CFF', "#99B6BDFF", '#BF816BFF', '#4A7169FF')
 sets <- rownames(mut_top)
 sets.bar.color <- col.id
+mainbar.y.label <- "Number of Patients"
+sets.x.label <- "Mutation Frequency"
 
-pdf(file.path(dir_output,  'upset_coMut_all.pdf'), width = 8, height = 6)
+pdf(file.path(dir_output,  'upset_coMut_all.pdf'), width = 7, height = 5)
 
 suppressWarnings(
   upset.fun(fromList(listInput))
@@ -519,7 +519,7 @@ col.id <- c('#855C75FF', '#736F4CFF', "#99B6BDFF", '#BF816BFF', '#4A7169FF')
 sets <- rownames(mut_top)
 sets.bar.color <- col.id
 
-pdf(file.path(dir_output,  'upset_coMut_wt.pdf'), width = 8, height = 6)
+pdf(file.path(dir_output,  'upset_coMut_wt.pdf'), width = 7, height = 5)
 
 suppressWarnings(
   upset.fun(fromList(listInput))
@@ -557,7 +557,7 @@ col.id <- c('#855C75FF', '#736F4CFF', "#99B6BDFF")
 sets <- rownames(mut_top)
 sets.bar.color <- col.id
 
-pdf(file.path(dir_output,  'upset_coMut_mut.pdf'), width = 8, height = 6)
+pdf(file.path(dir_output,  'upset_coMut_mut.pdf'), width = 7, height = 5)
 
 suppressWarnings(
   upset.fun(fromList(listInput))
