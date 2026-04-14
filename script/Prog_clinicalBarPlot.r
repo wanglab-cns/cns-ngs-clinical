@@ -15,8 +15,8 @@
 ##     • Generates stratified visualizations
 ##
 ## Input:
-##   - result/data/se_mut_bin_clin.RData
-##       SummarizedExperiment containing:
+##   - result/data/mae_mut_clin.RData
+##       MultiAssayExperiment containing:
 ##         assay:
 ##           gene × sample binary mutation matrix (0/1)
 ##         colData:
@@ -90,9 +90,9 @@ dir_output <- 'result/barPlot'
 #################################################
 ## Load data
 #################################################
-load(file.path(dir_input, 'se_mut_bin_clin.RData'))
-mut <- assay(eset)
-clin <- as.data.frame(colData(eset))
+load(file.path(dir_input, 'mae_mut_clin.RData'))
+mut <- assay(mae[['mut_binary']])
+clin <- as.data.frame(colData(mae[['mut_binary']]))
 clin$Age <- ifelse(clin$Age >= 40, '>40', '<40')
 
 ## ---- Binary matrix
@@ -188,7 +188,10 @@ ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
     size = 5
   ) +
   theme_classic() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(axis.text.x = element_text(size = 8, angle = 45, hjust = 1),
+        axis.text.y = element_text(size = 8),
+        axis.title = element_text(size = 10),
+        legend.text = element_text(size = 8)) +
   labs(y = "Mutation frequency (%)", x = "", 
        title = " ")
 
@@ -256,7 +259,10 @@ ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
     size = 5
   ) +
   theme_classic() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(axis.text.x = element_text(size = 8, angle = 45, hjust = 1),
+        axis.text.y = element_text(size = 8),
+        axis.title = element_text(size = 10),
+        legend.text = element_text(size = 8)) +
   labs(y = "Mutation frequency (%)", x = "", 
        title = " ")
 
@@ -324,7 +330,10 @@ ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
     size = 5
   ) +
   theme_classic() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+   theme(axis.text.x = element_text(size = 8, angle = 45, hjust = 1),
+        axis.text.y = element_text(size = 8),
+        axis.title = element_text(size = 10),
+        legend.text = element_text(size = 8)) +
   labs(y = "Mutation frequency (%)", x = "", 
        title = " ")
 
@@ -359,7 +368,10 @@ ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
                "Male"   = "#4C72B0")
   ) +
   theme_classic() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+   theme(axis.text.x = element_text(size = 8, angle = 45, hjust = 1),
+        axis.text.y = element_text(size = 8),
+        axis.title = element_text(size = 10),
+        legend.text = element_text(size = 8)) +
   labs(y = "Mutation frequency (%)", x = "", 
        title = " ")
 
@@ -401,7 +413,10 @@ ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
                "Male"   = "#4C72B0")
   ) +
   theme_classic() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+   theme(axis.text.x = element_text(size = 8, angle = 45, hjust = 1),
+        axis.text.y = element_text(size = 8),
+        axis.title = element_text(size = 10),
+        legend.text = element_text(size = 8)) +
   labs(y = "Mutation frequency (%)", x = "", 
        title = " ")
 
@@ -443,7 +458,10 @@ ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
                "Male"   = "#4C72B0")
   ) +
   theme_classic() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+   theme(axis.text.x = element_text(size = 8, angle = 45, hjust = 1),
+        axis.text.y = element_text(size = 8),
+        axis.title = element_text(size = 10),
+        legend.text = element_text(size = 8)) +
   labs(y = "Mutation frequency (%)", x = "", 
        title = " ")
 
