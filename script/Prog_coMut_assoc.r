@@ -9,7 +9,6 @@
 ##   The analysis evaluates statistical dependence between
 ##   gene mutation events across patients.
 ##
-##
 ## Input:
 ##   - result/data/se_mut_bin_clin.RData
 ##       MultiAssayExperiment containing:
