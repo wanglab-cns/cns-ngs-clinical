@@ -87,10 +87,9 @@ n0.cutoff <- 3
 #################################################
 ## Load data
 #################################################
-load(file.path(dir_input, 'se_mut_bin_clin.RData'))
-mut <- assay(eset)
-clin <- as.data.frame(colData(eset))
-clin$Age <- ifelse(clin$Age >= 40, '>40', '<40')
+load(file.path(dir_input, 'mae_mut_clin.RData'))
+mut <- assay(mae[['mut_binary']])
+clin <- as.data.frame(colData(mae[['mut_binary']]))
 
 ## ---- Binary matrix
 if(all(c("IDH1","IDH2") %in% rownames(mut))){
@@ -102,6 +101,24 @@ if(all(c("IDH1","IDH2") %in% rownames(mut))){
   mut <- rbind(mut, IDH = idh_vec)
 
 }
+
+# Age
+clin$Age <- ifelse(clin$Age >= 40, '>40', '<40')
+
+# ECOG
+clin$ECOG <- clin$ECOG.Performance.Status
+clin$ECOG <- substr(clin$ECOG, 1, 1)
+
+# MGMT
+clin$MGMT <- clin$MGMT.methylation
+clin$MGMT <- case_when(
+  str_detect(clin$MGMT, "Methylated") ~ "M",
+  str_detect(clin$MGMT, "Unmethylated") ~ "U",
+  TRUE ~ "Unknown"
+)
+
+# Recesion
+clin$Resection <- clin$Extent.of.surgical.resection
 
 # Grade
 clin <- clin %>%
@@ -115,41 +132,16 @@ clin <- clin %>%
     )
   )
 
+clin$Grade <- ifelse(clin$Grade %in% c('I', 'II'), 'Low', 'High')
+
 # Histology
-# clin$Histo <- coalesce(clin$LGG, clin$HGG)
 clin$Histo <- clin$histo
-clin <- clin %>%
-  mutate(
-    Histo = str_squish(Histo),
-    Histo = str_to_lower(Histo),   # normalize first
-    
-    Histo = case_when(
-      
-      str_detect(Histo, "glioblastoma") ~ "Glioblastoma",
-      str_detect(Histo, "oligodendroglioma") ~ "Oligodendroglioma",
-      str_detect(Histo, "astrocytoma") ~ "Astrocytoma",
-      str_detect(Histo, "ependymoma") ~ "Ependymoma",
-      str_detect(Histo, "glioneuronal") ~ "Glioneuronal tumor",
-      str_detect(Histo, "circumscribed glioma") ~ "Circumscribed glioma",
-      str_detect(Histo, "pediatric-type high.?grade glioma") ~ "Pediatric-type HGG",
-      str_detect(Histo, "pediatric-type low.?grade glioma") ~ "Pediatric-type LGG",
-      TRUE ~ str_to_sentence(Histo)  # keep original but clean formatting
-    )
-  )
+clin$Histo <- ifelse(
+  clin$Histo == "Glioblastoma",
+  "GBM",
+  "Non-GBM"
+)
 
-histo_counts <- table(clin$Histo)
-
-# Identify small groups (<10 patients)
-small_groups <- names(histo_counts[histo_counts < 10])
-
-clin <- clin %>%
-  mutate(
-    Histo = ifelse(
-      Histo %in% small_groups,
-      "Other",
-      Histo
-    )
-  )
 
 mut <- mut[, colnames(mut) %in% clin$Study] # 199 patients
 clin$IDH_status <- factor(
@@ -169,13 +161,29 @@ clin$Age <- factor(
 
 clin$Grade <-  factor(
   clin$Grade,
-  levels = c("I", "II", "III", "IV")
+  levels = c("High", "Low")
 )
 
 clin$Histo <- factor(
   clin$Histo,
-  levels = c("Glioblastoma", "Astrocytoma", "Glioneuronal tumor", "Oligodendroglioma", "Circumscribed glioma", "Other")
+  levels = c("GBM", "Non-GBM")
 )
+
+clin$MGMT <- factor(
+  clin$MGMT,
+  levels = c("M", "U", "Unknown")
+  )
+
+clin$ECOG <- factor(
+  clin$ECOG,
+  levels = c("1", "0", "2", "3")
+  )
+
+clin$Resection <- factor(
+  clin$Resection,
+  levels = c("Subtotal", "Biopsy", "Total")
+  ) 
+
 
 ####################################################
 ## OS association --> no metadata adjustment
@@ -197,12 +205,16 @@ for(i in 1:nrow(data)){
     }
   }
   
-  if( length( data$variable[ data$variable == 1 ] )>= n1.cutoff &
-      length( data$variable[ data$variable == 0 ] ) >= n0.cutoff ){
+n1 <- sum(data$variable == 1)
+n0 <- sum(data$variable == 0)
+e1 <- sum(data$status[data$variable == 1] == 1)
+e0 <- sum(data$status[data$variable == 0] == 1)
+
+  if( n1 >= n1.cutoff & n0 >= n0.cutoff & e1 >= 2 & e0 >= 2 ){
     
     cox <- coxph( formula= Surv( time , status ) ~ variable , data=data )
     res <- data.frame(gene = rownames(df)[k],
-                      hr = summary(cox)$coefficients[, "coef"],
+                      hr = summary(cox)$coefficients[, "exp(coef)"],
                       se = summary(cox)$coefficients[, "se(coef)"],
                       n = round(summary(cox)$n),
                       low = summary(cox)$conf.int[, "lower .95"],
@@ -249,12 +261,16 @@ for(i in 1:nrow(data)){
     }
   }
   
-  if( length( data$variable[ data$variable == 1 ] )>= n1.cutoff &
-      length( data$variable[ data$variable == 0 ] ) >= n0.cutoff ){
+  n1 <- sum(data$variable == 1)
+  n0 <- sum(data$variable == 0)
+  e1 <- sum(data$status[data$variable == 1] == 1)
+  e0 <- sum(data$status[data$variable == 0] == 1)
+
+  if( n1 >= n1.cutoff & n0 >= n0.cutoff & e1 >= 2 & e0 >= 2 ){
     
     cox <- coxph( formula= Surv( time , status ) ~ variable , data=data )
     res <- data.frame(gene = rownames(df)[k],
-                      hr = summary(cox)$coefficients[, "coef"],
+                      hr = summary(cox)$coefficients[, "exp(coef)"],
                       se = summary(cox)$coefficients[, "se(coef)"],
                       n = round(summary(cox)$n),
                       low = summary(cox)$conf.int[, "lower .95"],
@@ -301,12 +317,16 @@ for(i in 1:nrow(data)){
     }
   }
   
-  if( length( data$variable[ data$variable == 1 ] )>= n1.cutoff &
-      length( data$variable[ data$variable == 0 ] ) >= n0.cutoff ){
+  n1 <- sum(data$variable == 1)
+  n0 <- sum(data$variable == 0)
+  e1 <- sum(data$status[data$variable == 1] == 1)
+  e0 <- sum(data$status[data$variable == 0] == 1)
+
+  if( n1 >= n1.cutoff & n0 >= n0.cutoff & e1 >= 2 & e0 >= 2 ){
     
     cox <- coxph( formula= Surv( time , status ) ~ variable , data=data )
     res <- data.frame(gene = rownames(df)[k],
-                      hr = summary(cox)$coefficients[, "coef"],
+                      hr = summary(cox)$coefficients[, "exp(coef)"],
                       se = summary(cox)$coefficients[, "se(coef)"],
                       n = round(summary(cox)$n),
                       low = summary(cox)$conf.int[, "lower .95"],
@@ -338,6 +358,9 @@ write.csv(cox_res, file = file.path(dir_output, 'cox_os_mut.csv'), row.names=FAL
 ## MV OS association --> metadata adjustment
 ####################################################
 ## --- Step 1: all patients 
+res <- read.csv(file.path(dir_output, 'cox_os_clin_all.csv'))
+varnames <- res[res$pval < 0.05, 'variable']
+
 df <- mut
 cox_res <- lapply(1:nrow(df), function(k){
 
@@ -361,13 +384,17 @@ for(i in 1:nrow(data)){
     }
   }
   
-  if( length( data$variable[ data$variable == 1 ] )>= n1.cutoff &
-      length( data$variable[ data$variable == 0 ] ) >= n0.cutoff ){
+  n1 <- sum(data$variable == 1)
+  n0 <- sum(data$variable == 0)
+  e1 <- sum(data$status[data$variable == 1] == 1)
+  e0 <- sum(data$status[data$variable == 0] == 1)
+
+  if( n1 >= n1.cutoff & n0 >= n0.cutoff & e1 >= 2 & e0 >= 2 ){
     
     cox <- coxph( formula= Surv( time , status ) ~ variable + IDH + Age  
                                                    + Grade + Histo, data=data )
     res <- data.frame(gene = rownames(df)[k],
-                      hr = summary(cox)$coefficients['variable', "coef"],
+                      hr = summary(cox)$coefficients['variable', "exp(coef)"],
                       se = summary(cox)$coefficients['variable', "se(coef)"],
                       n = round(summary(cox)$n),
                       low = summary(cox)$conf.int['variable', "lower .95"],
@@ -396,6 +423,9 @@ cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
 write.csv(cox_res, file = file.path(dir_output, 'cox_os_all_mv.csv'), row.names=FALSE)
 
 ## --- Step 2: WT patients
+res <- read.csv(file.path(dir_output, 'cox_os_clin_wt.csv'))
+varnames <- res[res$pval < 0.05, 'variable']
+
 clin_wt <- clin[clin$IDH_status == 'WT', ]
 df <- mut[, colnames(mut) %in% clin_wt$Study]
 
@@ -407,6 +437,7 @@ data <- data.frame( status=clin_wt$os.event ,
                     Age = clin_wt$Age, 
                     Grade = clin_wt$Grade,
                     Histo = clin_wt$Histo)
+
 data <- data[!is.na(data$variable), ]
 data$time <- as.numeric(as.character(data$time))
   
@@ -419,12 +450,16 @@ for(i in 1:nrow(data)){
     }
   }
   
-  if( length( data$variable[ data$variable == 1 ] )>= n1.cutoff &
-      length( data$variable[ data$variable == 0 ] ) >= n0.cutoff ){
-    
+  n1 <- sum(data$variable == 1)
+  n0 <- sum(data$variable == 0)
+  e1 <- sum(data$status[data$variable == 1] == 1)
+  e0 <- sum(data$status[data$variable == 0] == 1)
+
+  if( n1 >= n1.cutoff & n0 >= n0.cutoff & e1 >= 2 & e0 >= 2 ){
+
     cox <- coxph( formula= Surv( time , status ) ~ variable + Age + Grade + Histo, data=data )
     res <- data.frame(gene = rownames(df)[k],
-                      hr = summary(cox)$coefficients['variable', "coef"],
+                      hr = summary(cox)$coefficients['variable', "exp(coef)"],
                       se = summary(cox)$coefficients['variable', "se(coef)"],
                       n = round(summary(cox)$n),
                       low = summary(cox)$conf.int['variable', "lower .95"],
@@ -453,6 +488,9 @@ cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
 write.csv(cox_res, file = file.path(dir_output, 'cox_os_wt_mv.csv'), row.names=FALSE)
 
 ## --- Step 3: Mut patients
+res <- read.csv(file.path(dir_output, 'cox_os_clin_mut.csv'))
+varnames <- res[res$pval < 0.2, 'variable']
+
 clin_mut <- clin[clin$IDH_status == 'Mut', ]
 df <- mut[, colnames(mut) %in% clin_mut$Study]
 
@@ -461,11 +499,11 @@ cox_res <- lapply(1:nrow(df), function(k){
 data <- data.frame( status=clin_mut$os.event , 
                     time=clin_mut$os.time , 
                     variable=df[k, ], 
-                    Age = clin_mut$Age, 
-                    Grade = clin_mut$Grade)
+                    Age = clin_mut$Age)
+
 data <- data[!is.na(data$variable), ]
 data$time <- as.numeric(as.character(data$time))
-  
+
 for(i in 1:nrow(data)){
     
     if( !is.na(as.numeric(as.character(data[ i , "time" ]))) && as.numeric(as.character(data[ i , "time" ])) > time.censor.mut ){
@@ -475,12 +513,16 @@ for(i in 1:nrow(data)){
     }
   }
   
-  if( length( data$variable[ data$variable == 1 ] )>= n1.cutoff &
-      length( data$variable[ data$variable == 0 ] ) >= n0.cutoff ){
+  n1 <- sum(data$variable == 1)
+  n0 <- sum(data$variable == 0)
+  e1 <- sum(data$status[data$variable == 1] == 1)
+  e0 <- sum(data$status[data$variable == 0] == 1)
+
+  if( n1 >= n1.cutoff & n0 >= n0.cutoff & e1 >= 2 & e0 >= 2 ){
     
-    cox <- coxph( formula= Surv( time , status ) ~ variable + Age + Grade, data=data )
+    cox <- coxph( formula= Surv( time , status ) ~ variable + Age, data=data )
     res <- data.frame(gene = rownames(df)[k],
-                      hr = summary(cox)$coefficients['variable', "coef"],
+                      hr = summary(cox)$coefficients['variable', "exp(coef)"],
                       se = summary(cox)$coefficients['variable', "se(coef)"],
                       n = round(summary(cox)$n),
                       low = summary(cox)$conf.int['variable', "lower .95"],
