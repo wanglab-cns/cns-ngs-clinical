@@ -4,7 +4,7 @@
 ## Purpose:
 ##   Generate publication-quality OncoPrint visualizations
 ##   from a curated CNS NGS mutation event matrix stored
-##   in a SummarizedExperiment object.
+##   in a MultiAssayExperiment object.
 ##
 ##   This script:
 ##     • Standardizes mutation alteration labels
@@ -18,8 +18,8 @@
 ##
 ##
 ## Input:
-##   - result/data/se_mut_onco_clin.RData
-##       SummarizedExperiment containing:
+##   - result/data/mae_mut_clin.RData
+##       MAE object containing:
 ##         assay:
 ##           gene × sample character matrix
 ##           ("" or semicolon-delimited alteration types)
@@ -65,8 +65,6 @@
 ##   3) Clinical Annotation Harmonization
 ##        - Age dichotomized (<40 vs ≥40)
 ##        - IDH status recoded (WT / Mut)
-##        - Therapy status recoded (Yes / No)
-##        - Tumor location grouped into major categories
 ##        - Histology harmonized and rare groups collapsed
 ##        - WHO 2021 grade formatted (I–IV)
 ##
@@ -117,7 +115,7 @@ dir_input <- 'result/data'
 dir_output <- 'result/oncoprint'
 
 #################################################
-## Load data
+## Load MultiAssayExperiment data
 #################################################
 load(file.path(dir_input, 'mae_mut_clin.RData'))
 mut <- assay(mae[['mut_oncoprint']])
@@ -143,10 +141,6 @@ table(mut_fixed)
 ####################################################
 ## OncoPrint ---> no clinbical metadata
 ####################################################
-#combo_levels <- c("Amplification;SNV/Indel", "Fusion;Amplification;SNV/Indel", "Fusion;Amplification")
-
-#mut_other <- mut_fixed
-#mut_other[mut_other %in% combo_levels] <- "Multi-hit"
 
 col <- c(
   "SNV/Indel"     = "#A06177FF",
