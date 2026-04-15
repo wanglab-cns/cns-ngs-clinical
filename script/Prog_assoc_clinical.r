@@ -75,6 +75,7 @@ library(MultiAssayExperiment)
 library(ggplot2)
 library(survival)
 library(survminer)
+library(coxphf)
 library(dplyr) 
 library(tidyr)
 library(stringr)
@@ -149,7 +150,6 @@ clin$Histo <- ifelse(
   "Non-GBM"
 )
 
-
 mut <- mut[, colnames(mut) %in% clin$Study] # 199 patients
 clin$IDH_status <- factor(
   clin$IDH_status,
@@ -220,23 +220,21 @@ cox_res <- lapply(names(df), function(varname){
 
   # run Cox
   fit <- tryCatch(
-    coxph(Surv(time, status) ~ variable, data = data),
+    coxphf(Surv(time, status) ~ variable, data = data),
     error = function(e) return(NULL)
   )
 
   if(is.null(fit)) return(NULL)
 
-  s <- summary(fit)
-
   res <- data.frame(
     variable = varname,
-    level = rownames(s$coefficients),
-    HR = s$conf.int[, "exp(coef)"],   # ✅ correct HR
-    se = s$coefficients[, "se(coef)"],
-    n = s$n,
-    low = s$conf.int[, "lower .95"],
-    up  = s$conf.int[, "upper .95"],
-    pval = s$coefficients[, "Pr(>|z|)"]
+    level = names(fit$coefficients),
+    HR = exp(fit$coefficients),   
+    se = sqrt(diag(fit$var)),
+    n = nrow(data),
+    low = fit$ci.lower,
+    up  = fit$ci.upper,
+    pval = fit$prob
   )
 
   res
@@ -277,23 +275,21 @@ cox_res <- lapply(names(df), function(varname){
 
   # run Cox
   fit <- tryCatch(
-    coxph(Surv(time, status) ~ variable, data = data),
+    coxphf(Surv(time, status) ~ variable, data = data),
     error = function(e) return(NULL)
   )
 
   if(is.null(fit)) return(NULL)
 
-  s <- summary(fit)
-
   res <- data.frame(
     variable = varname,
-    level = rownames(s$coefficients),
-    HR = s$conf.int[, "exp(coef)"],   
-    se = s$coefficients[, "se(coef)"],
-    n = s$n,
-    low = s$conf.int[, "lower .95"],
-    up  = s$conf.int[, "upper .95"],
-    pval = s$coefficients[, "Pr(>|z|)"]
+    level = names(fit$coefficients),
+    HR = exp(fit$coefficients),   
+    se = sqrt(diag(fit$var)),
+    n = nrow(data),
+    low = fit$ci.lower,
+    up  = fit$ci.upper,
+    pval = fit$prob
   )
 
   res
@@ -309,7 +305,6 @@ write.csv(cox_res,
 ## --- Step 3: Mut patients 
 clin_mut <- clin[clin$IDH_status == 'Mut', ]
 df <- clin_mut[, c('Age', 'Sex', 'Grade', 'MGMT', 'ECOG', 'Resection')]
-df$Resection <- ifelse(df$Resection == 'Subtotal', 'Subtotal', 'Other')
 
 cox_res <- lapply(names(df), function(varname){
 
@@ -334,23 +329,21 @@ cox_res <- lapply(names(df), function(varname){
 
   # run Cox
   fit <- tryCatch(
-    coxph(Surv(time, status) ~ variable, data = data),
+    coxphf(Surv(time, status) ~ variable, data = data),
     error = function(e) return(NULL)
   )
 
   if(is.null(fit)) return(NULL)
 
-  s <- summary(fit)
-
   res <- data.frame(
     variable = varname,
-    level = rownames(s$coefficients),
-    HR = s$conf.int[, "exp(coef)"],   
-    se = s$coefficients[, "se(coef)"],
-    n = s$n,
-    low = s$conf.int[, "lower .95"],
-    up  = s$conf.int[, "upper .95"],
-    pval = s$coefficients[, "Pr(>|z|)"]
+    level = names(fit$coefficients),
+    HR = exp(fit$coefficients),   
+    se = sqrt(diag(fit$var)),
+    n = nrow(data),
+    low = fit$ci.lower,
+    up  = fit$ci.upper,
+    pval = fit$prob
   )
 
   res
