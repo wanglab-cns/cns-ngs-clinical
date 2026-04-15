@@ -138,8 +138,8 @@ min_mut_freq <- 5
 
 mut_counts <- rowSums(mut == 1)
 genes_keep <- names(mut_counts[mut_counts >= min_mut_freq])
-
 mut_filt <- mut[genes_keep, ]
+
 gene_pairs <- combn(rownames(mut_filt), 2)
 
 co_res <- lapply(1:ncol(gene_pairs), function(i) {
@@ -150,21 +150,29 @@ co_res <- lapply(1:ncol(gene_pairs), function(i) {
   vec1 <- as.numeric(mut_filt[g1, ])
   vec2 <- as.numeric(mut_filt[g2, ])
 
-  tab <- table(vec1, vec2)
+  tab <- table(factor(vec1, levels = c(0,1)),
+               factor(vec2, levels = c(0,1)))
 
   if(all(dim(tab) == c(2,2))) {
+    
+    n11 = tab["1","1"]
+    n10 = tab["1","0"]
+    n01 = tab["0","1"]
+    n00 = tab["0","0"]
 
     fit <- fisher.test(tab)
+    OR_corrected <- (n11 + 0.5)*(n00 + 0.5) / ((n10 + 0.5)*(n01 + 0.5))
 
     data.frame(
       gene1 = g1,
       gene2 = g2,
-      OR = as.numeric(fit$estimate),
+      OR_raw = as.numeric(fit$estimate),
+      OR = OR_corrected,                 
       pval = fit$p.value,
-      n11 = tab["1","1"],
-      n10 = tab["1","0"],
-      n01 = tab["0","1"],
-      n00 = tab["0","0"]
+      n11 = n11,
+      n10 = n10,
+      n01 = n01,
+      n00 = n00
     )
 
   } else {
@@ -172,7 +180,8 @@ co_res <- lapply(1:ncol(gene_pairs), function(i) {
      data.frame(
       gene1 = g1,
       gene2 = g2,
-      OR = NA,
+      OR_raw = NA,
+      OR = NA, 
       pval = NA,
       n11 = NA,
       n10 =NA,
@@ -185,10 +194,7 @@ co_res <- lapply(1:ncol(gene_pairs), function(i) {
 
 co_res <- do.call(rbind, co_res)
 co_res <- co_res[!is.na(co_res$OR), ]
-co_res <- co_res %>%
-  group_by(gene1) %>%
-  mutate(fdr = p.adjust(pval, method = "BH")) %>%
-  ungroup()
+co_res$fdr <- p.adjust(co_res$pval, method = "BH")
 
 write.csv(co_res, file = file.path(dir_output, 'coMut_res_all.csv'), row.names=FALSE)
 
@@ -212,21 +218,29 @@ co_res <- lapply(1:ncol(gene_pairs), function(i) {
   vec1 <- as.numeric(mut_filt[g1, ])
   vec2 <- as.numeric(mut_filt[g2, ])
 
-  tab <- table(vec1, vec2)
+   tab <- table(factor(vec1, levels = c(0,1)),
+               factor(vec2, levels = c(0,1)))
 
   if(all(dim(tab) == c(2,2))) {
+    
+    n11 = tab["1","1"]
+    n10 = tab["1","0"]
+    n01 = tab["0","1"]
+    n00 = tab["0","0"]
 
     fit <- fisher.test(tab)
+    OR_corrected <- (n11 + 0.5)*(n00 + 0.5) / ((n10 + 0.5)*(n01 + 0.5))
 
     data.frame(
       gene1 = g1,
       gene2 = g2,
-      OR = as.numeric(fit$estimate),
+      OR_raw = as.numeric(fit$estimate),
+      OR = OR_corrected,                 
       pval = fit$p.value,
-      n11 = tab["1","1"],
-      n10 = tab["1","0"],
-      n01 = tab["0","1"],
-      n00 = tab["0","0"]
+      n11 = n11,
+      n10 = n10,
+      n01 = n01,
+      n00 = n00
     )
 
   } else {
@@ -234,7 +248,8 @@ co_res <- lapply(1:ncol(gene_pairs), function(i) {
      data.frame(
       gene1 = g1,
       gene2 = g2,
-      OR = NA,
+      OR_raw = NA,
+      OR = NA, 
       pval = NA,
       n11 = NA,
       n10 =NA,
@@ -247,10 +262,7 @@ co_res <- lapply(1:ncol(gene_pairs), function(i) {
 
 co_res <- do.call(rbind, co_res)
 co_res <- co_res[!is.na(co_res$OR), ]
-co_res <- co_res %>%
-  group_by(gene1) %>%
-  mutate(fdr = p.adjust(pval, method = "BH")) %>%
-  ungroup()
+co_res$fdr <- p.adjust(co_res$pval, method = "BH")
 
 write.csv(co_res, file = file.path(dir_output, 'coMut_res_wt.csv'), row.names=FALSE)
 
@@ -274,21 +286,29 @@ co_res <- lapply(1:ncol(gene_pairs), function(i) {
   vec1 <- as.numeric(mut_filt[g1, ])
   vec2 <- as.numeric(mut_filt[g2, ])
 
-  tab <- table(vec1, vec2)
+   tab <- table(factor(vec1, levels = c(0,1)),
+               factor(vec2, levels = c(0,1)))
 
   if(all(dim(tab) == c(2,2))) {
+    
+    n11 = tab["1","1"]
+    n10 = tab["1","0"]
+    n01 = tab["0","1"]
+    n00 = tab["0","0"]
 
     fit <- fisher.test(tab)
+    OR_corrected <- (n11 + 0.5)*(n00 + 0.5) / ((n10 + 0.5)*(n01 + 0.5))
 
     data.frame(
       gene1 = g1,
       gene2 = g2,
-      OR = as.numeric(fit$estimate),
+      OR_raw = as.numeric(fit$estimate),
+      OR = OR_corrected,                 
       pval = fit$p.value,
-      n11 = tab["1","1"],
-      n10 = tab["1","0"],
-      n01 = tab["0","1"],
-      n00 = tab["0","0"]
+      n11 = n11,
+      n10 = n10,
+      n01 = n01,
+      n00 = n00
     )
 
   } else {
@@ -296,7 +316,8 @@ co_res <- lapply(1:ncol(gene_pairs), function(i) {
      data.frame(
       gene1 = g1,
       gene2 = g2,
-      OR = NA,
+      OR_raw = NA,
+      OR = NA, 
       pval = NA,
       n11 = NA,
       n10 =NA,
@@ -309,10 +330,7 @@ co_res <- lapply(1:ncol(gene_pairs), function(i) {
 
 co_res <- do.call(rbind, co_res)
 co_res <- co_res[!is.na(co_res$OR), ]
-co_res <- co_res %>%
-  group_by(gene1) %>%
-  mutate(fdr = p.adjust(pval, method = "BH")) %>%
-  ungroup()
+co_res$fdr <- p.adjust(co_res$pval, method = "BH")
 
 write.csv(co_res, file = file.path(dir_output, 'coMut_res_mut.csv'), row.names=FALSE)
 
@@ -331,7 +349,7 @@ vol_idh1 <- co_res %>%
     sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
   )
 
-pdf(file.path(dir_output,  'volcano_coMut_all.pdf'), width = 5, height = 4)
+pdf(file.path(dir_output,  'volcano_coMut_all_updated.pdf'), width = 5, height = 4)
 
 ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
   geom_point(aes(color = sig), size = 2) +
@@ -373,7 +391,7 @@ vol_idh1 <- co_res %>%
     sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
   )
 
-pdf(file.path(dir_output,  'volcano_coMut_wt.pdf'), width = 5, height = 4)
+pdf(file.path(dir_output,  'volcano_coMut_wt_updated.pdf'), width = 5, height = 4)
 
 ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
   geom_point(aes(color = sig), size = 2) +
@@ -415,7 +433,7 @@ vol_idh1 <- co_res %>%
     sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
   )
 
-pdf(file.path(dir_output,  'volcano_coMut_mut.pdf'), width = 5, height = 4)
+pdf(file.path(dir_output,  'volcano_coMut_mut_updated.pdf'), width = 5, height = 4)
 
 ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
   geom_point(aes(color = sig), size = 2) +
