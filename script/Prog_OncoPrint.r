@@ -1,4 +1,4 @@
-#####################################################
+##-------------------------------------------------------------------
 ## Script: CNS NGS OncoPrint Visualization (ComplexHeatmap)
 ##
 ## Purpose:
@@ -72,7 +72,7 @@
 ##        - Independent OncoPrints generated for:
 ##            • IDH wild-type patients
 ##            • IDH mutant patients
-#####################################################
+##-------------------------------------------------------------------
 ####################################################
 ## Load libraries
 ####################################################
@@ -228,24 +228,6 @@ dev.off()
 # sample-level metadata
 clin <- as.data.frame(clin)
 clin$Age <- ifelse(clin$Age >= 40, '>40', '<40')
-clin$Therapy_status <- ifelse(clin$Therapy_status == 1, 'Yes', 'No')
-
-# primary location
-clin <- clin %>%
-  mutate(
-    Primary.location = str_squish(Primary.location),
-    Primary.location = str_to_title(Primary.location)
-  )
-
-clin <- clin %>%
-  mutate(
-    Location = case_when(
-      Primary.location == "Lobar" ~ "Lobar",
-      Primary.location == "Cerebellum" ~ "Cerebellum",
-      Primary.location == "Thalamic" ~ "Thalamic",
-      TRUE ~ "Other" # Spinal Cord, Intraventricular, Brainstem, Suprasellar
-    )
-  )
 
 # Grade
 clin <- clin %>%
