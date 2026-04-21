@@ -4,32 +4,55 @@
 
 **Contact:** [farnoosh.abbasaghababazadeh@uhn.ca](farnoosh.abbasaghababazadeh@uhn.ca)
 
-**Description:** Clinical, Mutation, and Survival Analysis Framework for CNS Tumors
+**Description:** Clinicogenomic landscape of CNS tumours: a retrospective NGS-based study from a Canadian quaternary center
 
-This repository provides a reproducible computational framework for analyzing somatic mutation profiles, clinical variables, and overall survival outcomes in central nervous system (CNS) tumors.
+This repository provides a reproducible analysis framework for integrating clinical metadata and next-generation sequencing (NGS) mutation data in central nervous system (CNS) tumors.
 
-The workflow integrates mutation matrices and harmonized clinical metadata within structured `SummarizedExperiment` objects to enable modular, transparent, and publication-ready analyses.
+The workflow supports mutation profiling, clinical association testing, and survival analyses using harmonized data structures and modular R scripts.
 
---------------------------------------
+Data are organized within a `MultiAssayExperiment` object, enabling consistent alignment of mutation matrices and clinical variables across analyses.
 
-## Project Overview
+----
+
+## Overview
 
 The `cns-ngs-clinical` framework supports:
 
-- OncoPrint visualization of somatic alterations
-- Mutation–clinical association testing
-- Kaplan–Meier survival analysis
+- Integration of clinical and mutation data
+- Construction of binary and oncoprint mutation matrices
+- OncoPrint visualization 
+- Mutation–clinical association analysis
+- Clinical and mutation-based survival modelin
 - IDH-stratified subgroup analyses
-- Automated PDF figure generation
-- Fully reproducible execution using **Pixi**
+- IDH-stratified subgroup analyses
+- Automated export of publication-ready tables and figures
 
-The design emphasizes clarity, reproducibility, and extensibility for translational cancer genomics research.
+The pipeline is modular, allowing individual analyses to be run independently or as part of a full workflow.
+
+-----
 
 **Analytical Modules**
 
-- Modular pipeline implemented in **R** 
-- Dependency management via **Pixi**
-- Configuration-driven execution to support multiple cohorts and analyses
+The repository is organized into modular scripts:
+
+- **Data Integration**
+  - Clinical and mutation harmonization
+  - Construction of `MultiAssayExperiment` objects
+
+- **Visualization**
+  - OncoPrint generation using `ComplexHeatmap`
+
+- **Association Analyses**
+  - Mutation–clinical associations (Fisher / logistic regression)
+  - Binary outcome modeling (short vs long survival)
+
+- **Survival Analysis**
+  - Gene-level Cox proportional hazards models
+  - Clinical variable survival associations
+  - Multivariable and stratified models (IDH WT / Mut)
+
+- **Co-Mutation Analysis**
+  - Pairwise gene co-occurrence and mutual exclusivity
 
 ---
 
@@ -37,17 +60,18 @@ The design emphasizes clarity, reproducibility, and extensibility for translatio
 
 ### Prerequisites
 
-Pixi is required to run this project.
+This project uses **Pixi** for environment and dependency management.
+
 If you haven't installed it yet, [follow these instructions](https://pixi.sh/latest/)
 
 ### Installation
 
 ```bash
-# Clone the repository
+# Clone repository
 git clone https://github.com/wanglab-cns/cns-ngs-clinical.git
 cd cns-ngs-clinical
 
-# Install dependencies via Pixi
+# Install environment
 pixi install
 ```
 
@@ -55,10 +79,10 @@ pixi install
 
 ```
 cns-ngs-clinical/
-├── data/               # Processed input objects
-├── result/             # Generated outputs
-├── scripts/            # Modular analysis scripts
-├── docs/               # MkDocs documentation source
+├── data/               # Input datasets and intermediate objects
+├── result/             # Analysis outputs (tables, figures)
+├── scripts/            # Modular R analysis scripts
+├── docs/               # Documentation (MkDocs)
 ├── pixi.toml           # Environment specification
 ├── mkdocs.yml          # Documentation configuration
 └── README.md           # Project overview
