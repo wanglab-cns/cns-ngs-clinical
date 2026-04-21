@@ -282,7 +282,7 @@ cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
 
 write.csv(cox_res,
-          file = file.path(dir_output, 'cox_os_clin_all.csv'),
+          file = file.path(dir_output, 'clinical', 'cox_os_clin_all.csv'),
           row.names = FALSE)
 
 
@@ -337,7 +337,7 @@ cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
 
 write.csv(cox_res,
-          file = file.path(dir_output, 'cox_os_clin_wt.csv'),
+          file = file.path(dir_output, 'clinical', 'cox_os_clin_wt.csv'),
           row.names = FALSE)
 
 ## --- Step 3: Mut patients 
@@ -391,6 +391,6 @@ cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
 
 write.csv(cox_res,
-          file = file.path(dir_output, 'cox_os_clin_mut.csv'),
+          file = file.path(dir_output, 'clinical', 'cox_os_clin_mut.csv'),
           row.names = FALSE)
           
