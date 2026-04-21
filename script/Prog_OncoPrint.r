@@ -6,72 +6,100 @@
 ##   from a curated CNS NGS mutation event matrix stored
 ##   in a MultiAssayExperiment object.
 ##
-##   This script:
-##     • Standardizes mutation alteration labels
-##     • Enforces consistent within-cell alteration priority
-##     • Preserves multi-hit events (no collapsing)
-##     • Integrates harmonized clinical metadata
-##     • Produces OncoPrints for:
-##         - All patients
-##         - IDH wild-type subset
-##         - IDH mutant subset
+##   Standardize mutation alteration labels and enforce a
+##   consistent within-cell priority ordering to ensure
+##   reproducible visualization of multi-event mutations.
+##
+##   Integrate harmonized clinical metadata and generate
+##   annotated OncoPrints for the full cohort and key
+##   molecular subgroups.
 ##
 ##
 ## Input:
 ##   - result/data/mae_mut_clin.RData
 ##       MultiAssayExperiment object containing:
-##         assay:
-##           gene × sample character matrix
-##           ("" or semicolon-delimited alteration types)
-##         colData:
-##           curated clinical metadata
+##         - mut_oncoprint assay:
+##             gene × patient character matrix
+##             ("" or semicolon-delimited alteration types)
+##         - colData:
+##             curated clinical metadata
 ##
 ##
 ## Output (4 figures):
 ##
-##   - result/oncoprint/fig1.pdf
-##       OncoPrint (mutation events only; no clinical annotations)
+##   1) result/oncoprint/fig1.pdf
+##        OncoPrint (mutation events only; no annotations)
 ##
-##   - result/oncoprint/fig2.pdf
-##       OncoPrint with clinical annotations (all patients)
+##   2) result/oncoprint/fig2.pdf
+##        OncoPrint with clinical annotations (all patients)
 ##
-##   - result/oncoprint/fig3_wt.pdf
-##       OncoPrint with annotations (IDH wild-type subset)
+##   3) result/oncoprint/fig3_wt.pdf
+##        OncoPrint with annotations (IDH wild-type subset)
 ##
-##   - result/oncoprint/fig4_mut.pdf
-##       OncoPrint with annotations (IDH mutant subset)
+##   4) result/oncoprint/fig4_mut.pdf
+##        OncoPrint with annotations (IDH mutant subset)
 ##
 ##
-## Key Processing Steps:
+## Processing Overview:
 ##
-##   1) Mutation Label Harmonization
-##        - Standardize alteration labels to:
-##            SNV/Indel
-##            Amplification
-##            Fusion
-##            Deletion
+##   1) Data Loading
+##        The MultiAssayExperiment object is loaded and the
+##        oncoprint assay (mutation matrix) and associated
+##        clinical metadata are extracted.
 ##
-##        - Enforce within-cell priority ordering:
-##            Fusion > Amplification > SNV/Indel > Deletion
+##   2) Mutation Label Harmonization
+##        Mutation labels are standardized to:
+##           - SNV/Indel
+##           - Amplification
+##           - Fusion
+##           - Deletion
 ##
-##        - Preserve multiple alteration types per gene/sample
-##          as semicolon-separated entries (multi-hit retained).
+##        Within each gene–patient cell, multiple alteration
+##        types are:
+##           - cleaned and deduplicated
+##           - ordered using a fixed priority:
+##                Fusion > Amplification > SNV/Indel > Deletion
 ##
-##   2) OncoPrint Construction (ComplexHeatmap)
-##        - Custom graphical rendering for each alteration type
-##        - Row-level mutation frequency barplots
-##        - Removal of empty genes and samples
+##        Multi-hit events are preserved as semicolon-
+##        separated entries.
 ##
-##   3) Clinical Annotation Harmonization
-##        - Age dichotomized (<40 vs ≥40)
-##        - IDH status recoded (WT / Mut)
-##        - Histology harmonized and rare groups collapsed
-##        - WHO 2021 grade formatted (I–IV)
+##   3) OncoPrint Construction (ComplexHeatmap)
+##        OncoPrints are generated using custom graphical
+##        functions for each alteration type, enabling
+##        stacked visual representation within each cell.
 ##
-##   4) Subset Analyses
-##        - Independent OncoPrints generated for:
-##            • IDH wild-type patients
-##            • IDH mutant patients
+##        Features include:
+##           - Removal of empty genes and samples
+##           - Row-level mutation frequency barplots
+##           - Consistent color mapping across alteration types
+##
+##   4) Clinical Annotation Processing
+##        Clinical metadata are formatted for visualization:
+##           - Age dichotomized (<40 vs ≥40)
+##           - IDH status encoded as WT / Mut
+##           - Histology harmonized and grouped
+##           - WHO 2021 grade converted to I–IV
+##
+##        Annotation tracks are constructed and aligned
+##        with the mutation matrix.
+##
+##   5) Annotated OncoPrint Generation
+##        A full-cohort OncoPrint is generated with clinical
+##        annotations displayed as top annotation tracks.
+##
+##   6) Subset Analyses
+##        The dataset is stratified by IDH status:
+##           - IDH wild-type patients
+##           - IDH mutant patients
+##
+##        Independent OncoPrints are generated for each
+##        subgroup with appropriately filtered mutation
+##        matrices and clinical annotations.
+##
+##   7) Export
+##        All OncoPrints are exported as PDF files with
+##        consistent layout, legends, and formatting for
+##        publication-ready visualization.
 ##-------------------------------------------------------------------
 ####################################################
 ## Load libraries
