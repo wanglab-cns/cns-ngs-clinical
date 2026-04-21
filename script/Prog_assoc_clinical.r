@@ -1,73 +1,111 @@
-##----------------------------------------------------------------------------
-## Objective:
+##-------------------------------------------------------------------
+## Script: CNS NGS Clinical Variable – Overall Survival Association
+##
+## Purpose:
 ##   Assess associations between clinical variables and
-##   overall survival (OS) using Cox proportional hazards
-##   regression models.
+##   overall survival (OS) in CNS tumor patients using
+##   Cox proportional hazards regression models.
 ##
-##   Analyses performed:
-##     1) Univariable Cox models (all patients)
-##     2) IDH-stratified analyses (IDH-mutant and IDH-wildtype separately)
+##   Perform univariable survival analyses across key
+##   clinical variables and evaluate prognostic effects
+##   in the full cohort and IDH-stratified subgroups.
 ##
-##   Overall survival is administratively censored at predefined
-##   time horizons (time.censor, time.censor.mut; months) to ensure
-##   comparable follow-up across analyses.
+##   Apply administrative censoring to ensure comparable
+##   follow-up across analyses.
+##
 ##
 ## Input:
 ##   - result/data/mae_mut_clin.RData
-##       MultiAssayExperiment object containing:
-##         • mut_binary: gene-level mutation matrix (not directly used here)
-##         • colData: harmonized clinical metadata including:
-##             - os.time   : overall survival time (months)
-##             - os.event  : event indicator (1 = death, 0 = censored)
-##             - IDH_status
-##             - Age
-##             - Sex
-##             - WHO.2021.Grade
-##             - Histology annotations
-##             - MGMT methylation
-##             - ECOG performance status
-##             - Extent of surgical resection
+##       MultiAssayExperiment containing:
+##         - mut_binary assay:
+##             gene-level mutation matrix (not directly used)
+##         - colData:
+##             harmonized clinical metadata including:
+##               • os.time, os.event
+##               • IDH_status
+##               • Age, Sex
+##               • WHO.2021.Grade
+##               • Histology
+##               • MGMT methylation
+##               • ECOG performance status
+##               • Extent of resection
 ##
-## Output:
-##   Per-variable Cox regression results (CSV files):
 ##
-##     - cox_os_clin_all.csv
-##         Univariable models (all patients)
+## Outputs:
 ##
-##     - cox_os_clin_wt.csv
-##         Univariable models within IDH-WT patients
+##   1) result/assoc/cox_os_clin_all.csv
+##        Univariable Cox models (all patients)
 ##
-##     - cox_os_clin_mut.csv
-##         Univariable models within IDH-Mut patients
+##   2) result/assoc/cox_os_clin_wt.csv
+##        Univariable Cox models (IDH wild-type subset)
+##
+##   3) result/assoc/cox_os_clin_mut.csv
+##        Univariable Cox models (IDH mutant subset)
 ##
 ##   Each output includes:
 ##     variable, level, HR, SE, N,
-##     95% CI (lower/upper), and Wald test p-value.
+##     95% CI (lower/upper), and p-value
 ##
-## Key Processing Steps:
-##   1) Extract clinical variables from MultiAssayExperiment colData.
-##   2) Recode and collapse variables to reduce sparsity:
-##        - Age: <40 vs ≥40
-##        - Grade: Low (I/II) vs High (III/IV)
-##        - Histology: GBM vs Non-GBM
-##        - MGMT: Methylated / Unmethylated / Unknown
-##        - ECOG: simplified categories (0–3)
-##        - Resection: Total / Subtotal / Biopsy
-##   3) Remove samples with missing values per variable.
-##   4) Apply administrative censoring at predefined time horizons.
-##   5) For each variable:
-##        - Ensure ≥2 levels after filtering
-##        - Fit Cox proportional hazards model:
-##              Surv(time, status) ~ variable
-##   6) Extract hazard ratios relative to reference levels.
+##
+## Processing Overview:
+##
+##   1) Data Loading
+##        The MultiAssayExperiment object is loaded and
+##        clinical metadata are extracted from colData.
+##
+##        IDH mutation status is re-derived from IDH1/IDH2
+##        mutation data and appended for consistency.
+##
+##   2) Clinical Variable Processing
+##        Clinical variables are recoded and harmonized:
+##           - Age: <40 vs ≥40
+##           - Grade: Low (I/II) vs High (III/IV)
+##           - Histology: GBM vs Non-GBM
+##           - MGMT: Methylated / Unmethylated / Unknown
+##           - ECOG: simplified categories (0–3)
+##           - Resection: Total / Subtotal / Biopsy
+##
+##        Variables are converted to factors with defined
+##        reference levels for Cox model estimation.
+##
+##   3) Survival Preprocessing
+##        Overall survival is administratively censored:
+##           - All / IDH-WT: time.censor (e.g., 36 months)
+##           - IDH-Mut: extended censoring window
+##
+##   4) Per-Variable Cox Modeling
+##        For each clinical variable:
+##           - Remove samples with missing values
+##           - Ensure ≥2 levels after filtering
+##           - Fit Cox proportional hazards model:
+##                Surv(time, status) ~ variable
+##
+##        Models are fitted iteratively across variables.
+##
+##   5) Stratified Analyses
+##        Analyses are repeated for:
+##           - All patients
+##           - IDH wild-type subset
+##           - IDH mutant subset
+##
+##        Clinical variables are subset accordingly.
+##
+##   6) Result Extraction
+##        For each model:
+##           - Extract hazard ratios relative to reference levels
+##           - Compute standard errors and confidence intervals
+##
+##   7) Export
+##        All results are written to CSV files for downstream
+##        interpretation and reporting.
 ##
 ## Notes:
-##   - Factor levels define reference categories for HR estimation.
-##   - Collapsing categories is performed to avoid sparse groups
-##     and unstable Cox model estimates (e.g., zero-event strata).
-##   - Stratified analyses (IDH-WT and IDH-Mut) may have reduced
-##     sample sizes and should be interpreted with caution.
-##----------------------------------------------------------------------------
+##   - Factor level ordering determines reference categories.
+##   - Category collapsing is applied to reduce sparsity and
+##     avoid unstable Cox estimates.
+##   - Stratified analyses may have reduced sample sizes and
+##     should be interpreted cautiously.
+##-------------------------------------------------------------------
 ####################################################
 ## Load libraries
 ####################################################
@@ -249,7 +287,7 @@ write.csv(cox_res,
 
 
 ## --- Step 2: WT patients 
-clin_wt <- clin[clin$IDH_status == 'WT', ]
+clin_wt <- clin[clin$IDH_status == 'WT', ] # 152 cases
 df <- clin_wt[, c('Age', 'Sex', 'Grade', 'Histo', 'MGMT', 'ECOG', 'Resection')]
 
 cox_res <- lapply(names(df), function(varname){
@@ -303,7 +341,7 @@ write.csv(cox_res,
           row.names = FALSE)
 
 ## --- Step 3: Mut patients 
-clin_mut <- clin[clin$IDH_status == 'Mut', ]
+clin_mut <- clin[clin$IDH_status == 'Mut', ] # 47 cases
 df <- clin_mut[, c('Age', 'Sex', 'Grade', 'MGMT', 'ECOG', 'Resection')]
 
 cox_res <- lapply(names(df), function(varname){
