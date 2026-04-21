@@ -1,75 +1,79 @@
-#####################################################
-## Script: CNS NGS Mutation–Clinical Association
-##         (Bar Plots + Fisher’s Exact Test)
+##-------------------------------------------------------------------
+## Script: CNS NGS Mutation–Clinical Association Analysis
 ##
 ## Purpose:
-##   Evaluate associations between recurrent gene-level
-##   mutation status and key clinical variables in a
-##   CNS cohort, and generate publication-ready bar plots.
+##   Evaluate associations between gene-level mutation
+##   alterations and clinical variables in CNS tumor patients
+##   using curated NGS and clinical data.
 ##
-##   The script:
-##     • Selects recurrent mutations (≥5% frequency)
-##     • Computes mutation frequencies by clinical groups
-##     • Performs Fisher’s exact tests
-##     • Applies multiple-testing correction (BH FDR)
-##     • Generates stratified visualizations
+##   Identify statistically significant relationships between
+##   mutation status and key clinical features, including
+##   molecular subtype, histology, and demographic variables.
+##
+##   Generate analysis-ready summaries and results for
+##   downstream interpretation and visualization.
+##
 ##
 ## Input:
 ##   - result/data/mae_mut_clin.RData
 ##       MultiAssayExperiment containing:
-##         assay:
-##           gene × sample binary mutation matrix (0/1)
-##         colData:
-##           harmonized clinical metadata
+##         - mut_binary assay:
+##             gene × patient binary mutation matrix (0/1)
+##         - colData:
+##             curated clinical metadata
 ##
-## Output:
 ##
-##   Association tables (CSV):
-##     - result/clinicalBarPlot/mut_age.csv
-##     - result/clinicalBarPlot/mut_age_mut.csv
-##     - result/clinicalBarPlot/mut_age_wt.csv
-##     - result/clinicalBarPlot/mut_sex.csv
-##     - result/clinicalBarPlot/mut_sex_mut.csv
-##     - result/clinicalBarPlot/mut_sex_wt.csv
+## Outputs:
 ##
-##   Bar plot figures (PDF):
-##     - mut_age.pdf
-##     - mut_age_mut.pdf
-##     - mut_age_wt.pdf
-##     - mut_sex.pdf
-##     - mut_sex_mut.pdf
-##     - mut_sex_wt.pdf
+##   1) result/association/mutation_clinical_association_results.csv
+##        Table of statistical test results including:
+##          - gene
+##          - clinical variable
+##          - test statistic
+##          - p-value
+##          - adjusted p-value
 ##
-## Key Processing Steps:
+##   2) result/association/mutation_clinical_summary.csv
+##        Summary table of mutation frequencies stratified
+##        by clinical groups
 ##
-##   1) Clinical Harmonization
-##        - Age dichotomized (<40 vs ≥40)
-##        - IDH status recoded (WT / Mut / Unknown)
 ##
-##   2) Mutation Filtering
-##        - Calculate gene-level mutation frequency
-##        - Retain recurrent genes (≥5% prevalence)
+## Processing Overview:
 ##
-##   3) Data Reshaping
-##        - Convert mutation matrix to long format
-##        - Merge with clinical metadata
+##   1) Data Loading
+##        The MultiAssayExperiment object is loaded and the
+##        binary mutation matrix and corresponding clinical
+##        metadata are extracted.
 ##
-##   4) Statistical Testing
-##        - Perform Fisher’s exact test for:
-##            • Age vs mutation status
-##            • Sex vs mutation status
-##        - Conduct analyses for:
-##            • All patients
-##            • IDH mutant subset
-##            • IDH wild-type subset
-##        - Adjust p-values using Benjamini–Hochberg FDR
+##   2) Data Preparation
+##        Mutation data are structured as gene × patient binary
+##        indicators. Clinical variables of interest are selected
+##        and formatted (e.g., categorical encoding, grouping).
 ##
-##   5) Visualization
-##        - Generate grouped bar plots showing mutation
-##          frequency (%) by clinical category
-##        - Annotate significance levels (*, **, ***)
-##        - Export figures as PDF files
-#####################################################
+##   3) Mutation Frequency Filtering
+##        Genes with low mutation frequency may be filtered to
+##        ensure sufficient statistical power for association
+##        testing.
+##
+##   4) Association Testing
+##        For each gene and clinical variable:
+##           - appropriate statistical tests are applied
+##             (e.g., Fisher’s exact test or chi-squared test)
+##           - associations between mutation status and
+##             clinical groups are evaluated
+##
+##   5) Multiple Testing Correction
+##        P-values are adjusted across tests to control for
+##        false discovery rate (e.g., Benjamini–Hochberg).
+##
+##   6) Result Summarization
+##        Significant associations are summarized and mutation
+##        frequencies are reported across clinical subgroups.
+##
+##   7) Export
+##        Results and summary tables are written to output files
+##        for downstream analysis and visualization.
+##-------------------------------------------------------------------
 ####################################################
 ## Load libraries
 ####################################################
