@@ -1,95 +1,125 @@
-##############################################################
+##-------------------------------------------------------------------
 ## Script: CNS NGS Gene-Level Co-Mutation Analysis
 ##
 ## Purpose:
 ##   Quantify pairwise gene co-mutation and mutual exclusivity
-##   patterns using Fisher’s exact test applied to binary
-##   mutation data (0 = wild-type, 1 = mutant).
+##   patterns in CNS tumor patients using binary mutation data.
 ##
-##   The analysis evaluates statistical dependence between
-##   gene mutation events across patients.
+##   Evaluate statistical dependence between gene mutation
+##   events across patients and identify significant
+##   co-occurring or mutually exclusive gene pairs.
+##
+##   Generate analysis-ready result tables and visualization
+##   outputs for downstream interpretation.
+##
 ##
 ## Input:
-##   - result/data/se_mut_bin_clin.RData
+##   - result/data/mae_mut_clin.RData
 ##       MultiAssayExperiment containing:
-##         • assay: binary gene × patient mutation matrix (0/1)
-##         • colData: harmonized clinical metadata
-##             including IDH_status
+##         - mut_binary assay:
+##             gene × patient binary mutation matrix (0/1)
+##         - colData:
+##             harmonized clinical metadata (including IDH_status)
 ##
 ##
-## Analytical Overview:
+## Outputs:
 ##
-##   1) Gene Filtering
-##      - Genes with mutation frequency ≥ min_mut_freq
-##        are retained to reduce instability from rare events.
+##   1) result/coMut/coMut_res_all.csv
+##        Pairwise co-mutation results (all patients)
 ##
-##   2) Pairwise Testing
-##      - All possible gene pairs are enumerated.
-##      - For each pair, a 2×2 contingency table is constructed:
+##   2) result/coMut/coMut_res_wt.csv
+##        Pairwise co-mutation results (IDH wild-type)
+##
+##   3) result/coMut/coMut_res_mut.csv
+##        Pairwise co-mutation results (IDH mutant)
+##
+##        Each file contains:
+##          - gene1, gene2
+##          - OR (corrected odds ratio)
+##          - pval, fdr
+##          - n11, n10, n01, n00
+##
+##   4) Volcano plots (PDF):
+##        - volcano_coMut_all_updated.pdf
+##        - volcano_coMut_wt_updated.pdf
+##        - volcano_coMut_mut_updated.pdf
+##
+##        Visualization:
+##          x-axis: log2(OR)
+##          y-axis: −log10(p-value)
+##          significant pairs highlighted (FDR < 0.05)
+##
+##   5) UpSet plots (PDF):
+##        - upset_coMut_all.pdf
+##        - upset_coMut_wt.pdf
+##        - upset_coMut_mut.pdf
+##
+##        Visualization:
+##          mutation combination patterns across top
+##          co-mutated genes ranked by interaction degree
+##
+##
+## Processing Overview:
+##
+##   1) Data Loading
+##        The MultiAssayExperiment object is loaded and the
+##        binary mutation matrix and clinical metadata are
+##        extracted.
+##
+##        IDH status is re-derived at the mutation level
+##        (IDH1/IDH2) and appended as a gene-level feature.
+##
+##   2) Gene Filtering
+##        Genes with mutation frequency ≥ min_mut_freq
+##        (default = 5 patients) are retained to ensure
+##        stability of statistical estimates.
+##
+##   3) Pairwise Co-Mutation Testing
+##        All possible gene pairs are enumerated.
+##
+##        For each pair, a 2×2 contingency table is constructed:
 ##
 ##              g2 Mut   g2 WT
 ##     g1 Mut      n11     n10
 ##     g1 WT       n01     n00
 ##
-##      - Fisher’s exact test evaluates independence.
+##        Fisher’s exact test is used to evaluate independence.
 ##
-##   3) Effect Size Interpretation
-##      - Odds Ratio (OR):
-##            OR = (n11 × n00) / (n10 × n01)
+##   4) Effect Size Estimation
+##        Odds ratios (OR) are computed for each gene pair.
+##        A continuity-corrected OR is applied to avoid
+##        instability in sparse tables.
 ##
-##            OR > 1  → co-occurrence enrichment
-##            OR < 1  → mutual exclusivity
+##           OR > 1  → co-occurrence enrichment
+##           OR < 1  → mutual exclusivity
 ##
-##      - Effect size visualized as log2(OR).
+##        Effect sizes are visualized using log2(OR).
 ##
-##   4) Multiple Testing Correction
-##      - Benjamini–Hochberg procedure applied
-##        across all tested gene pairs.
+##   5) Multiple Testing Correction
+##        P-values are adjusted using the Benjamini–Hochberg
+##        procedure to control false discovery rate (FDR).
 ##
+##   6) Stratified Analyses
+##        Analyses are repeated for:
+##           - All patients
+##           - IDH wild-type subset
+##           - IDH mutant subset
 ##
-## Stratified Analyses:
+##        Mutation matrices are subset accordingly prior
+##        to pairwise testing.
 ##
-##   Analyses are repeated in:
-##      • All patients
-##      • IDH wild-type subgroup
-##      • IDH mutant subgroup
+##   7) Visualization
+##        Volcano plots are generated to display effect size
+##        and statistical significance of gene pairs.
 ##
+##        UpSet plots are constructed using top-ranked genes
+##        to visualize higher-order mutation co-occurrence
+##        patterns across patients.
 ##
-## Output:
-##
-##   CSV files:
-##     - coMut_res_all.csv
-##     - coMut_res_wt.csv
-##     - coMut_res_mut.csv
-##
-##     Each file contains:
-##       gene1, gene2,
-##       OR, pval,
-##       n11, n10, n01, n00,
-##       fdr
-##
-##
-##   Figures (PDF):
-##
-##     Volcano plots:
-##       - volcano_coMut_all.pdf
-##       - volcano_coMut_wt.pdf
-##       - volcano_coMut_mut.pdf
-##
-##         x-axis: log2(OR)
-##         y-axis: −log10(p-value)
-##         Significant pairs highlighted (FDR < 0.05)
-##
-##     UpSet plots:
-##       - upset_coMut_all.pdf
-##       - upset_coMut_wt.pdf
-##       - upset_coMut_mut.pdf
-##
-##         UpSet plots display mutation combination patterns
-##         across the top co-mutation network genes
-##         (ranked by significant interaction degree).
-##
-##############################################################
+##   8) Export
+##        All results and figures are exported to the output
+##        directory for downstream analysis and reporting.
+##-------------------------------------------------------------------
 ####################################################
 ## Load libraries
 ####################################################
