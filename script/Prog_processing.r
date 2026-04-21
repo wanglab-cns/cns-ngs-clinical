@@ -1,12 +1,16 @@
-############################################################
+##----------------------------------------------------------------------------------------------------
 ## Script: CNS NGS Clinical–Mutation Integration
 ##         Binary and Oncoprint Mutation Matrices
-##         SummarizedExperiment Export
+##         MultiAssayExperiment Export
 ##
 ## Purpose:
 ##   Integrate curated clinical metadata with Tier I/II
 ##   next-generation sequencing (NGS) mutation calls for
 ##   central nervous system (CNS) tumor patients.
+##
+##   Perform clinical data curation and derive key variables,
+##   including survival outcomes, therapy status, and IDH
+##   mutation status based on SNV/Indel events in IDH1/IDH2.
 ##
 ##   Construct two gene-level mutation representations:
 ##     (1) A binary mutation matrix encoding the presence
@@ -15,15 +19,16 @@
 ##         classes and multi-hit events.
 ##
 ##   Harmonize patient identifiers across clinical and
-##   molecular data and export analysis-ready
-##   SummarizedExperiment objects for downstream modeling,
+##   molecular data and export integrated, analysis-ready
+##   SummarizedExperiment objects combined within a
+##   MultiAssayExperiment for downstream modeling,
 ##   survival analysis, clustering, and visualization.
 ##
 ##
 ## Inputs:
 ##   - data/Feb 18 2026 CNS Tumours NGS & Clinical Data Lock.xlsx
 ##       • Sheet 2: Clinical metadata
-##       • Sheet 3: Curated mutation calls
+##       • Sheet 3: Curated mutation calls (Tier I/II)
 ##
 ##   - data/clin.xlsx
 ##       • Curated clinical updates including refined histology
@@ -32,16 +37,15 @@
 ##
 ## Outputs:
 ##
-##   1) result/data/se_mut_bin_clin.RData
-##        SummarizedExperiment containing:
-##          - assay: binary gene-level mutation matrix (0/1)
-##          - colData: curated clinical metadata
-##
-##   2) result/data/se_mut_onco_clin.RData
-##        SummarizedExperiment containing:
-##          - assay: oncoprint event-type mutation matrix
-##                   ("" or "type1;type2;...")
-##          - colData: curated clinical metadata
+##   1) result/data/mae_mut_clin.RData
+##        MultiAssayExperiment containing:
+##          - experiments:
+##              • mut_binary: SummarizedExperiment
+##                   assay: binary gene-level mutation matrix (0/1)
+##              • mut_oncoprint: SummarizedExperiment
+##                   assay: oncoprint event-type mutation matrix
+##                         ("" or "type1;type2;...")
+##          - colData: curated and harmonized clinical metadata
 ##
 ##
 ## Processing Overview:
@@ -59,18 +63,14 @@
 ##           - os.event: Dead = 1; Alive/LTF = 0; NA preserved
 ##           - os.time:  Survival (Months)
 ##
-##        Key analysis variables are standardized,
-##        including histology, IDH status (derived from SNV/Indel
-##        mutations in IDH1/IDH2), age at diagnosis, and therapy
-##        status (binary indicator for RT and/or concurrent
-##        temozolomide).
+##        Additional variables are standardized, including:
+##           - Age at diagnosis
+##           - Therapy status (RT and/or concurrent TMZ)
 ##
 ##   3) External Clinical Annotation Integration
 ##        Updated histology annotations are imported from an
-##        external clinical dataset (clin.xlsx). The variable
-##        Histo_updated is merged into the main clinical dataset
-##        using the patient identifier ('Study') and stored as
-##        'histo' for downstream analysis.
+##        external dataset (clin.xlsx) and merged using 'Study'.
+##        The variable Histo_updated is stored as 'histo'.
 ##
 ##   4) Mutation Filtering and Recoding
 ##        Mutation calls are restricted to Tier I and Tier II
@@ -86,31 +86,27 @@
 ##        A gene × patient matrix is constructed where:
 ##           - 1 indicates ≥1 alteration in the gene
 ##           - 0 indicates no alteration
-##        Multiple alterations in the same gene/patient pair
-##        are collapsed to a single binary indicator.
+##        Multiple alterations per gene/patient pair are collapsed.
 ##
 ##   6) Oncoprint Event-Type Matrix (mat_onco)
 ##        A gene × patient matrix is constructed preserving
 ##        alteration classes. Multiple events per gene/patient
-##        are concatenated as semicolon-separated strings
-##        (e.g., "Amplification;SNV/Indel").
+##        are concatenated as semicolon-separated strings.
 ##
 ##   7) IDH Derivation
-##        Patient-level IDH status is derived based on the
-##        presence of IDH1 or IDH2 SNV/Indel alterations.
-##        Status is encoded as Mut or WT and appended to
-##        clinical metadata.
+##        Patient-level IDH status is derived from the presence
+##        of IDH1/IDH2 SNV/Indel mutations and encoded as Mut/WT.
 ##
 ##   8) Patient Harmonization
-##        Only patients present in both curated clinical data
-##        and mutation matrices are retained. Clinical metadata
-##        and mutation matrices are aligned and ordered
-##        consistently.
+##        Patients present in both clinical and mutation data
+##        are retained. Clinical and assay data are aligned and
+##        ordered consistently.
 ##
-##   9) MultiAssayExperiment Export
-##        Two SummarizedExperiment objects (binary and oncoprint) are combined into a single
-##        MultiAssayExperiment with shared clinical metadata.
-############################################################
+##   9) MultiAssayExperiment Construction and Export
+##        Binary and oncoprint SummarizedExperiment objects are
+##        combined into a single MultiAssayExperiment with shared
+##        clinical metadata and saved for downstream analysis.
+##----------------------------------------------------------------------------------------------------
 ####################################################
 ## Load libraries
 ####################################################
