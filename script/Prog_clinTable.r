@@ -1,106 +1,69 @@
-##-------------------------------------------------------------------
-## Script: CNS NGS OncoPrint Visualization (ComplexHeatmap)
+##--------------------------------------------------------------------
+## Description:
+## This script processes curated clinical metadata from a CNS NGS
+## cohort to generate baseline summary statistics stratified by IDH
+## mutation status. The workflow integrates harmonized clinical
+## annotations from a MultiAssayExperiment (MAE) object and produces
+## a structured summary table for downstream reporting and
+## publication-ready descriptive analyses.
 ##
-## Purpose:
-##   Generate publication-quality OncoPrint visualizations
-##   from a curated CNS NGS mutation event matrix stored
-##   in a MultiAssayExperiment object.
+## Workflow:
+## 1. Load processed MultiAssayExperiment data
+##      - Extract mutation oncoprint assay (for alignment)
+##      - Extract associated clinical metadata (colData)
 ##
-##   Standardize mutation alteration labels and enforce a
-##   consistent within-cell priority ordering to ensure
-##   reproducible visualization of multi-event mutations.
+## 2. Curate and harmonize clinical metadata:
+##      - Convert IDH status to categorical variable (WT vs Mut)
+##      - Dichotomize age (<40 vs ≥40)
+##      - Standardize sex, grade (WHO 2021), and histology labels
+##      - Harmonize tumor location into grouped categories
+##      - Clean ECOG performance status
+##      - Encode MGMT methylation status (M / U / Unknown)
+##      - Standardize surgical resection categories
 ##
-##   Integrate harmonized clinical metadata and generate
-##   annotated OncoPrints for the full cohort and key
-##   molecular subgroups.
+## 3. Define analysis variables:
+##      - Continuous variables:
+##          * Overall survival time (os.time)
+##      - Categorical variables:
+##          * Age group, sex, grade, histology
+##          * Tumor location, ECOG, MGMT, resection status
+##          * Survival event (os.event)
 ##
+## 4. Stratify cohort:
+##      - All patients
+##      - IDH wild-type (WT)
+##      - IDH mutant (Mut)
 ##
-## Input:
-##   - result/data/mae_mut_clin.RData
-##       MultiAssayExperiment object containing:
-##         - mut_oncoprint assay:
-##             gene × patient character matrix
-##             ("" or semicolon-delimited alteration types)
-##         - colData:
-##             curated clinical metadata
+## 5. Compute summary statistics:
+##      - Continuous variables:
+##          * Median and interquartile range (IQR)
+##      - Categorical variables:
+##          * Frequency counts and percentages (n, %)
 ##
+## 6. Construct summary table:
+##      - Rows correspond to clinical variables
+##      - Columns represent:
+##          * All patients
+##          * IDH-WT subgroup
+##          * IDH-Mut subgroup
 ##
-## Output (4 figures):
+## 7. Export results:
+##      - Summary table saved as CSV file
+##      - Suitable for Table 1 (baseline characteristics)
 ##
-##   1) result/oncoprint/fig1.pdf
-##        OncoPrint (mutation events only; no annotations)
+## Output:
+## - Summary statistics table saved as:
+##   result/Table/results.csv
 ##
-##   2) result/oncoprint/fig2.pdf
-##        OncoPrint with clinical annotations (all patients)
-##
-##   3) result/oncoprint/fig3_wt.pdf
-##        OncoPrint with annotations (IDH wild-type subset)
-##
-##   4) result/oncoprint/fig4_mut.pdf
-##        OncoPrint with annotations (IDH mutant subset)
-##
-##
-## Processing Overview:
-##
-##   1) Data Loading
-##        The MultiAssayExperiment object is loaded and the
-##        oncoprint assay (mutation matrix) and associated
-##        clinical metadata are extracted.
-##
-##   2) Mutation Label Harmonization
-##        Mutation labels are standardized to:
-##           - SNV/Indel
-##           - Amplification
-##           - Fusion
-##           - Deletion
-##
-##        Within each gene–patient cell, multiple alteration
-##        types are:
-##           - cleaned and deduplicated
-##           - ordered using a fixed priority:
-##                Fusion > Amplification > SNV/Indel > Deletion
-##
-##        Multi-hit events are preserved as semicolon-
-##        separated entries.
-##
-##   3) OncoPrint Construction (ComplexHeatmap)
-##        OncoPrints are generated using custom graphical
-##        functions for each alteration type, enabling
-##        stacked visual representation within each cell.
-##
-##        Features include:
-##           - Removal of empty genes and samples
-##           - Row-level mutation frequency barplots
-##           - Consistent color mapping across alteration types
-##
-##   4) Clinical Annotation Processing
-##        Clinical metadata are formatted for visualization:
-##           - Age dichotomized (<40 vs ≥40)
-##           - IDH status encoded as WT / Mut
-##           - Histology harmonized and grouped
-##           - WHO 2021 grade converted to I–IV
-##
-##        Annotation tracks are constructed and aligned
-##        with the mutation matrix.
-##
-##   5) Annotated OncoPrint Generation
-##        A full-cohort OncoPrint is generated with clinical
-##        annotations displayed as top annotation tracks.
-##
-##   6) Subset Analyses
-##        The dataset is stratified by IDH status:
-##           - IDH wild-type patients
-##           - IDH mutant patients
-##
-##        Independent OncoPrints are generated for each
-##        subgroup with appropriately filtered mutation
-##        matrices and clinical annotations.
-##
-##   7) Export
-##        All OncoPrints are exported as PDF files with
-##        consistent layout, legends, and formatting for
-##        publication-ready visualization.
-##-------------------------------------------------------------------
+## Notes:
+## - Clinical data derived from curated MAE object
+## - IDH status used as primary stratification variable
+## - Age is dichotomized for categorical reporting
+## - Continuous variables summarized using median (IQR)
+## - Categorical variables summarized using n (%)
+## - Output table represents descriptive statistics only
+## - Table can be extended with statistical tests if required
+##--------------------------------------------------------------------
 ####################################################
 ## Load libraries
 ####################################################
