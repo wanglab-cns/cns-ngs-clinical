@@ -177,10 +177,10 @@ plot_age_sig <- plot_age %>%
   summarise(y_pos = max(freq) + 5, .groups = "drop") %>%
   left_join(age_assoc %>% select(Gene, sig), by = "Gene")
 
-pdf(file.path(dir_output, 'mut_age.pdf'), width = 7, height = 4)
+pdf(file.path(dir_output, 'mut_age.pdf'), width = 6, height = 3.5)
 
 ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
-  geom_bar(stat = "identity", position = "dodge", width = 0.7) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.6) +
   scale_fill_manual(
     values = c(">40" = "#08306B",
                "<40" = "#C6DBEF")
@@ -194,7 +194,7 @@ ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
   theme_classic() +
   theme(axis.text.x = element_text(size = 8, angle = 45, hjust = 1),
         axis.text.y = element_text(size = 8),
-        axis.title = element_text(size = 10),
+        axis.title = element_text(size = 9),
         legend.text = element_text(size = 8)) +
   labs(y = "Mutation frequency (%)", x = "", 
        title = " ")
@@ -248,10 +248,10 @@ plot_age_sig <- plot_age %>%
   summarise(y_pos = max(freq) + 5, .groups = "drop") %>%
   left_join(age_assoc %>% select(Gene, sig), by = "Gene")
 
-pdf(file.path(dir_output, 'mut_age_mut.pdf'), width = 7, height = 4)
+pdf(file.path(dir_output, 'mut_age_mut.pdf'), width = 6, height = 3.5)
 
 ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
-  geom_bar(stat = "identity", position = "dodge") +
+  geom_bar(stat = "identity", position = "dodge", width = 0.6) +
   scale_fill_manual(
     values = c(">40" = "#08306B",
                "<40" = "#C6DBEF")
@@ -265,7 +265,7 @@ ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
   theme_classic() +
   theme(axis.text.x = element_text(size = 8, angle = 45, hjust = 1),
         axis.text.y = element_text(size = 8),
-        axis.title = element_text(size = 10),
+        axis.title = element_text(size = 9),
         legend.text = element_text(size = 8)) +
   labs(y = "Mutation frequency (%)", x = "", 
        title = " ")
@@ -319,10 +319,10 @@ plot_age_sig <- plot_age %>%
   summarise(y_pos = max(freq) + 5, .groups = "drop") %>%
   left_join(age_assoc %>% select(Gene, sig), by = "Gene")
 
-pdf(file.path(dir_output, 'mut_age_wt.pdf'), width = 7, height = 4)
+pdf(file.path(dir_output, 'mut_age_wt.pdf'), width = 6, height = 3.5)
 
 ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
-  geom_bar(stat = "identity", position = "dodge") +
+  geom_bar(stat = "identity", position = "dodge", width = 0.6) +
   scale_fill_manual(
     values = c(">40" = "#08306B",
                "<40" = "#C6DBEF")
@@ -336,7 +336,7 @@ ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
   theme_classic() +
    theme(axis.text.x = element_text(size = 8, angle = 45, hjust = 1),
         axis.text.y = element_text(size = 8),
-        axis.title = element_text(size = 10),
+        axis.title = element_text(size = 9),
         legend.text = element_text(size = 8)) +
   labs(y = "Mutation frequency (%)", x = "", 
        title = " ")
@@ -363,10 +363,10 @@ plot_sex <- mut_long %>%
 
 plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order)
 
-pdf(file.path(dir_output, 'mut_sex.pdf'), width = 7, height = 4)
+pdf(file.path(dir_output, 'mut_sex.pdf'), width = 6, height = 3.5)
 
 ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
-  geom_bar(stat = "identity", position = "dodge") +
+  geom_bar(stat = "identity", position = "dodge", width = 0.6) +
   scale_fill_manual(
     values = c("Female" = "#DD8452",
                "Male"   = "#4C72B0")
@@ -374,7 +374,7 @@ ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
   theme_classic() +
    theme(axis.text.x = element_text(size = 8, angle = 45, hjust = 1),
         axis.text.y = element_text(size = 8),
-        axis.title = element_text(size = 10),
+        axis.title = element_text(size = 9),
         legend.text = element_text(size = 8)) +
   labs(y = "Mutation frequency (%)", x = "", 
        title = " ")
@@ -408,10 +408,10 @@ plot_sex <- mut_long_mut %>%
 
 plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order)
 
-pdf(file.path(dir_output, 'mut_sex_mut.pdf'), width = 7, height = 4)
+pdf(file.path(dir_output, 'mut_sex_mut.pdf'), width = 6, height = 3.5)
 
 ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
-  geom_bar(stat = "identity", position = "dodge") +
+  geom_bar(stat = "identity", position = "dodge", width = 0.6) +
   scale_fill_manual(
     values = c("Female" = "#DD8452",
                "Male"   = "#4C72B0")
@@ -419,7 +419,7 @@ ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
   theme_classic() +
    theme(axis.text.x = element_text(size = 8, angle = 45, hjust = 1),
         axis.text.y = element_text(size = 8),
-        axis.title = element_text(size = 10),
+        axis.title = element_text(size = 9),
         legend.text = element_text(size = 8)) +
   labs(y = "Mutation frequency (%)", x = "", 
        title = " ")
@@ -453,10 +453,10 @@ plot_sex <- mut_long_wt %>%
 
 plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order)
 
-pdf(file.path(dir_output, 'mut_sex_wt.pdf'), width = 7, height = 4)
+pdf(file.path(dir_output, 'mut_sex_wt.pdf'), width = 6, height = 3.5)
 
 ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
-  geom_bar(stat = "identity", position = "dodge") +
+  geom_bar(stat = "identity", position = "dodge", width = 0.6) +
   scale_fill_manual(
     values = c("Female" = "#DD8452",
                "Male"   = "#4C72B0")
@@ -464,7 +464,7 @@ ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
   theme_classic() +
    theme(axis.text.x = element_text(size = 8, angle = 45, hjust = 1),
         axis.text.y = element_text(size = 8),
-        axis.title = element_text(size = 10),
+        axis.title = element_text(size = 9),
         legend.text = element_text(size = 8)) +
   labs(y = "Mutation frequency (%)", x = "", 
        title = " ")
