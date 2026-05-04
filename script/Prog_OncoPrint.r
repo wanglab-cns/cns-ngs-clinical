@@ -270,7 +270,6 @@ clin <- clin %>%
   )
 
 # Histology
-# clin$Histo <- coalesce(clin$LGG, clin$HGG)
 clin$Histo <- clin$histo
 clin <- clin %>%
   mutate(
@@ -326,12 +325,6 @@ anno_col <- list(
     'III' = "#FAE093FF",
     'IV' = "#7C7189FF"
   ),
- # Location = c(
- #   'Lobar'  = "#A54B2DFF",
- #   'Cerebellum' = "#577E2FFF",
- #   'Thalamic'  = "#B49696FF",
- #   'Other' = "#96A5A5FF"
- # ),
   Histo = c(
     'Glioblastoma'          = "#4A7169FF",
     'Astrocytoma'           = "#735231FF",
@@ -342,10 +335,6 @@ anno_col <- list(
     'Pediatric-type LGG'    = "#AAC197FF",
     'Ependymoma'            = "#96A5A5FF" 
   )
- # Therapy = c(
- #   'Yes'       = "#846D86FF",
- #   'No'        = "#ABB2A5FF"
- # )
 )
 
 # create annotation
@@ -498,8 +487,12 @@ heatmap_legend_param <- list(
   labels_gp = gpar(fontsize = 8)          
 )
 
+freq <- rowMeans(mut_wt != '')
+keep <- freq[freq >= 0.03]
+mut_wt_filtered <- mut_wt[rownames(mut_wt) %in% names(keep), ]
+
 p <- oncoPrint(
-  mut_wt,
+  mut_wt_filtered,
   get_type = function(x) strsplit(x, ";")[[1]],
   alter_fun = alter_fun,
   col = col,
@@ -514,7 +507,7 @@ p <- oncoPrint(
   right_annotation = NULL
 )
 
-pdf(file.path(dir_output, 'fig3_wt.pdf'), width = 6.5, height = 7)
+pdf(file.path(dir_output, 'fig3_wt.pdf'), width = 6.5, height = 5)
 
 draw(
   p,
