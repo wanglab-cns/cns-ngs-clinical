@@ -379,14 +379,14 @@ vol_idh1 <- co_res %>%
     sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
   )
 
-pdf(file.path(dir_output,  'volcano_coMut_all_updated.pdf'), width = 5, height = 4)
+pdf(file.path(dir_output,  'volcano_coMut_all_updated.pdf'), width = 4, height = 3.5)
 
 ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
   geom_point(aes(color = sig), size = 2) +
   geom_text_repel(
     data = subset(vol_idh1, fdr < 0.05),
     aes(label = pair),
-    size = 2.5
+    size = 2
   ) +
   scale_color_manual(
     values = c("FDR < 0.05" = "#1d587a",
@@ -421,14 +421,14 @@ vol_idh1 <- co_res %>%
     sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
   )
 
-pdf(file.path(dir_output,  'volcano_coMut_wt_updated.pdf'), width = 5, height = 4)
+pdf(file.path(dir_output,  'volcano_coMut_wt_updated.pdf'), width = 4, height = 3)
 
 ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
   geom_point(aes(color = sig), size = 2) +
   geom_text_repel(
     data = subset(vol_idh1, fdr < 0.05),
     aes(label = pair),
-    size = 2.5
+    size = 2
   ) +
   scale_color_manual(
     values = c("FDR < 0.05" = "#1d587a",
@@ -446,7 +446,7 @@ ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
     axis.text  = element_text(size = 8),
    # plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
     legend.text = element_text(size = 8),
-    legend.title = element_text(size = 9)
+    legend.title = element_text(size = 8)
   )
 
 dev.off()
@@ -463,14 +463,14 @@ vol_idh1 <- co_res %>%
     sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
   )
 
-pdf(file.path(dir_output,  'volcano_coMut_mut_updated.pdf'), width = 5, height = 4)
+pdf(file.path(dir_output,  'volcano_coMut_mut_updated.pdf'), width = 4, height = 3)
 
 ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
   geom_point(aes(color = sig), size = 2) +
   geom_text_repel(
     data = subset(vol_idh1, fdr < 0.05),
     aes(label = pair),
-    size = 2.5
+    size = 2
   ) +
   scale_color_manual(
     values = c("FDR < 0.05" = "#1d587a",
@@ -488,7 +488,7 @@ ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
     axis.text  = element_text(size = 8),
    # plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
     legend.text = element_text(size = 8),
-    legend.title = element_text(size = 9)
+    legend.title = element_text(size = 8)
   )
 
 dev.off()
