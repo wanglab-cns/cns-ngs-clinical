@@ -424,8 +424,8 @@ cox_res <- lapply(names(df), function(varname){
   data$variable <- as.factor(data$variable)
 
   # censoring (vectorized)
-  data$status[data$time > time.censor.mut] <- 0
-  data$time[data$time > time.censor.mut] <- time.censor.mut
+  data$status[data$time > time.censor] <- 0
+  data$time[data$time > time.censor] <- time.censor
 
   # skip if only one level
   if(nlevels(data$variable) < 2) return(NULL)

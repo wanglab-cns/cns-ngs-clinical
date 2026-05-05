@@ -404,8 +404,8 @@ data <- data.frame( status=clin_gbm$os.event ,
 data <- data[!is.na(data$variable), ]
 data$variable <- factor(data$variable)
 
-data$status[data$time > time.censor.mut] <- 0
-data$time[data$time > time.censor.mut] <- time.censor.mut
+data$status[data$time > time.censor] <- 0
+data$time[data$time > time.censor] <- time.censor
 
 n1 <- sum(data$variable == 1)
 n0 <- sum(data$variable == 0)
@@ -688,8 +688,8 @@ data <- data.frame( status=clin_gbm$os.event ,
 data <- data[!is.na(data$variable), ]
 data$variable <- factor(data$variable)
 
-data$status[data$time > time.censor.mut] <- 0
-data$time[data$time > time.censor.mut] <- time.censor.mut
+data$status[data$time > time.censor] <- 0
+data$time[data$time > time.censor] <- time.censor
   
   n1 <- sum(data$variable == 1)
   n0 <- sum(data$variable == 0)
@@ -952,42 +952,3 @@ cox_res$study <- 'GBM'
 write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_clin_gbm_mv_part2.csv'), row.names=FALSE)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-dir_output <- 'result/assoc/clinical'
-clin_wt <- read.csv(file.path(dir_output, 'cox_os_clin_wt.csv'))
-clin_mut <- read.csv(file.path(dir_output, 'cox_os_clin_mut.csv'))
-
-dir_output <- 'result/assoc/mutation'
-mut_mut <- read.csv(file.path(dir_output, 'cox_os_mut_mut.csv'))
-mut_wt <- read.csv(file.path(dir_output, 'cox_os_mut_wt.csv'))
-
-dir_output <- 'result/assoc'
-clin_mut_mut <- read.csv(file.path(dir_output, 'mutation & clinical', 'cox_os_mut_mv_part1.csv'))
-clin_mut_wt <- read.csv(file.path(dir_output, 'mutation & clinical', 'cox_os_wt_mv_part1.csv'))
