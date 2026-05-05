@@ -285,6 +285,7 @@ cox_res <- lapply(names(df), function(varname){
 
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
+cox_res$study <- 'All'
 
 write.csv(cox_res,
           file = file.path(dir_output, 'clinical', 'cox_os_clin_all.csv'),
@@ -341,6 +342,7 @@ cox_res <- lapply(names(df), function(varname){
 
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
+cox_res$study <- 'IDH wilde-type'
 
 write.csv(cox_res,
           file = file.path(dir_output, 'clinical', 'cox_os_clin_wt.csv'),
@@ -396,6 +398,7 @@ cox_res <- lapply(names(df), function(varname){
 
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
+cox_res$study <- 'IDH mutant'
 
 write.csv(cox_res,
           file = file.path(dir_output, 'clinical', 'cox_os_clin_mut.csv'),
@@ -452,6 +455,7 @@ cox_res <- lapply(names(df), function(varname){
 
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
+cox_res$study <- 'GBM'
 
 write.csv(cox_res,
           file = file.path(dir_output, 'clinical', 'cox_os_clin_gbm.csv'),
