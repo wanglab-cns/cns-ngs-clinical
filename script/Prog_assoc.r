@@ -1,128 +1,98 @@
 ##-------------------------------------------------------------------
-## Script: CNS NGS Gene-Level Mutation – Overall Survival Association
+## Script: Clinical Variables and Overall Survival Association (CNS Tumours)
 ##
 ## Purpose:
-##   Assess associations between binary gene-level mutation
-##   status (0 = wild-type, 1 = mutated) and overall survival (OS)
-##   in CNS tumor patients using Cox proportional hazards models.
+##   To assess the association between clinical variables and
+##   overall survival (OS) in CNS tumour patients using Cox
+##   proportional hazards regression models.
 ##
-##   Perform univariable and multivariable survival analyses,
-##   including stratified analyses by IDH status, to identify
-##   mutation-associated prognostic signals.
-##
-##   Apply administrative censoring to ensure comparable
-##   follow-up across patients.
+##   Univariable analyses are performed across key clinical
+##   variables in the full cohort and within IDH- and
+##   histology-stratified subgroups. Firth’s penalized Cox
+##   regression is used to improve stability in small or
+##   imbalanced groups.
 ##
 ##
 ## Input:
 ##   - result/data/mae_mut_clin.RData
-##       MultiAssayExperiment containing:
-##         - mut_binary assay:
-##             gene × patient binary mutation matrix (0/1)
-##         - colData:
-##             harmonized clinical metadata including:
-##               • os.time, os.event
-##               • IDH_status
-##               • Age, Sex
-##               • WHO.2021.Grade
-##               • ECOG
-##               • MGMT methylation
-##               • Extent of resection
-##               • Histology annotations
+##       MultiAssayExperiment object containing:
+##
+##         • mut_binary assay:
+##             Gene-level binary mutation matrix (used to derive IDH status)
+##
+##         • colData:
+##             Harmonized clinical metadata including:
+##               - os.time, os.event
+##               - IDH_status
+##               - Age, Sex
+##               - WHO.2021.Grade
+##               - Histology
+##               - MGMT methylation
+##               - ECOG performance status
+##               - Extent of surgical resection
 ##
 ##
 ## Outputs:
+##   CSV files containing univariable Cox regression results:
 ##
-##   Univariable Cox models:
-##     - result/assoc/cox_os_all.csv
-##     - result/assoc/cox_os_wt.csv
-##     - result/assoc/cox_os_mut.csv
+##     - result/assoc/clinical/cox_os_clin_all.csv   (all patients)
+##     - result/assoc/clinical/cox_os_clin_wt.csv    (IDH wild-type)
+##     - result/assoc/clinical/cox_os_clin_mut.csv   (IDH mutant)
+##     - result/assoc/clinical/cox_os_clin_gbm.csv   (GBM subset)
 ##
-##   Multivariable Cox models (clinical-adjusted):
-##
-##     Part 1:
-##       - cox_os_clin_mv_part1.csv
-##       - cox_os_clin_wt_mv_part1.csv
-##       - cox_os_clin_mut_mv_part1.csv
-##
-##       Covariates:
-##         Age + ECOG + Resection
-##
-##     Part 2:
-##       - cox_os_clin_mv_part2.csv
-##       - cox_os_clin_wt_mv_part2.csv
-##       - cox_os_clin_mut_mv_part2.csv
-##
-##       Covariates:
-##         Age + ECOG + Resection + MGMT
-##
-##
-##   Each output includes:
-##     gene, HR, SE, N,
-##     95% CI (lower/upper),
-##     p-value, and BH-adjusted FDR
+##   Each file includes:
+##     variable, level, HR, SE, N,
+##     95% CI (lower, upper), and p-value
 ##
 ##
 ## Processing Overview:
 ##
 ##   1) Data Loading
-##        The MultiAssayExperiment object is loaded and the
-##        binary mutation matrix and clinical metadata are
-##        extracted.
-##
-##        IDH mutation status is re-derived from IDH1/IDH2
-##        and appended as a gene-level feature.
+##        Load MultiAssayExperiment object and extract clinical data.
+##        IDH mutation status is re-derived from IDH1/IDH2 mutations.
 ##
 ##   2) Clinical Variable Processing
-##        Clinical variables are recoded and harmonized:
-##           - Age dichotomized (>40 vs <40)
-##           - ECOG simplified
-##           - MGMT methylation recoded (M / U / Unknown)
-##           - Grade grouped (Low vs High)
-##           - Histology grouped (GBM vs Non-GBM)
+##        Variables are harmonized and recoded:
+##           - Age: <40 vs ≥40
+##           - Grade: Low (I/II) vs High (III/IV)
+##           - Histology: GBM vs Non-GBM
+##           - MGMT: M / U / Unknown
+##           - ECOG: 0–3
+##           - Resection: Total / Subtotal / Biopsy
+##
+##        All variables are converted to factors with predefined
+##        reference levels.
 ##
 ##   3) Survival Preprocessing
-##        Overall survival is administratively censored:
-##           - All patients: time.censor (e.g., 36 months)
-##           - IDH-mutant patients: extended censoring window
+##        Administrative censoring is applied:
+##           - All / IDH-WT / GBM: fixed window (e.g., 36 months)
+##           - IDH-Mut: extended follow-up window
 ##
-##   4) Gene Filtering per Model
-##        For each gene:
-##           - Require minimum mutated (n1.cutoff) and
-##             wild-type (n0.cutoff) sample counts
-##           - Require sufficient event counts in both groups
+##   4) Cox Modeling
+##        For each variable:
+##           - Remove missing values
+##           - Ensure ≥2 levels
+##           - Fit penalized Cox model:
+##                Surv(time, status) ~ variable
 ##
-##   5) Univariable Cox Analysis
-##        For each gene:
-##           - Fit Cox proportional hazards model:
-##                Surv(time, status) ~ mutation
-##
-##        Analyses performed for:
-##           - All patients
-##           - IDH wild-type subset
-##           - IDH mutant subset
-##
-##   6) Multivariable Cox Analysis
-##        Clinical-adjusted Cox models are fitted:
-##
-##           Part 1:
-##             Surv ~ mutation + Age + ECOG + Resection
-##
-##           Part 2:
-##             Surv ~ mutation + Age + ECOG + Resection + MGMT
-##
-##        Models are applied separately to:
-##           - All patients
+##   5) Stratified Analyses
+##        Repeat analyses for:
+##           - Full cohort
 ##           - IDH wild-type
 ##           - IDH mutant
+##           - GBM subset
 ##
-##   7) Multiple Testing Correction
-##        P-values are adjusted across genes using the
-##        Benjamini–Hochberg procedure to control FDR.
+##   6) Result Extraction and Export
+##        Extract HRs, SEs, confidence intervals, and p-values,
+##        and export results to CSV files.
 ##
-##   8) Export
-##        All Cox model results are written to CSV files
-##        for downstream interpretation and reporting.
+##
+## Notes:
+##   - Reference categories are defined by factor level ordering.
+##   - Category collapsing is used to reduce sparsity.
+##   - Penalized Cox regression mitigates small-sample bias.
+##   - Stratified results should be interpreted cautiously due
+##     to reduced sample sizes.
 ##-------------------------------------------------------------------
 ####################################################
 ## Load libraries
@@ -275,7 +245,8 @@ e0 <- sum(data$status[data$variable == 0] == 1)
     
     fit <- coxphf(Surv(time, status) ~ variable, data = data)
     res <- data.frame(gene = rownames(df)[k],
-                      HR = exp(fit$coefficients),   
+                      logHR = fit$coefficients,
+                      HR = exp(fit$coefficients),     
                       se = sqrt(diag(fit$var)),
                       n = nrow(data),
                       low = fit$ci.lower,
@@ -286,6 +257,7 @@ e0 <- sum(data$status[data$variable == 0] == 1)
   } else{
     
    res <- data.frame(gene = rownames(df)[k],
+                     logHR = NA,
                      HR = NA,
                      se = NA,
                      n = NA,
@@ -302,10 +274,11 @@ e0 <- sum(data$status[data$variable == 0] == 1)
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
 cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
+cox_res$study <- 'All'
 write.csv(cox_res, file = file.path(dir_output, 'mutation', 'cox_os_mut_all.csv'), row.names=FALSE)
 
 ## --- Step 2: WT patients 
-clin_wt <- clin[clin$IDH_status == 'WT', ]
+clin_wt <- clin[clin$IDH_status == 'WT', ] # 152
 df <- mut[, colnames(mut) %in% clin_wt$Study]
 
 cox_res <- lapply(1:nrow(df), function(k){
@@ -329,6 +302,7 @@ e0 <- sum(data$status[data$variable == 0] == 1)
     
     fit <- coxphf(Surv(time, status) ~ variable, data = data)
     res <- data.frame(gene = rownames(df)[k],
+                      logHR = fit$coefficients, 
                       HR = exp(fit$coefficients),   
                       se = sqrt(diag(fit$var)),
                       n = nrow(data),
@@ -340,6 +314,7 @@ e0 <- sum(data$status[data$variable == 0] == 1)
   } else{
     
    res <- data.frame(gene = rownames(df)[k],
+                     logHR = NA,
                      HR = NA,
                      se = NA,
                      n = NA,
@@ -356,10 +331,11 @@ e0 <- sum(data$status[data$variable == 0] == 1)
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
 cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
+cox_res$study <- 'IDH wilde-type'
 write.csv(cox_res, file = file.path(dir_output, 'mutation', 'cox_os_mut_wt.csv'), row.names=FALSE)
 
 ## --- Step 3: Mut patients 
-clin_mut <- clin[clin$IDH_status == 'Mut', ]
+clin_mut <- clin[clin$IDH_status == 'Mut', ] # 47
 df <- mut[, colnames(mut) %in% clin_mut$Study]
 
 cox_res <- lapply(1:nrow(df), function(k){
@@ -383,6 +359,7 @@ e0 <- sum(data$status[data$variable == 0] == 1)
     
     fit <- coxphf(Surv(time, status) ~ variable, data = data)
     res <- data.frame(gene = rownames(df)[k],
+                      logHR = fit$coefficients, 
                       HR = exp(fit$coefficients),   
                       se = sqrt(diag(fit$var)),
                       n = nrow(data),
@@ -394,6 +371,7 @@ e0 <- sum(data$status[data$variable == 0] == 1)
   } else{
     
    res <- data.frame(gene = rownames(df)[k],
+                     logHR = NA, 
                      HR = NA,
                      se = NA,
                      n = NA,
@@ -410,7 +388,66 @@ e0 <- sum(data$status[data$variable == 0] == 1)
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
 cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
+cox_res$study <- 'IDH mutant'
 write.csv(cox_res, file = file.path(dir_output, 'mutation', 'cox_os_mut_mut.csv'), row.names=FALSE)
+
+## --- Step 4: GBM patients 
+clin_gbm <- clin[clin$Histo == 'GBM', ] # 105
+df <- mut[, colnames(mut) %in% clin_gbm$Study]
+
+cox_res <- lapply(1:nrow(df), function(k){
+
+data <- data.frame( status=clin_gbm$os.event , 
+                    time=clin_gbm$os.time , 
+                    variable=as.numeric(unlist(df[k, ]) ) )
+
+data <- data[!is.na(data$variable), ]
+data$variable <- factor(data$variable)
+
+data$status[data$time > time.censor.mut] <- 0
+data$time[data$time > time.censor.mut] <- time.censor.mut
+
+n1 <- sum(data$variable == 1)
+n0 <- sum(data$variable == 0)
+e1 <- sum(data$status[data$variable == 1] == 1)
+e0 <- sum(data$status[data$variable == 0] == 1)
+
+  if( n1 >= n1.cutoff & n0 >= n0.cutoff & e1 >= 2 & e0 >= 2 ){
+    
+    fit <- coxphf(Surv(time, status) ~ variable, data = data)
+    res <- data.frame(gene = rownames(df)[k],
+                      logHR = fit$coefficients, 
+                      HR = exp(fit$coefficients),   
+                      se = sqrt(diag(fit$var)),
+                      n = nrow(data),
+                      low = fit$ci.lower,
+                      up  = fit$ci.upper,
+                      pval = fit$prob)
+                      
+
+  } else{
+    
+   res <- data.frame(gene = rownames(df)[k],
+                     logHR = NA, 
+                     HR = NA,
+                     se = NA,
+                     n = NA,
+                     low = NA,
+                     up = NA,
+                     pval = NA)
+    
+  }
+  
+  res
+
+})
+
+cox_res <- do.call(rbind, cox_res)
+cox_res <- cox_res[!is.na(cox_res$HR), ]
+cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
+cox_res$study <- 'GBM'
+write.csv(cox_res, file = file.path(dir_output, 'mutation', 'cox_os_mut_gbm.csv'), row.names=FALSE)
+
 ########################################################################################################
 ########################################################################################################
 ######################################### MV OS association (Part 1) ###################################
@@ -426,12 +463,12 @@ cox_res <- lapply(1:nrow(df), function(k){
 data <- data.frame( status=clin$os.event , 
                     time=clin$os.time , 
                     variable=as.numeric(unlist(df[k, ]) ) , 
-                    #IDH =  clin$IDH_status, 
+                    IDH =  clin$IDH_status, 
                     Age = clin$Age, 
-                    #Grade = clin$Grade, 
-                    #Histo = clin$Histo,
+                    Grade = clin$Grade, 
+                    Histo = clin$Histo,
                     ECOG = clin$ECOG,
-                    #MGMT = clin$MGMT,
+                    MGMT = clin$MGMT,
                     Resection = clin$Resection
                     )
   
@@ -448,10 +485,11 @@ data$time[data$time > time.censor] <- time.censor
 
   if( n1 >= n1.cutoff & n0 >= n0.cutoff & e1 >= 2 & e0 >= 2 ){
     
-    fit <- coxphf( formula= Surv( time , status ) ~ variable + Age  
+    fit <- coxphf( formula= Surv( time , status ) ~ variable + Age   
                                                    + ECOG + Resection, data=data )
     res <- data.frame(gene = rownames(df)[k],
                       level = names(fit$coefficients),
+                      logHR = fit$coefficients,
                       HR = exp(fit$coefficients),
                       se = sqrt(diag(fit$var)),
                       n = nrow(data),
@@ -465,6 +503,7 @@ data$time[data$time > time.censor] <- time.censor
     
    res <- data.frame(gene = rownames(df)[k],
                      level = NA,
+                     logHR = NA,
                      HR = NA,
                      se = NA,
                      n = NA,
@@ -481,6 +520,7 @@ data$time[data$time > time.censor] <- time.censor
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
 cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
+cox_res$study <- 'All'
 write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_all_mv_part1.csv'), row.names=FALSE)
 
 ## --- Step 2: WT patients
@@ -496,10 +536,10 @@ data <- data.frame( status=clin_wt$os.event ,
                     time=clin_wt$os.time , 
                     variable=as.numeric(unlist(df[k, ]) ) , 
                     Age = clin_wt$Age, 
-                    #Grade = clin_wt$Grade,
-                    #Histo = clin_wt$Histo,
+                    Grade = clin_wt$Grade,
+                    Histo = clin_wt$Histo,
                     ECOG = clin_wt$ECOG,
-                    #MGMT = clin_wt$MGMT,
+                    MGMT = clin_wt$MGMT,
                     Resection = clin_wt$Resection
                     )
 
@@ -520,6 +560,7 @@ data$time[data$time > time.censor] <- time.censor
                                                    + ECOG + Resection, data=data )
     res <- data.frame(gene = rownames(df)[k],
                       level = names(fit$coefficients),
+                      logHR = fit$coefficients,
                       HR = exp(fit$coefficients),
                       se = sqrt(diag(fit$var)),
                       n = nrow(data),
@@ -533,6 +574,7 @@ data$time[data$time > time.censor] <- time.censor
     
    res <- data.frame(gene = rownames(df)[k],
                      level = NA,
+                     logHR = NA,
                      HR = NA,
                      se = NA,
                      n = NA,
@@ -549,6 +591,7 @@ data$time[data$time > time.censor] <- time.censor
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
 cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
+cox_res$study <- 'IDH wild-type'
 write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_wt_mv_part1.csv'), row.names=FALSE)
 
 ## --- Step 3: Mut patients
@@ -563,11 +606,11 @@ cox_res <- lapply(1:nrow(df), function(k){
 data <- data.frame( status=clin_mut$os.event , 
                     time=clin_mut$os.time , 
                     variable=as.numeric(unlist(df[k, ]) ), 
-                    #Age = clin_mut$Age
-                    #Grade = clin_mut$Grade,
-                    #Histo = clin_mut$Histo,
-                    #ECOG = clin_mut$ECOG,
-                    #MGMT = clin_mut$MGMT,
+                    Age = clin_mut$Age,
+                    Grade = clin_mut$Grade,
+                    Histo = clin_mut$Histo,
+                    ECOG = clin_mut$ECOG,
+                    MGMT = clin_mut$MGMT,
                     Resection = clin_mut$Resection
                     )
 
@@ -587,6 +630,7 @@ data$time[data$time > time.censor.mut] <- time.censor.mut
     fit <- coxphf( formula= Surv( time , status ) ~ variable + Resection, data=data )
     res <- data.frame(gene = rownames(df)[k],
                       level = names(fit$coefficients),
+                      logHR = fit$coefficients,
                       HR = exp(fit$coefficients),
                       se = sqrt(diag(fit$var)),
                       n = nrow(data),
@@ -600,6 +644,7 @@ data$time[data$time > time.censor.mut] <- time.censor.mut
     
    res <- data.frame(gene = rownames(df)[k],
                      level = NA,
+                     logHR = NA,
                      HR = NA,
                      se = NA,
                      n = NA,
@@ -616,7 +661,79 @@ data$time[data$time > time.censor.mut] <- time.censor.mut
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
 cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
+cox_res$study <- 'IDH mutant'
 write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_mut_mv_part1.csv'), row.names=FALSE)
+
+
+## --- Step 3: Mut patients
+res <- read.csv(file.path(dir_output, 'clinical', 'cox_os_clin_gbm.csv'))
+varnames <- res[res$pval < 0.05, 'variable']
+
+clin_gbm <- clin[clin$Histo == 'GBM', ]
+df <- mut[, colnames(mut) %in% clin_gbm$Study]
+
+cox_res <- lapply(1:nrow(df), function(k){
+
+data <- data.frame( status=clin_gbm$os.event , 
+                    time=clin_gbm$os.time , 
+                    variable=as.numeric(unlist(df[k, ]) ), 
+                    Age = clin_gbm$Age,
+                    Grade = clin_gbm$Grade,
+                    Histo = clin_gbm$Histo,
+                    ECOG = clin_gbm$ECOG,
+                    MGMT = clin_gbm$MGMT,
+                    Resection = clin_gbm$Resection
+                    )
+
+data <- data[!is.na(data$variable), ]
+data$variable <- factor(data$variable)
+
+data$status[data$time > time.censor.mut] <- 0
+data$time[data$time > time.censor.mut] <- time.censor.mut
+  
+  n1 <- sum(data$variable == 1)
+  n0 <- sum(data$variable == 0)
+  e1 <- sum(data$status[data$variable == 1] == 1)
+  e0 <- sum(data$status[data$variable == 0] == 1)
+
+  if( n1 >= n1.cutoff & n0 >= n0.cutoff & e1 >= 2 & e0 >= 2 ){
+    
+    fit <- coxphf( formula= Surv( time , status ) ~ variable + Resection, data=data )
+    res <- data.frame(gene = rownames(df)[k],
+                      level = names(fit$coefficients),
+                      logHR = fit$coefficients,
+                      HR = exp(fit$coefficients),
+                      se = sqrt(diag(fit$var)),
+                      n = nrow(data),
+                      low = fit$ci.lower,
+                      up  = fit$ci.upper,
+                      pval = fit$prob)
+    
+    res <- res[grep("^variable", res$level), ]
+
+  } else{
+    
+   res <- data.frame(gene = rownames(df)[k],
+                     level = NA,
+                     logHR = NA,
+                     HR = NA,
+                     se = NA,
+                     n = NA,
+                     low = NA,
+                     up = NA,
+                     pval = NA)
+    
+  }
+  
+  res
+
+})
+
+cox_res <- do.call(rbind, cox_res)
+cox_res <- cox_res[!is.na(cox_res$HR), ]
+cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
+cox_res$study <- 'GBM'
+write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_gbm_mv_part1.csv'), row.names=FALSE)
 
 ########################################################################################################
 ########################################################################################################
@@ -633,9 +750,9 @@ cox_res <- lapply(1:nrow(df), function(k){
 data <- data.frame( status=clin$os.event , 
                     time=clin$os.time , 
                     variable=as.numeric(unlist(df[k, ]) ) , 
-                    #IDH =  clin$IDH_status, 
+                    IDH =  clin$IDH_status, 
                     Age = clin$Age, 
-                    #Grade = clin$Grade, 
+                    Grade = clin$Grade, 
                     Histo = clin$Histo,
                     ECOG = clin$ECOG,
                     MGMT = clin$MGMT,
@@ -659,6 +776,7 @@ data$time[data$time > time.censor] <- time.censor
                                                    + ECOG + Resection + MGMT, data=data )
     res <- data.frame(gene = rownames(df)[k],
                       level = names(fit$coefficients),
+                      logHR = fit$coefficients,
                       HR = exp(fit$coefficients),
                       se = sqrt(diag(fit$var)),
                       n = nrow(data),
@@ -672,6 +790,7 @@ data$time[data$time > time.censor] <- time.censor
     
    res <- data.frame(gene = rownames(df)[k],
                      level = NA,
+                     logHR = NA,
                      HR = NA,
                      se = NA,
                      n = NA,
@@ -688,6 +807,7 @@ data$time[data$time > time.censor] <- time.censor
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
 cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
+cox_res$study <- 'All'
 write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_clin_mv_part2.csv'), row.names=FALSE)
 
 ## --- Step 2: WT patients
@@ -703,8 +823,8 @@ data <- data.frame( status=clin_wt$os.event ,
                     time=clin_wt$os.time , 
                     variable=as.numeric(unlist(df[k, ]) ) , 
                     Age = clin_wt$Age, 
-                    #Grade = clin_wt$Grade,
-                    #Histo = clin_wt$Histo,
+                    Grade = clin_wt$Grade,
+                    Histo = clin_wt$Histo,
                     ECOG = clin_wt$ECOG,
                     MGMT = clin_wt$MGMT,
                     Resection = clin_wt$Resection
@@ -727,6 +847,7 @@ data$time[data$time > time.censor] <- time.censor
                                                    + ECOG + Resection + MGMT, data=data )
     res <- data.frame(gene = rownames(df)[k],
                       level = names(fit$coefficients),
+                      logHR = fit$coefficients,
                       HR = exp(fit$coefficients),
                       se = sqrt(diag(fit$var)),
                       n = nrow(data),
@@ -740,6 +861,7 @@ data$time[data$time > time.censor] <- time.censor
     
    res <- data.frame(gene = rownames(df)[k],
                      level = NA,
+                     logHR = NA,
                      HR = NA,
                      se = NA,
                      n = NA,
@@ -756,4 +878,116 @@ data$time[data$time > time.censor] <- time.censor
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
 cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
+cox_res$study <- 'IDH wild-type'
 write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_clin_wt_mv_part2.csv'), row.names=FALSE)
+
+## --- Step 2: GBM patients
+res <- read.csv(file.path(dir_output, 'clinical', 'cox_os_clin_gbm.csv'))
+varnames <- res[res$pval < 0.05, 'variable']
+
+clin_gbm <- clin[clin$Histo == 'GBM', ]
+df <- mut[, colnames(mut) %in% clin_gbm$Study]
+
+cox_res <- lapply(1:nrow(df), function(k){
+
+data <- data.frame( status=clin_gbm$os.event , 
+                    time=clin_gbm$os.time , 
+                    variable=as.numeric(unlist(df[k, ]) ) , 
+                    Age = clin_gbm$Age, 
+                    Grade = clin_gbm$Grade,
+                    Histo = clin_gbm$Histo,
+                    ECOG = clin_gbm$ECOG,
+                    MGMT = clin_gbm$MGMT,
+                    Resection = clin_gbm$Resection
+                    )
+
+data <- data[!is.na(data$variable), ]
+data$variable <- factor(data$variable)
+
+data$status[data$time > time.censor] <- 0
+data$time[data$time > time.censor] <- time.censor
+  
+  n1 <- sum(data$variable == 1)
+  n0 <- sum(data$variable == 0)
+  e1 <- sum(data$status[data$variable == 1] == 1)
+  e0 <- sum(data$status[data$variable == 0] == 1)
+
+  if( n1 >= n1.cutoff & n0 >= n0.cutoff & e1 >= 2 & e0 >= 2 ){
+    
+    fit <- coxphf( formula= Surv( time , status ) ~ variable + Age + Resection + MGMT, data=data )
+    res <- data.frame(gene = rownames(df)[k],
+                      level = names(fit$coefficients),
+                      logHR = fit$coefficients,
+                      HR = exp(fit$coefficients),
+                      se = sqrt(diag(fit$var)),
+                      n = nrow(data),
+                      low = fit$ci.lower,
+                      up  = fit$ci.upper,
+                      pval = fit$prob)
+    
+    res <- res[grep("^variable", res$level), ]
+
+  } else{
+    
+   res <- data.frame(gene = rownames(df)[k],
+                     level = NA,
+                     logHR = NA,
+                     HR = NA,
+                     se = NA,
+                     n = NA,
+                     low = NA,
+                     up = NA,
+                     pval = NA)
+    
+  }
+  
+  res
+
+})
+
+cox_res <- do.call(rbind, cox_res)
+cox_res <- cox_res[!is.na(cox_res$HR), ]
+cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
+cox_res$study <- 'GBM'
+write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_clin_gbm_mv_part2.csv'), row.names=FALSE)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+dir_output <- 'result/assoc/clinical'
+clin_wt <- read.csv(file.path(dir_output, 'cox_os_clin_wt.csv'))
+clin_mut <- read.csv(file.path(dir_output, 'cox_os_clin_mut.csv'))
+
+dir_output <- 'result/assoc/mutation'
+mut_mut <- read.csv(file.path(dir_output, 'cox_os_mut_mut.csv'))
+mut_wt <- read.csv(file.path(dir_output, 'cox_os_mut_wt.csv'))
+
+dir_output <- 'result/assoc'
+clin_mut_mut <- read.csv(file.path(dir_output, 'mutation & clinical', 'cox_os_mut_mv_part1.csv'))
+clin_mut_wt <- read.csv(file.path(dir_output, 'mutation & clinical', 'cox_os_wt_mv_part1.csv'))
