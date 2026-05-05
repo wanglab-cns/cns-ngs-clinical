@@ -294,8 +294,6 @@ anno_df <- data.frame(
   Sex = factor(clin$Sex, levels = c("Male", "Female")),
   Age = factor(clin$Age, levels = c(">40", "<40")),
   IDH = factor(clin$IDH_status, levels = c("WT", "Mut")),
-#  Therapy =  factor(clin$Therapy_status, levels = c("Yes", "No")),
-#  Location = factor(clin$Location, levels = c('Lobar', 'Cerebellum', 'Thalamic', 'Other')),
   Histo = factor(clin$Histo, levels = c('Glioblastoma', 'Astrocytoma', 'Circumscribed glioma',
                                         'Glioneuronal tumor', 'Oligodendroglioma',  'Pediatric-type HGG',
                                         'Pediatric-type LGG', 'Ependymoma')),
@@ -405,8 +403,6 @@ anno_df <- data.frame(
   Sex = factor(clin_wt$Sex, levels = c("Male", "Female")),
   Age = factor(clin_wt$Age, levels = c(">40", "<40")),
   #IDH = factor(clin_wt$IDH_status, levels = c("WT", "Mut")),
-  #Therapy =  factor(clin_wt$Therapy_status, levels = c("Yes", "No")),
-  #Location = factor(clin_wt$Location, levels = c('Lobar', 'Cerebellum', 'Thalamic', 'Other')),
   Histo = factor(clin_wt$Histo, c('Glioblastoma', 'Astrocytoma', 'Circumscribed glioma',
                                   'Glioneuronal tumor', 'Pediatric-type HGG', 'Pediatric-type LGG', 
                                   'Ependymoma')),
@@ -528,8 +524,6 @@ anno_df <- data.frame(
   Sex = factor(clin_mut$Sex, levels = c("Male", "Female")),
   Age = factor(clin_mut$Age, levels = c(">40", "<40")),
  #IDH = factor(clin_mut$IDH_status, levels = c("WT", "Mut")),
- # Therapy =  factor(clin_mut$Therapy_status, levels = c("Yes", "No")),
- # Location = factor(clin_mut$Location, levels = c('Lobar', 'Cerebellum')),
   Histo = factor(clin_mut$Histo, levels = c('Astrocytoma', 'Oligodendroglioma')),
   Grade = factor(clin_mut$Grade, levels = c('II', 'III', 'IV'))
 )
