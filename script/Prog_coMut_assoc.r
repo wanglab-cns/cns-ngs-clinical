@@ -5,120 +5,182 @@
 ##   Quantify pairwise gene co-mutation and mutual exclusivity
 ##   patterns in CNS tumor patients using binary mutation data.
 ##
-##   Evaluate statistical dependence between gene mutation
+##   Evaluate statistical dependence between gene alteration
 ##   events across patients and identify significant
 ##   co-occurring or mutually exclusive gene pairs.
 ##
-##   Generate analysis-ready result tables and visualization
-##   outputs for downstream interpretation.
+##   Generate analysis-ready statistical summaries and
+##   publication-quality visualizations for downstream
+##   interpretation and reporting.
 ##
 ##
 ## Input:
+##
 ##   - result/data/mae_mut_clin.RData
+##
 ##       MultiAssayExperiment containing:
+##
 ##         - mut_binary assay:
 ##             gene × patient binary mutation matrix (0/1)
+##
 ##         - colData:
-##             harmonized clinical metadata (including IDH_status)
+##             harmonized clinical metadata
+##             (including IDH_status)
 ##
 ##
 ## Outputs:
 ##
 ##   1) result/coMut/coMut_res_all.csv
+##
 ##        Pairwise co-mutation results (all patients)
 ##
+##
 ##   2) result/coMut/coMut_res_wt.csv
-##        Pairwise co-mutation results (IDH wild-type)
+##
+##        Pairwise co-mutation results
+##        (IDH wild-type subset)
+##
 ##
 ##   3) result/coMut/coMut_res_mut.csv
-##        Pairwise co-mutation results (IDH mutant)
 ##
-##        Each file contains:
+##        Pairwise co-mutation results
+##        (IDH mutant subset)
+##
+##
+##        Each result file contains:
+##
 ##          - gene1, gene2
-##          - OR (corrected odds ratio)
+##          - OR (continuity-corrected odds ratio)
 ##          - pval, fdr
 ##          - n11, n10, n01, n00
 ##
+##
 ##   4) Volcano plots (PDF):
-##        - volcano_coMut_all_updated.pdf
-##        - volcano_coMut_wt_updated.pdf
-##        - volcano_coMut_mut_updated.pdf
+##
+##        - volcano_coMut_all.pdf
+##        - volcano_coMut_wt.pdf
+##        - volcano_coMut_mut.pdf
+##
 ##
 ##        Visualization:
-##          x-axis: log2(OR)
-##          y-axis: −log10(p-value)
-##          significant pairs highlighted (FDR < 0.05)
+##
+##          x-axis:
+##             log2(OR)
+##
+##          y-axis:
+##             −log10(p-value)
+##
+##          Positive log2(OR) values indicate
+##          co-occurrence enrichment, whereas
+##          negative log2(OR) values indicate
+##          mutual exclusivity.
+##
+##          Significant gene pairs are highlighted
+##          using FDR < 0.05.
+##
 ##
 ##   5) UpSet plots (PDF):
+##
 ##        - upset_coMut_all.pdf
 ##        - upset_coMut_wt.pdf
 ##        - upset_coMut_mut.pdf
 ##
+##
 ##        Visualization:
-##          mutation combination patterns across top
-##          co-mutated genes ranked by interaction degree
+##
+##          Higher-order mutation co-occurrence
+##          patterns across top-ranked co-mutated
+##          genes.
 ##
 ##
 ## Processing Overview:
 ##
 ##   1) Data Loading
-##        The MultiAssayExperiment object is loaded and the
-##        binary mutation matrix and clinical metadata are
-##        extracted.
 ##
-##        IDH status is re-derived at the mutation level
-##        (IDH1/IDH2) and appended as a gene-level feature.
+##        The MultiAssayExperiment object is loaded and the
+##        binary mutation matrix and associated clinical
+##        metadata are extracted.
+##
+##        Patient-level IDH status is re-derived from
+##        IDH1/IDH2 alterations and appended as a
+##        binary gene-level feature.
+##
 ##
 ##   2) Gene Filtering
-##        Genes with mutation frequency ≥ min_mut_freq
-##        (default = 5 patients) are retained to ensure
-##        stability of statistical estimates.
+##
+##        Genes mutated in at least min_mut_freq
+##        patients (default = 5) are retained to
+##        improve stability of statistical estimates.
+##
 ##
 ##   3) Pairwise Co-Mutation Testing
+##
 ##        All possible gene pairs are enumerated.
 ##
-##        For each pair, a 2×2 contingency table is constructed:
+##        For each pair, a 2×2 contingency table
+##        is constructed:
 ##
 ##              g2 Mut   g2 WT
 ##     g1 Mut      n11     n10
 ##     g1 WT       n01     n00
 ##
-##        Fisher’s exact test is used to evaluate independence.
+##        Fisher’s exact test is used to evaluate
+##        statistical dependence between mutation
+##        events.
+##
 ##
 ##   4) Effect Size Estimation
-##        Odds ratios (OR) are computed for each gene pair.
-##        A continuity-corrected OR is applied to avoid
-##        instability in sparse tables.
+##
+##        Odds ratios (OR) are computed for each
+##        gene pair.
+##
+##        A continuity-corrected odds ratio is used
+##        to improve stability in sparse contingency
+##        tables.
 ##
 ##           OR > 1  → co-occurrence enrichment
 ##           OR < 1  → mutual exclusivity
 ##
 ##        Effect sizes are visualized using log2(OR).
 ##
+##
 ##   5) Multiple Testing Correction
-##        P-values are adjusted using the Benjamini–Hochberg
-##        procedure to control false discovery rate (FDR).
+##
+##        P-values are adjusted using the
+##        Benjamini–Hochberg procedure to control
+##        false discovery rate (FDR).
+##
 ##
 ##   6) Stratified Analyses
+##
 ##        Analyses are repeated for:
+##
 ##           - All patients
 ##           - IDH wild-type subset
 ##           - IDH mutant subset
 ##
-##        Mutation matrices are subset accordingly prior
-##        to pairwise testing.
+##        Mutation matrices are subset accordingly
+##        prior to pairwise testing.
+##
 ##
 ##   7) Visualization
-##        Volcano plots are generated to display effect size
-##        and statistical significance of gene pairs.
 ##
-##        UpSet plots are constructed using top-ranked genes
-##        to visualize higher-order mutation co-occurrence
+##        Volcano plots are generated to display
+##        effect size and statistical significance
+##        of gene pairs.
+##
+##        UpSet plots are constructed using
+##        top-ranked genes to visualize
+##        higher-order mutation co-occurrence
 ##        patterns across patients.
 ##
+##
 ##   8) Export
-##        All results and figures are exported to the output
-##        directory for downstream analysis and reporting.
+##
+##        All statistical results and visualization
+##        outputs are exported to the output
+##        directory for downstream analysis,
+##        interpretation, and reporting.
 ##-------------------------------------------------------------------
 ####################################################
 ## Load libraries
@@ -379,7 +441,7 @@ vol_idh1 <- co_res %>%
     sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
   )
 
-pdf(file.path(dir_output,  'volcano_coMut_all_updated.pdf'), width = 4, height = 3.5)
+pdf(file.path(dir_output,  'volcano_coMut_all.pdf'), width = 4, height = 3)
 
 ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
   geom_point(aes(color = sig), size = 2) +
@@ -421,14 +483,14 @@ vol_idh1 <- co_res %>%
     sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
   )
 
-pdf(file.path(dir_output,  'volcano_coMut_wt_updated.pdf'), width = 4, height = 3)
+pdf(file.path(dir_output,  'volcano_coMut_wt.pdf'), width = 3.5, height = 2.5)
 
 ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
-  geom_point(aes(color = sig), size = 2) +
+  geom_point(aes(color = sig), size = 1.8) +
   geom_text_repel(
     data = subset(vol_idh1, fdr < 0.05),
     aes(label = pair),
-    size = 2
+    size = 1.8
   ) +
   scale_color_manual(
     values = c("FDR < 0.05" = "#1d587a",
@@ -442,11 +504,11 @@ ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
     color = ""
   ) +
   theme(
-    axis.title = element_text(size = 9),
-    axis.text  = element_text(size = 8),
+    axis.title = element_text(size = 8),
+    axis.text  = element_text(size = 7),
    # plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
-    legend.text = element_text(size = 8),
-    legend.title = element_text(size = 8)
+    legend.text = element_text(size = 7),
+    legend.title = element_text(size = 7)
   )
 
 dev.off()
@@ -463,7 +525,7 @@ vol_idh1 <- co_res %>%
     sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
   )
 
-pdf(file.path(dir_output,  'volcano_coMut_mut_updated.pdf'), width = 4, height = 3)
+pdf(file.path(dir_output,  'volcano_coMut_mut.pdf'), width = 3.5, height = 2.5)
 
 ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
   geom_point(aes(color = sig), size = 2) +
@@ -484,11 +546,11 @@ ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
     color = ""
   ) +
   theme(
-    axis.title = element_text(size = 9),
-    axis.text  = element_text(size = 8),
+    axis.title = element_text(size = 8),
+    axis.text  = element_text(size = 7),
    # plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
-    legend.text = element_text(size = 8),
-    legend.title = element_text(size = 8)
+    legend.text = element_text(size = 7),
+    legend.title = element_text(size = 7)
   )
 
 dev.off()
