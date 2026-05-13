@@ -3,12 +3,14 @@
 ##
 ## Purpose:
 ##   Generate publication-quality OncoPrint visualizations
-##   from a curated CNS NGS mutation event matrix stored
-##   in a MultiAssayExperiment object.
+##   using the ComplexHeatmap framework from a curated
+##   CNS NGS alteration matrix stored in a
+##   MultiAssayExperiment object.
 ##
-##   Standardize mutation alteration labels and enforce a
+##   Standardize alteration labels and enforce a
 ##   consistent within-cell priority ordering to ensure
-##   reproducible visualization of multi-event mutations.
+##   reproducible visualization of co-occurring
+##   alteration events.
 ##
 ##   Integrate harmonized clinical metadata and generate
 ##   annotated OncoPrints for the full cohort and key
@@ -16,90 +18,125 @@
 ##
 ##
 ## Input:
+##
 ##   - result/data/mae_mut_clin.RData
+##
 ##       MultiAssayExperiment object containing:
+##
 ##         - mut_oncoprint assay:
 ##             gene × patient character matrix
 ##             ("" or semicolon-delimited alteration types)
+##
 ##         - colData:
 ##             curated clinical metadata
 ##
 ##
-## Output (4 figures):
+## Outputs:
 ##
 ##   1) result/oncoprint/fig1.pdf
-##        OncoPrint (mutation events only; no annotations)
 ##
-##   2) result/oncoprint/fig2.pdf
-##        OncoPrint with clinical annotations (all patients)
+##        Annotated OncoPrint for the full cohort
+##        including clinical metadata tracks
 ##
-##   3) result/oncoprint/fig3_wt.pdf
-##        OncoPrint with annotations (IDH wild-type subset)
 ##
-##   4) result/oncoprint/fig4_mut.pdf
-##        OncoPrint with annotations (IDH mutant subset)
+##   2) result/oncoprint/fig2_wt.pdf
+##
+##        Annotated OncoPrint for the IDH wild-type
+##        patient subset
+##
+##
+##   3) result/oncoprint/fig3_mut.pdf
+##
+##        Annotated OncoPrint for the IDH mutant
+##        patient subset
 ##
 ##
 ## Processing Overview:
 ##
 ##   1) Data Loading
+##
 ##        The MultiAssayExperiment object is loaded and the
-##        oncoprint assay (mutation matrix) and associated
+##        oncoprint assay (alteration matrix) and associated
 ##        clinical metadata are extracted.
 ##
+##
 ##   2) Mutation Label Harmonization
-##        Mutation labels are standardized to:
+##
+##        Alteration labels are standardized to:
+##
 ##           - SNV/Indel
 ##           - Amplification
 ##           - Fusion
 ##           - Deletion
 ##
-##        Within each gene–patient cell, multiple alteration
-##        types are:
+##        Within each gene–patient cell, alteration
+##        annotations are:
+##
 ##           - cleaned and deduplicated
 ##           - ordered using a fixed priority:
+##
 ##                Fusion > Amplification > SNV/Indel > Deletion
 ##
-##        Multi-hit events are preserved as semicolon-
-##        separated entries.
+##        Multiple alteration classes within the same
+##        gene–patient pair are preserved as semicolon-
+##        delimited entries following standardized
+##        priority ordering.
+##
 ##
 ##   3) OncoPrint Construction (ComplexHeatmap)
+##
 ##        OncoPrints are generated using custom graphical
 ##        functions for each alteration type, enabling
-##        stacked visual representation within each cell.
+##        stacked alteration rendering within each cell.
 ##
 ##        Features include:
+##
 ##           - Removal of empty genes and samples
 ##           - Row-level mutation frequency barplots
 ##           - Consistent color mapping across alteration types
+##           - Standardized legend formatting
+##
 ##
 ##   4) Clinical Annotation Processing
+##
 ##        Clinical metadata are formatted for visualization:
+##
 ##           - Age dichotomized (<40 vs ≥40)
 ##           - IDH status encoded as WT / Mut
 ##           - Histology harmonized and grouped
 ##           - WHO 2021 grade converted to I–IV
 ##
 ##        Annotation tracks are constructed and aligned
-##        with the mutation matrix.
+##        with the alteration matrix.
 ##
-##   5) Annotated OncoPrint Generation
-##        A full-cohort OncoPrint is generated with clinical
-##        annotations displayed as top annotation tracks.
 ##
-##   6) Subset Analyses
+##   5) Full-Cohort OncoPrint Generation
+##
+##        A cohort-wide annotated OncoPrint is generated
+##        with clinical metadata displayed as top
+##        annotation tracks.
+##
+##
+##   6) Subgroup Analyses
+##
 ##        The dataset is stratified by IDH status:
+##
 ##           - IDH wild-type patients
 ##           - IDH mutant patients
 ##
 ##        Independent OncoPrints are generated for each
-##        subgroup with appropriately filtered mutation
-##        matrices and clinical annotations.
+##        subgroup using subgroup-specific alteration
+##        matrices and aligned clinical annotations.
+##
+##        Low-frequency events within the IDH wild-type
+##        subgroup are filtered prior to visualization.
+##
 ##
 ##   7) Export
+##
 ##        All OncoPrints are exported as PDF files with
 ##        consistent layout, legends, and formatting for
-##        publication-ready visualization.
+##        publication-quality visualization.
 ##-------------------------------------------------------------------
 ####################################################
 ## Load libraries
@@ -167,9 +204,8 @@ mut_fixed[1:4, 1:6]
 table(mut_fixed)
 
 ####################################################
-## OncoPrint ---> no clinbical metadata
+## OncoPrint settings
 ####################################################
-
 col <- c(
   "SNV/Indel"     = "#A06177FF",
   "Amplification" = "#68855CFF",
@@ -223,32 +259,6 @@ heatmap_legend_param <- list(
   title_gp = gpar(fontsize = 10, face='bold'),          
   labels_gp = gpar(fontsize = 8)          
 )
-
-p <- oncoPrint(
-  mut_fixed,
-  get_type = function(x) {
-  if(x == "") return(NULL)
-  strsplit(x, ";", fixed = TRUE)[[1]]
-},
-  alter_fun = alter_fun,
-  col = col,
-  remove_empty_rows = TRUE,
-  remove_empty_columns = TRUE,
-  heatmap_legend_param = heatmap_legend_param,
-  row_names_gp = gpar(fontsize = 8),
-  left_annotation = left_annotation,
-  right_annotation = NULL
-)
-
-pdf(file.path(dir_output, 'fig1.pdf'),  width = 7, height = 8)
-
-draw(
-  p,
-  heatmap_legend_side = "right",
-  annotation_legend_side = "right"
-)
-
-dev.off()
 
 ####################################################
 ## OncoPrint ---> clinbical metadata (all patients)
@@ -352,16 +362,6 @@ top_anno <- HeatmapAnnotation(
   annotation_name_gp = gpar(fontsize = 7) 
 )
 
-heatmap_legend_param <- list(
-  title = "Alterations",
-  at = names(col),
-  labels = names(col),
-  nrow = 4,                             
-  grid_width = unit(3, "mm"),             
-  grid_height = unit(3, "mm"),
-  title_gp = gpar(fontsize = 10, face='bold'),          
-  labels_gp = gpar(fontsize = 8)          
-)
 
 p <- oncoPrint(
   mut_fixed,
@@ -382,7 +382,7 @@ p <- oncoPrint(
   right_annotation = NULL
 )
 
-pdf(file.path(dir_output, 'fig2.pdf'), width = 7, height = 8)
+pdf(file.path(dir_output, 'fig1.pdf'), width = 7, height = 8)
 
 draw(
   p,
@@ -472,17 +472,6 @@ top_anno <- HeatmapAnnotation(
   annotation_name_gp = gpar(fontsize = 7) 
 )
 
-heatmap_legend_param <- list(
-  title = "Alterations",
-  at = names(col),
-  labels = names(col),
-  nrow = 4,                             
-  grid_width = unit(3, "mm"),             
-  grid_height = unit(3, "mm"),
-  title_gp = gpar(fontsize = 10, face='bold'),          
-  labels_gp = gpar(fontsize = 8)          
-)
-
 freq <- rowMeans(mut_wt != '')
 keep <- freq[freq >= 0.03]
 mut_wt_filtered <- mut_wt[rownames(mut_wt) %in% names(keep), ]
@@ -503,7 +492,7 @@ p <- oncoPrint(
   right_annotation = NULL
 )
 
-pdf(file.path(dir_output, 'fig3_wt.pdf'), width = 6.5, height = 5)
+pdf(file.path(dir_output, 'fig2_wt.pdf'), width = 6.5, height = 5)
 
 draw(
   p,
@@ -583,17 +572,6 @@ top_anno <- HeatmapAnnotation(
   annotation_name_gp = gpar(fontsize = 7) 
 )
 
-heatmap_legend_param <- list(
-  title = "Alterations",
-  at = names(col),
-  labels = names(col),
-  nrow = 4,                             
-  grid_width = unit(3, "mm"),             
-  grid_height = unit(3, "mm"),
-  title_gp = gpar(fontsize = 10, face='bold'),          
-  labels_gp = gpar(fontsize = 8)          
-)
-
 p <- oncoPrint(
   mut_mut,
   get_type = function(x) strsplit(x, ";")[[1]],
@@ -610,7 +588,7 @@ p <- oncoPrint(
   right_annotation = NULL
 )
 
-pdf(file.path(dir_output, 'fig4_mut.pdf'), width = 6.5, height = 5)
+pdf(file.path(dir_output, 'fig3_mut.pdf'), width = 6.5, height = 5)
 
 draw(
   p,
