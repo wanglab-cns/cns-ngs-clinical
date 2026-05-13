@@ -31,24 +31,20 @@
 ##             curated clinical metadata
 ##
 ##
-## Outputs:
+## Output (4 figures):
 ##
 ##   1) result/oncoprint/fig1.pdf
+##        OncoPrint containing alteration events only
+##        (no clinical annotations)
 ##
+##   2) result/oncoprint/fig2.pdf
 ##        Annotated OncoPrint for the full cohort
-##        including clinical metadata tracks
 ##
+##   3) result/oncoprint/fig3_wt.pdf
+##        Annotated OncoPrint for the IDH wild-type subset
 ##
-##   2) result/oncoprint/fig2_wt.pdf
-##
-##        Annotated OncoPrint for the IDH wild-type
-##        patient subset
-##
-##
-##   3) result/oncoprint/fig3_mut.pdf
-##
-##        Annotated OncoPrint for the IDH mutant
-##        patient subset
+##   4) result/oncoprint/fig4_mut.pdf
+##        Annotated OncoPrint for the IDH mutant subset
 ##
 ##
 ## Processing Overview:
@@ -94,7 +90,6 @@
 ##           - Removal of empty genes and samples
 ##           - Row-level mutation frequency barplots
 ##           - Consistent color mapping across alteration types
-##           - Standardized legend formatting
 ##
 ##
 ##   4) Clinical Annotation Processing
@@ -110,14 +105,14 @@
 ##        with the alteration matrix.
 ##
 ##
-##   5) Full-Cohort OncoPrint Generation
+##   5) Annotated OncoPrint Generation
 ##
-##        A cohort-wide annotated OncoPrint is generated
-##        with clinical metadata displayed as top
+##        A full-cohort OncoPrint is generated with
+##        clinical annotations displayed as top
 ##        annotation tracks.
 ##
 ##
-##   6) Subgroup Analyses
+##   6) Subset Analyses
 ##
 ##        The dataset is stratified by IDH status:
 ##
@@ -125,11 +120,8 @@
 ##           - IDH mutant patients
 ##
 ##        Independent OncoPrints are generated for each
-##        subgroup using subgroup-specific alteration
+##        subgroup using subgroup-specific mutation
 ##        matrices and aligned clinical annotations.
-##
-##        Low-frequency events within the IDH wild-type
-##        subgroup are filtered prior to visualization.
 ##
 ##
 ##   7) Export
@@ -260,6 +252,33 @@ heatmap_legend_param <- list(
   labels_gp = gpar(fontsize = 8)          
 )
 
+annotation_legend_param <- list(
+  Sex = list(
+    title_gp = gpar(fontsize = 7, fontface = "bold"),
+    labels_gp = gpar(fontsize = 6)
+  ),
+  
+  Age = list(
+    title_gp = gpar(fontsize = 7, fontface = "bold"),
+    labels_gp = gpar(fontsize = 6)
+  ),
+  
+  IDH = list(
+    title_gp = gpar(fontsize = 7, fontface = "bold"),
+    labels_gp = gpar(fontsize = 6)
+  ),
+  
+  Histo = list(
+    title_gp = gpar(fontsize = 7, fontface = "bold"),
+    labels_gp = gpar(fontsize = 5.5)
+  ),
+  
+  Grade = list(
+    title_gp = gpar(fontsize = 7, fontface = "bold"),
+    labels_gp = gpar(fontsize = 6)
+  )
+)
+
 ####################################################
 ## OncoPrint ---> clinbical metadata (all patients)
 ####################################################
@@ -360,6 +379,8 @@ top_anno <- HeatmapAnnotation(
   simple_anno_size = unit(3, "mm"), 
   annotation_name_side = "left",
   annotation_name_gp = gpar(fontsize = 7) 
+
+  annotation_legend_param = annotation_legend_param
 )
 
 
@@ -484,7 +505,7 @@ p <- oncoPrint(
   remove_empty_rows = TRUE,
   remove_empty_columns = TRUE,
   heatmap_legend_param = heatmap_legend_param,
-  row_names_gp = grid::gpar(fontsize = 7),
+  row_names_gp = grid::gpar(fontsize = 8),
   top_annotation = top_anno,
   left_annotation = rowAnnotation(
     rbar = anno_oncoprint_barplot(axis_param = list(direction = "reverse"))
@@ -580,7 +601,7 @@ p <- oncoPrint(
   remove_empty_rows = TRUE,
   remove_empty_columns = TRUE,
   heatmap_legend_param = heatmap_legend_param,
-  row_names_gp = grid::gpar(fontsize = 7),
+  row_names_gp = grid::gpar(fontsize = 8),
   top_annotation = top_anno,
   left_annotation = rowAnnotation(
     rbar = anno_oncoprint_barplot(axis_param = list(direction = "reverse"))
