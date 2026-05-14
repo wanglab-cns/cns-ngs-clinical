@@ -1,178 +1,79 @@
 ##----------------------------------------------------------------------------------------------------
 ## Script: CNS NGS Clinical–Mutation Integration
 ##         Binary and Oncoprint Mutation Matrices
-##         MultiAssayExperiment Export
 ##
 ## Purpose:
-##   Integrate curated clinical metadata with Tier I/II
-##   next-generation sequencing (NGS) alterations from
-##   central nervous system (CNS) tumor patients to generate
-##   harmonized, analysis-ready molecular and clinical datasets.
+##   To integrate curated clinical metadata with CNS tumour
+##   next-generation sequencing (NGS) alteration data and
+##   generate harmonized molecular and clinical datasets for
+##   downstream analyses.
 ##
-##   Perform clinical data curation and derive key variables,
-##   including overall survival outcomes, treatment status,
-##   and patient-level IDH mutation status inferred from
-##   IDH1/IDH2 SNV/Indel events.
+##   The workflow constructs:
+##     (1) A binary gene-level mutation matrix
+##     (2) An oncoprint-compatible mutation matrix
 ##
-##   Construct two complementary gene-level mutation
-##   representations:
-##     (1) A binary mutation matrix encoding the presence
-##         or absence of ≥1 alteration per gene per patient.
-##     (2) An oncoprint-compatible mutation matrix preserving
-##         alteration classes and co-occurring events.
-##
-##   Harmonize patient identifiers across clinical and
-##   molecular datasets and export integrated
-##   SummarizedExperiment objects within a unified
-##   MultiAssayExperiment container for downstream
-##   statistical modeling, survival analysis, clustering,
-##   and visualization.
+##   Clinical and molecular data are harmonized and exported
+##   within a unified MultiAssayExperiment object for
+##   downstream survival analysis, biomarker discovery,
+##   clustering, and visualization.
 ##
 ##
 ## Inputs:
 ##
 ##   1) data/Feb 18 2026 CNS Tumours NGS & Clinical Data Lock.xlsx
-##        • Sheet 2: Clinical metadata
-##        • Sheet 3: Curated Tier I/II mutation calls
+##        • Clinical metadata
+##        • Curated Tier I/II mutation calls
 ##
 ##   2) data/clin.xlsx
-##        • Curated clinical annotations including updated
-##          histology labels (Histo_updated)
+##        • Updated clinical annotations
 ##
 ##
 ## Outputs:
 ##
 ##   1) result/data/mae_mut_clin.RData
 ##
-##        MultiAssayExperiment containing harmonized
-##        clinical and molecular data:
+##        MultiAssayExperiment containing:
 ##
-##          - experiments:
-##
-##              • mut_binary: SummarizedExperiment
-##                   assay:
-##                     binary gene-level mutation matrix (0/1)
-##
-##              • mut_oncoprint: SummarizedExperiment
-##                   assay:
-##                     oncoprint-compatible mutation matrix
-##                     containing semicolon-delimited
-##                     alteration annotations
-##
-##          - colData:
-##              curated and harmonized clinical metadata
+##          - Binary mutation matrix
+##          - Oncoprint mutation matrix
+##          - Harmonized clinical metadata
 ##
 ##
 ## Processing Overview:
 ##
-##   1) Data Import and Standardization
+##   1) Import and standardize clinical and mutation data
 ##
-##        Clinical and molecular data are imported from the
-##        CNS NGS clinical data lock workbook. Patient
-##        identifiers are standardized using the variable
-##        'Study'. Invalid or blank clinical column names
-##        are repaired to ensure compatibility with downstream
-##        dplyr operations.
+##   2) Curate and harmonize clinical variables including:
+##        - Overall survival
+##        - Age
+##        - Treatment status
+##        - Histology
 ##
+##   3) Filter and recode clinically curated mutation events
 ##
-##   2) Clinical Data Curation
+##   4) Generate:
+##        - Binary gene-level mutation matrix
+##        - Oncoprint-compatible mutation matrix
 ##
-##        Clinical variables are standardized and curated,
-##        including:
+##   5) Derive patient-level IDH mutation status
 ##
-##          - os.event:
-##                Dead = 1
-##                Alive/LTF = 0
-##                Missing values preserved
+##   6) Harmonize patients across datasets
 ##
-##          - os.time:
-##                Overall survival time (months)
-##
-##          - Additional variables:
-##                • Age at diagnosis
-##                • Radiotherapy status
-##                • Concurrent temozolomide treatment
-##                • Combined treatment status
+##   7) Construct and export a MultiAssayExperiment object
 ##
 ##
-##   3) External Clinical Annotation Integration
+## Notes:
+##   - Only Tier I and Tier II clinically curated variants are
+##     retained.
 ##
-##        Updated histology annotations are imported from
-##        clin.xlsx and merged using the patient identifier
-##        'Study'. The variable Histo_updated is stored
-##        as 'histo'.
+##   - Mutation classes include:
+##        SNV/Indel, Fusion, Amplification, and Deletion.
 ##
+##   - Clinical and molecular datasets are aligned using
+##     harmonized patient identifiers.
 ##
-##   4) Mutation Filtering and Recoding
-##
-##        Only Tier I and Tier II clinically curated
-##        variants are retained for downstream analyses.
-##        Variants labeled as "Unclassified" are excluded.
-##
-##        Mutation events are recoded into harmonized
-##        alteration classes:
-##
-##          - SNV/Indel
-##          - Fusion
-##          - Amplification
-##          - Deletion
-##
-##        Copy number gains and losses are inferred from
-##        the mutation description field.
-##
-##
-##   5) Binary Gene-Level Mutation Matrix (mat_bin)
-##
-##        A gene × patient binary matrix is generated where:
-##
-##          - 1 indicates ≥1 alteration in a gene
-##          - 0 indicates no detected alteration
-##
-##        Multiple alterations affecting the same gene in a
-##        patient are collapsed into a single binary event.
-##
-##
-##   6) Oncoprint Event-Type Matrix (mat_onco)
-##
-##        A gene × patient matrix is generated in which
-##        alteration classes are retained as semicolon-
-##        delimited event annotations.
-##
-##        This representation preserves co-occurring
-##        alteration types per gene and is designed for
-##        downstream oncoprint visualization.
-##
-##
-##   7) IDH Status Derivation
-##
-##        Patient-level IDH status is inferred from the
-##        presence of IDH1 or IDH2 SNV/Indel alterations
-##        and encoded as:
-##
-##          - Mut
-##          - WT
-##
-##
-##   8) Patient Harmonization
-##
-##        Only patients present in both clinical and
-##        molecular datasets are retained. Clinical metadata
-##        and mutation matrices are aligned and consistently
-##        ordered across all assay objects.
-##
-##
-##   9) MultiAssayExperiment Construction and Export
-##
-##        Binary and oncoprint SummarizedExperiment objects
-##        are combined into a unified MultiAssayExperiment
-##        containing shared clinical metadata.
-##
-##        The final object is exported for downstream
-##        analyses within the Bioconductor ecosystem,
-##        including survival modeling, genomic
-##        characterization, clustering analyses,
-##        integrative visualization, and oncoprint
-##        generation.
+##   - The exported object is designed for downstream analyses
+##     within the Bioconductor ecosystem.
 ##----------------------------------------------------------------------------------------------------
 ####################################################
 ## Load libraries

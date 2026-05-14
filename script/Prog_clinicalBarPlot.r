@@ -2,18 +2,13 @@
 ## Script: CNS NGS Mutation–Clinical Association Analysis
 ##
 ## Purpose:
-##   Evaluate associations between recurrent gene-level
-##   mutation alterations and demographic or molecular
-##   clinical variables in CNS tumor patients using
-##   curated NGS and clinical datasets.
+##   To evaluate associations between recurrent gene-level
+##   mutations and selected clinical variables in CNS
+##   tumour patients using curated NGS and clinical data.
 ##
-##   Perform statistical association testing between
-##   mutation status and age or sex groups across the
-##   full cohort and IDH-stratified patient subsets.
-##
-##   Generate publication-quality summary visualizations
-##   and statistical result tables for downstream
-##   interpretation and reporting.
+##   Statistical association analyses and mutation
+##   frequency visualizations are generated for the
+##   full cohort and IDH-stratified subgroups.
 ##
 ##
 ## Input:
@@ -21,117 +16,53 @@
 ##   - result/data/mae_mut_clin.RData
 ##
 ##       MultiAssayExperiment object containing:
-##
-##         - mut_binary assay:
-##             gene × patient binary mutation matrix (0/1)
-##
-##         - colData:
-##             curated clinical metadata
+##         • binary mutation matrix
+##         • harmonized clinical metadata
 ##
 ##
 ## Outputs:
 ##
-##   1) result/barPlot/csv/
+##   1) Statistical association result tables
 ##
-##        Statistical association result tables:
-##
-##          - mut_age.csv
-##          - mut_age_mut.csv
-##          - mut_age_wt.csv
-##          - mut_sex.csv
-##          - mut_sex_mut.csv
-##          - mut_sex_wt.csv
-##
-##
-##   2) result/barPlot/
-##
-##        Publication-quality mutation frequency bar plots:
-##
-##          - mut_age.pdf
-##          - mut_age_mut.pdf
-##          - mut_age_wt.pdf
-##          - mut_sex.pdf
-##          - mut_sex_mut.pdf
-##          - mut_sex_wt.pdf
+##   2) Mutation frequency bar plot visualizations
 ##
 ##
 ## Processing Overview:
 ##
-##   1) Data Loading
+##   1) Load mutation and clinical data
 ##
-##        The MultiAssayExperiment object is loaded and the
-##        binary mutation matrix and associated clinical
-##        metadata are extracted.
+##   2) Harmonize clinical variables including:
+##        - Age
+##        - Sex
+##        - IDH status
 ##
+##   3) Filter recurrent mutations and prepare
+##      patient-level datasets
 ##
-##   2) Clinical Variable Processing
+##   4) Perform Fisher’s exact tests between
+##      mutation status and:
+##        - Age group
+##        - Sex
 ##
-##        Clinical variables are standardized for analysis:
+##   5) Repeat analyses within:
+##        - Full cohort
+##        - IDH wild-type subgroup
+##        - IDH mutant subgroup
 ##
-##           - Age dichotomized (<40 vs ≥40)
-##           - Sex encoded as Male/Female
-##           - IDH status extracted for subgroup analyses
+##   6) Generate mutation frequency bar plots
 ##
-##
-##   3) Binary Mutation Matrix Processing
-##
-##        Gene-level mutation frequencies are calculated
-##        from the binary mutation matrix.
-##
-##        IDH1 and IDH2 alterations are collapsed into a
-##        unified patient-level IDH mutation variable.
-##
-##        Low-frequency genes (<5% mutation frequency)
-##        are excluded from downstream visualization and
-##        association analyses.
+##   7) Export statistical results and figures
 ##
 ##
-##   4) Data Restructuring
+## Notes:
+##   - Analyses are based on binary gene-level
+##     mutation matrices.
 ##
-##        Mutation matrices are converted into long-format
-##        patient-level tables and merged with clinical
-##        metadata for downstream statistical testing and
-##        visualization.
+##   - Multiple testing correction is performed
+##     using false discovery rate (FDR) adjustment.
 ##
-##
-##   5) Association Testing
-##
-##        Gene-wise associations between mutation status
-##        and clinical variables are evaluated using
-##        Fisher’s exact tests.
-##
-##        Analyses are performed across:
-##
-##           - all patients
-##           - IDH mutant patients
-##           - IDH wild-type patients
-##
-##        Multiple-testing correction is performed using
-##        the Benjamini–Hochberg false discovery rate method.
-##
-##
-##   6) Mutation Frequency Visualization
-##
-##        Mutation frequencies are summarized as grouped
-##        bar plots stratified by:
-##
-##           - Age group
-##           - Sex
-##
-##        Features include:
-##
-##           - Consistent mutation ordering
-##           - Cohort-specific subgroup analyses
-##           - Significance annotations
-##           - Harmonized color palettes
-##           - Publication-quality formatting
-##
-##
-##   7) Export
-##
-##        Statistical result tables and visualization
-##        outputs are exported as CSV and PDF files for
-##        downstream interpretation and reporting.
+##   - Outputs are intended for downstream
+##     visualization and reporting.
 ##-------------------------------------------------------------------
 ####################################################
 ## Load libraries

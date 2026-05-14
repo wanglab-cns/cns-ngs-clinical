@@ -1,68 +1,42 @@
 ##--------------------------------------------------------------------
 ## Description:
-## This script processes curated clinical metadata from a CNS NGS
-## cohort to generate baseline summary statistics stratified by IDH
-## mutation status. The workflow integrates harmonized clinical
-## annotations from a MultiAssayExperiment (MAE) object and produces
-## a structured summary table for downstream reporting and
-## publication-ready descriptive analyses.
+## This script generates baseline clinical summary statistics for
+## a CNS NGS cohort stratified by IDH mutation status using
+## harmonized clinical metadata from a MultiAssayExperiment object.
 ##
 ## Workflow:
-## 1. Load processed MultiAssayExperiment data
-##      - Extract mutation oncoprint assay (for alignment)
-##      - Extract associated clinical metadata (colData)
+##   1) Load processed clinical and molecular data
 ##
-## 2. Curate and harmonize clinical metadata:
-##      - Convert IDH status to categorical variable (WT vs Mut)
-##      - Dichotomize age (<40 vs ≥40)
-##      - Standardize sex, grade (WHO 2021), and histology labels
-##      - Harmonize tumor location into grouped categories
-##      - Clean ECOG performance status
-##      - Encode MGMT methylation status (M / U / Unknown)
-##      - Standardize surgical resection categories
+##   2) Harmonize and recode clinical variables including:
+##        - Age
+##        - Sex
+##        - Grade
+##        - Histology
+##        - Location
+##        - ECOG
+##        - MGMT
+##        - Resection
 ##
-## 3. Define analysis variables:
-##      - Continuous variables:
-##          * Overall survival time (os.time)
-##      - Categorical variables:
-##          * Age group, sex, grade, histology
-##          * Tumor location, ECOG, MGMT, resection status
-##          * Survival event (os.event)
+##   3) Stratify patients by:
+##        - All patients
+##        - IDH wild-type
+##        - IDH mutant
 ##
-## 4. Stratify cohort:
-##      - All patients
-##      - IDH wild-type (WT)
-##      - IDH mutant (Mut)
+##   4) Compute descriptive summary statistics:
+##        - Median (IQR) for continuous variables
+##        - Frequency and percentage for categorical variables
 ##
-## 5. Compute summary statistics:
-##      - Continuous variables:
-##          * Median and interquartile range (IQR)
-##      - Categorical variables:
-##          * Frequency counts and percentages (n, %)
-##
-## 6. Construct summary table:
-##      - Rows correspond to clinical variables
-##      - Columns represent:
-##          * All patients
-##          * IDH-WT subgroup
-##          * IDH-Mut subgroup
-##
-## 7. Export results:
-##      - Summary table saved as CSV file
-##      - Suitable for Table 1 (baseline characteristics)
+##   5) Export summary statistics table for downstream
+##      reporting and visualization
 ##
 ## Output:
-## - Summary statistics table saved as:
-##   result/Table/results.csv
+##   - result/Table/results.csv
 ##
 ## Notes:
-## - Clinical data derived from curated MAE object
-## - IDH status used as primary stratification variable
-## - Age is dichotomized for categorical reporting
-## - Continuous variables summarized using median (IQR)
-## - Categorical variables summarized using n (%)
-## - Output table represents descriptive statistics only
-## - Table can be extended with statistical tests if required
+##   - Clinical data are derived from a curated MAE object.
+##   - IDH mutation status is used for cohort stratification.
+##   - Output tables are intended for descriptive analyses
+##     and manuscript reporting.
 ##--------------------------------------------------------------------
 ####################################################
 ## Load libraries

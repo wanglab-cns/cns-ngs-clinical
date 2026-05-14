@@ -2,185 +2,65 @@
 ## Script: CNS NGS Gene-Level Co-Mutation Analysis
 ##
 ## Purpose:
-##   Quantify pairwise gene co-mutation and mutual exclusivity
-##   patterns in CNS tumor patients using binary mutation data.
+##   To evaluate pairwise gene co-mutation and mutual
+##   exclusivity patterns in CNS tumour patients using
+##   binary mutation data.
 ##
-##   Evaluate statistical dependence between gene alteration
-##   events across patients and identify significant
-##   co-occurring or mutually exclusive gene pairs.
-##
-##   Generate analysis-ready statistical summaries and
-##   publication-quality visualizations for downstream
-##   interpretation and reporting.
+##   Statistical associations between gene alteration
+##   events are assessed and summarized through analysis-
+##   ready outputs and publication-quality visualizations.
 ##
 ##
 ## Input:
 ##
 ##   - result/data/mae_mut_clin.RData
 ##
-##       MultiAssayExperiment containing:
-##
-##         - mut_binary assay:
-##             gene × patient binary mutation matrix (0/1)
-##
-##         - colData:
-##             harmonized clinical metadata
-##             (including IDH_status)
+##       MultiAssayExperiment object containing:
+##         • binary mutation matrix
+##         • harmonized clinical metadata
 ##
 ##
 ## Outputs:
 ##
-##   1) result/coMut/coMut_res_all.csv
+##   1) Pairwise co-mutation result tables for:
+##        - Full cohort
+##        - IDH wild-type subgroup
+##        - IDH mutant subgroup
 ##
-##        Pairwise co-mutation results (all patients)
+##   2) Volcano plot visualizations
 ##
-##
-##   2) result/coMut/coMut_res_wt.csv
-##
-##        Pairwise co-mutation results
-##        (IDH wild-type subset)
-##
-##
-##   3) result/coMut/coMut_res_mut.csv
-##
-##        Pairwise co-mutation results
-##        (IDH mutant subset)
-##
-##
-##        Each result file contains:
-##
-##          - gene1, gene2
-##          - OR (continuity-corrected odds ratio)
-##          - pval, fdr
-##          - n11, n10, n01, n00
-##
-##
-##   4) Volcano plots (PDF):
-##
-##        - volcano_coMut_all.pdf
-##        - volcano_coMut_wt.pdf
-##        - volcano_coMut_mut.pdf
-##
-##
-##        Visualization:
-##
-##          x-axis:
-##             log2(OR)
-##
-##          y-axis:
-##             −log10(p-value)
-##
-##          Positive log2(OR) values indicate
-##          co-occurrence enrichment, whereas
-##          negative log2(OR) values indicate
-##          mutual exclusivity.
-##
-##          Significant gene pairs are highlighted
-##          using FDR < 0.05.
-##
-##
-##   5) UpSet plots (PDF):
-##
-##        - upset_coMut_all.pdf
-##        - upset_coMut_wt.pdf
-##        - upset_coMut_mut.pdf
-##
-##
-##        Visualization:
-##
-##          Higher-order mutation co-occurrence
-##          patterns across top-ranked co-mutated
-##          genes.
+##   3) UpSet plot visualizations
 ##
 ##
 ## Processing Overview:
 ##
-##   1) Data Loading
+##   1) Load mutation and clinical data
 ##
-##        The MultiAssayExperiment object is loaded and the
-##        binary mutation matrix and associated clinical
-##        metadata are extracted.
+##   2) Filter genes based on mutation frequency
 ##
-##        Patient-level IDH status is re-derived from
-##        IDH1/IDH2 alterations and appended as a
-##        binary gene-level feature.
+##   3) Perform pairwise co-mutation analyses using
+##        Fisher’s exact test
 ##
+##   4) Estimate odds ratios and adjust p-values for
+##        multiple testing
 ##
-##   2) Gene Filtering
+##   5) Repeat analyses within IDH-stratified subgroups
 ##
-##        Genes mutated in at least min_mut_freq
-##        patients (default = 5) are retained to
-##        improve stability of statistical estimates.
+##   6) Generate volcano and UpSet plot visualizations
 ##
-##
-##   3) Pairwise Co-Mutation Testing
-##
-##        All possible gene pairs are enumerated.
-##
-##        For each pair, a 2×2 contingency table
-##        is constructed:
-##
-##              g2 Mut   g2 WT
-##     g1 Mut      n11     n10
-##     g1 WT       n01     n00
-##
-##        Fisher’s exact test is used to evaluate
-##        statistical dependence between mutation
-##        events.
+##   7) Export statistical results and figures
 ##
 ##
-##   4) Effect Size Estimation
+## Notes:
+##   - Analyses are based on binary gene-level mutation
+##     matrices.
 ##
-##        Odds ratios (OR) are computed for each
-##        gene pair.
+##   - Positive odds ratios indicate co-occurrence,
+##     whereas negative associations suggest mutual
+##     exclusivity.
 ##
-##        A continuity-corrected odds ratio is used
-##        to improve stability in sparse contingency
-##        tables.
-##
-##           OR > 1  → co-occurrence enrichment
-##           OR < 1  → mutual exclusivity
-##
-##        Effect sizes are visualized using log2(OR).
-##
-##
-##   5) Multiple Testing Correction
-##
-##        P-values are adjusted using the
-##        Benjamini–Hochberg procedure to control
-##        false discovery rate (FDR).
-##
-##
-##   6) Stratified Analyses
-##
-##        Analyses are repeated for:
-##
-##           - All patients
-##           - IDH wild-type subset
-##           - IDH mutant subset
-##
-##        Mutation matrices are subset accordingly
-##        prior to pairwise testing.
-##
-##
-##   7) Visualization
-##
-##        Volcano plots are generated to display
-##        effect size and statistical significance
-##        of gene pairs.
-##
-##        UpSet plots are constructed using
-##        top-ranked genes to visualize
-##        higher-order mutation co-occurrence
-##        patterns across patients.
-##
-##
-##   8) Export
-##
-##        All statistical results and visualization
-##        outputs are exported to the output
-##        directory for downstream analysis,
-##        interpretation, and reporting.
+##   - Multiple testing correction is performed using
+##     false discovery rate (FDR) adjustment.
 ##-------------------------------------------------------------------
 ####################################################
 ## Load libraries

@@ -1,98 +1,72 @@
-#####################################################
+##-------------------------------------------------------------------
 ## Script: CNS NGS Mutation and Clinical Variables –
-##         Overall Survival (OS) Kaplan–Meier Analysis
+##         Overall Survival Kaplan–Meier Analysis
 ##
 ## Purpose:
-##   Perform univariate survival analyses to evaluate
-##   associations between overall survival (OS) and:
+##   To evaluate associations between overall survival (OS)
+##   and clinical or gene-level mutation variables in CNS
+##   tumour patients using Kaplan–Meier survival analyses.
 ##
-##     (1) Clinical variables
-##     (2) Gene-level binary mutation status (0/1 per patient)
-##
-##   Survival distributions are estimated using the
-##   Kaplan–Meier method and compared using the log-rank test.
-##
-##   Administrative censoring is applied at predefined
-##   time horizons to improve interpretability of survival curves:
-##
-##       - time.censor      (all patients / IDH-WT subgroup)
-##       - time.censor.mut  (IDH-mutant subgroup)
+##   Survival analyses are performed across the full cohort
+##   and IDH-stratified subgroups.
 ##
 ##
 ## Input:
+##
 ##   - result/data/mae_mut_clin.RData
 ##
-##     MultiAssayExperiment containing:
-##       • assay:
-##           Binary mutation matrix (genes × patients)
-##           0 = Wild-type (WT), 1 = Mutant (Mut)
-##       • colData:
-##           Curated clinical metadata including:
-##             - os.time        (overall survival time, months)
-##             - os.event       (1 = death, 0 = censored)
-##             - Age
-##             - Sex
-##             - IDH_status
-##             - WHO.2021.Grade
-##             - Primary.location
-##             - Histology variables
-##             - Therapy_status
+##       MultiAssayExperiment object containing:
+##         • binary mutation matrix
+##         • harmonized clinical metadata
 ##
 ##
-## Output:
+## Outputs:
 ##
-##   Kaplan–Meier survival plots (PDF format):
+##   1) Kaplan–Meier survival plots for:
+##        - Clinical variables
+##        - Gene-level mutation status
 ##
-##   Clinical variables:
-##       • Histology
-##       • Tumor location
-##       • WHO grade
-##       • Age group
-##       • Sex
-##       • IDH mutation status
-##       • Therapy status
-##
-##   Gene-level mutation status:
-##       • All patients
-##       • IDH-WT subgroup
-##       • IDH-Mut subgroup
-##
-##   Output directories:
-##       result/KM/clinical/all
-##       result/KM/clinical/wt
-##       result/KM/clinical/mut
-##       result/KM/mutation/all
-##       result/KM/mutation/wt
-##       result/KM/mutation/mut
+##   2) Survival plots generated for:
+##        - Full cohort
+##        - IDH wild-type subgroup
+##        - IDH mutant subgroup
 ##
 ##
-## Key Processing Steps:
+## Processing Overview:
 ##
-##   1) Clinical Harmonization
-##        - Exclude samples with missing IDH status
-##        - Recode IDH (WT / Mut)
-##        - Dichotomize age (<40 vs ≥40)
-##        - Standardize tumor location and WHO grade
-##        - Harmonize histology labels
-##        - Collapse rare histology groups (<10 patients)
+##   1) Load mutation and clinical data
 ##
-##   2) Administrative Censoring
-##        - Truncate OS times at predefined thresholds
-##        - Reset events beyond thresholds to censored
-##        - Apply subgroup-specific censoring limits
+##   2) Harmonize clinical variables including:
+##        - Age
+##        - Sex
+##        - Grade
+##        - Histology
+##        - ECOG
+##        - MGMT
+##        - Resection
 ##
-##   3) Kaplan–Meier Estimation
-##        - Surv(os.time, os.event) ~ variable
-##        - Log-rank test for group comparison
-##        - Risk tables displayed
+##   3) Apply administrative censoring to overall
+##      survival times
 ##
-##   4) Gene-Level Analysis
-##        - Iterate across all genes
-##        - Convert mutation status to WT vs Mut
-##        - Skip genes with:
-##              • No variation (all WT or all Mut)
-##              • Group sizes below n1.cutoff / n0.cutoff
-#####################################################
+##   4) Perform Kaplan–Meier and log-rank analyses
+##
+##   5) Repeat analyses within IDH-stratified
+##      patient subgroups
+##
+##   6) Generate and export publication-quality
+##      survival figures
+##
+##
+## Notes:
+##   - Analyses are based on binary gene-level
+##     mutation matrices.
+##
+##   - Survival analyses are performed using the
+##     survival and survminer frameworks.
+##
+##   - Outputs are intended for downstream
+##     visualization and reporting.
+##-------------------------------------------------------------------
 ####################################################
 ## Load libraries
 ####################################################
