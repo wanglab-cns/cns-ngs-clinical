@@ -44,6 +44,7 @@ r-readr = ">=2.1.0"
 r-paletteer = ">=1.6.0"
 r-coxphf = ">=1.13.4"
 r-rmarkdown = ">=2.28"
+r-forestplot = ">=3.1"
 
 
 [tasks.postInstall]

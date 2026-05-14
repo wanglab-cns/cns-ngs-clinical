@@ -100,6 +100,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/r-cardata-3.0_6-r44hc72bb7e_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/r-caret-7.0_1-r44heceb674_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/r-cellranger-1.1.0-r44hc72bb7e_1008.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/r-checkmate-2.3.3-r44heceb674_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/r-class-7.3_23-r44heceb674_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/r-cli-3.6.6-r44hd8a2815_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/r-clipr-0.8.0-r44hc72bb7e_4.conda
@@ -135,6 +136,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/r-forcats-1.0.1-r44hc72bb7e_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/r-foreach-1.5.2-r44hc72bb7e_4.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/r-forecast-9.0.2-r44hbf8e588_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/r-forestplot-3.2.0-r44hc72bb7e_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/r-formula-1.2_5-r44hc72bb7e_3.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/r-fracdiff-1.5_4-r44h79856bd_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/r-fs-2.1.0-r44h225bc52_0.conda
@@ -1476,6 +1478,19 @@ packages:
   license_family: MIT
   size: 111786
   timestamp: 1757511361046
+- conda: https://conda.anaconda.org/conda-forge/win-64/r-checkmate-2.3.3-r44heceb674_1.conda
+  sha256: 79ecdfd5374c4893670307b8181c47b31b71b011b75e63f31d3b9a3305c4a9ab
+  md5: fefdedc8ed3485f6d687962c9863ba92
+  depends:
+  - libgcc >=14
+  - libwinpthread >=12.0.0.r4.gg4f2fc60ca
+  - r-backports >=1.1.0
+  - r-base >=4.4,<4.5.0a0
+  - ucrt >=10.0.20348.0
+  license: BSD-3-Clause
+  license_family: BSD
+  size: 726981
+  timestamp: 1757465929390
 - conda: https://conda.anaconda.org/conda-forge/win-64/r-class-7.3_23-r44heceb674_1.conda
   sha256: 156c0d24ccf09b1ea8aa1ae2a3f8d84ade64f1ace05d9d53aec9c8bedba041d4
   md5: 0d2e1a39c90e40d72e64b3f0b67c4cd7
@@ -1966,6 +1981,17 @@ packages:
   license_family: GPL3
   size: 1619328
   timestamp: 1773820031607
+- conda: https://conda.anaconda.org/conda-forge/noarch/r-forestplot-3.2.0-r44hc72bb7e_0.conda
+  sha256: be182ec0c80482bfab3f88f9004010cb36200f0d23a078bb6d7060db6d076847
+  md5: 117fe3acdbe8030a61b86999ef1ab599
+  depends:
+  - r-abind
+  - r-base >=4.4,<4.5.0a0
+  - r-checkmate
+  license: GPL-2.0-only
+  license_family: GPL2
+  size: 1103562
+  timestamp: 1772684944135
 - conda: https://conda.anaconda.org/conda-forge/noarch/r-formula-1.2_5-r44hc72bb7e_3.conda
   sha256: 4ead229a2c62c560e7b1fd35002c707ad96008810aae20120017d895f2dba956
   md5: 1e5c51493546c715f26ed596a430603d
