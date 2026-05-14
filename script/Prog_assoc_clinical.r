@@ -47,7 +47,7 @@
 ##        - Grade
 ##        - Histology
 ##        - MGMT
-##        - ECOG
+##        - ECOG (0–1 vs 2–3)
 ##        - Resection
 ##
 ##   3) Apply administrative censoring to overall survival
