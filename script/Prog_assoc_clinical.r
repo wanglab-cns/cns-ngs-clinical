@@ -114,6 +114,7 @@ clin$Age <- ifelse(clin$Age >= 40, '>40', '<40')
 # ECOG
 clin$ECOG <- clin$ECOG.Performance.Status
 clin$ECOG <- substr(clin$ECOG, 1, 1)
+clin$ECOG <- ifelse(clin$ECOG %in% c(0, 1), "ECOG 0–1", "ECOG 2–3") 
 
 # MGMT
 clin$MGMT <- clin$MGMT.methylation
@@ -181,7 +182,7 @@ clin$MGMT <- factor(
 
 clin$ECOG <- factor(
   clin$ECOG,
-  levels = c("1", "0", "2", "3")
+  levels = c("ECOG 0–1", "ECOG 2–3")
   )
 
 clin$Resection <- factor(
