@@ -1,114 +1,70 @@
 ##-------------------------------------------------------------------
-## Script: Clinical Variable Association with Overall Survival (CNS Tumours)
+## Script: Clinical Variable Associations with Overall Survival in
+##         CNS Tumours
 ##
 ## Purpose:
-##   To evaluate the association between key clinical variables and
+##   To evaluate associations between key clinical variables and
 ##   overall survival (OS) in CNS tumour patients using Cox
 ##   proportional hazards regression models.
 ##
-##   Univariable survival analyses are performed across clinical
-##   variables in the full cohort and within IDH-stratified subgroups.
-##   Firth’s penalized Cox regression is applied to address small
-##   sample size and sparse data issues.
+##   Univariable survival analyses are performed in the full cohort
+##   and within IDH-stratified and GBM subgroups. Firth’s penalized
+##   Cox regression is applied to improve model stability in small
+##   or sparse subgroups.
 ##
 ##
 ## Input:
 ##   - result/data/mae_mut_clin.RData
-##       A MultiAssayExperiment object containing:
 ##
-##         • mut_binary assay:
-##             Gene-level binary mutation matrix (used to derive IDH status)
-##
-##         • colData:
-##             Harmonized clinical metadata including:
-##               - os.time, os.event
-##               - IDH_status
-##               - Age, Sex
-##               - WHO.2021.Grade
-##               - Histology
-##               - MGMT methylation
-##               - ECOG performance status
-##               - Extent of surgical resection
+##       MultiAssayExperiment object containing:
+##         • binary mutation data
+##         • harmonized clinical metadata
 ##
 ##
 ## Outputs:
-##   CSV files summarizing univariable Cox regression results:
+##   CSV files summarizing univariable Cox regression results for:
 ##
-##     1) result/assoc/clinical/cox_os_clin_all.csv
-##          All patients
+##     - Full cohort
+##     - IDH wild-type subgroup
+##     - IDH mutant subgroup
+##     - GBM subgroup
 ##
-##     2) result/assoc/clinical/cox_os_clin_wt.csv
-##          IDH wild-type subset
-##
-##     3) result/assoc/clinical/cox_os_clin_mut.csv
-##          IDH mutant subset
-##
-##     4) result/assoc/clinical/cox_os_clin_gbm.csv
-##          Glioblastoma subset
-##
-##   Each output includes:
-##     - variable name
-##     - level (relative to reference)
+##   Output tables include:
+##     - clinical variable
 ##     - hazard ratio (HR)
 ##     - standard error (SE)
-##     - sample size (N)
-##     - 95% confidence interval (lower, upper)
+##     - confidence intervals
 ##     - p-value
 ##
 ##
 ## Processing Overview:
 ##
-##   1) Data Loading
-##        Load MultiAssayExperiment object and extract clinical metadata.
-##        IDH mutation status is re-derived from IDH1/IDH2 mutation data.
+##   1) Load mutation and clinical data
 ##
-##   2) Clinical Variable Processing
-##        Variables are harmonized and recoded:
-##           - Age: <40 vs ≥40
-##           - Grade: Low (I/II) vs High (III/IV)
-##           - Histology: GBM vs Non-GBM
-##           - MGMT: Methylated / Unmethylated / Unknown
-##           - ECOG: categorical (0–3)
-##           - Resection: Total / Subtotal / Biopsy
+##   2) Harmonize and recode clinical variables including:
+##        - Age
+##        - Sex
+##        - Grade
+##        - Histology
+##        - MGMT
+##        - ECOG
+##        - Resection
 ##
-##        All variables are converted to factors with defined
-##        reference levels for Cox model estimation.
+##   3) Apply administrative censoring to overall survival
 ##
-##   3) Survival Preprocessing
-##        Overall survival is administratively censored:
-##           - All / IDH-WT / GBM: fixed time window (e.g., 36 months)
-##           - IDH-Mut: extended follow-up window
+##   4) Perform univariable penalized Cox regression analyses
 ##
-##   4) Univariable Cox Modeling
-##        For each clinical variable:
-##           - Remove missing values
-##           - Ensure ≥2 levels
-##           - Fit penalized Cox model:
-##                Surv(time, status) ~ variable
+##   5) Repeat analyses within clinically relevant subgroups
 ##
-##   5) Stratified Analyses
-##        Analyses are repeated for:
-##           - Full cohort
-##           - IDH wild-type
-##           - IDH mutant
-##           - GBM subset
-##
-##   6) Result Extraction
-##        For each model:
-##           - Estimate hazard ratios relative to reference levels
-##           - Compute standard errors and confidence intervals
-##
-##   7) Export
-##        Results are written to CSV files for downstream
-##        analysis and reporting.
+##   6) Export results for downstream analysis and reporting
 ##
 ##
 ## Notes:
-##   - Reference categories are defined by factor level ordering.
-##   - Category collapsing is applied to reduce sparsity.
-##   - Penalized Cox regression improves stability in small subgroups.
-##   - Stratified analyses should be interpreted with caution due to
-##     reduced sample size.
+##   - Factor reference levels are predefined for model estimation.
+##   - Category collapsing is applied where appropriate to reduce
+##     sparsity.
+##   - Stratified analyses should be interpreted cautiously due to
+##     reduced subgroup sample sizes.
 ##-------------------------------------------------------------------
 ####################################################
 ## Load libraries
