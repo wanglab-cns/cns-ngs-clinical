@@ -1,5 +1,3 @@
-# cns-ngs-clinical
-
 ## Clinicogenomic Landscape of CNS Tumours:
 ## A Retrospective NGS-Based Study from a Canadian Quaternary Center
 
