@@ -496,7 +496,7 @@ cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
 cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
 cox_res$study <- 'All'
-write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_all_mv_part1.csv'), row.names=FALSE)
+write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_all_mv.csv'), row.names=FALSE)
 
 ## --- Step 2: WT patients
 res <- read.csv(file.path(dir_output, 'clinical', 'cox_os_clin_wt.csv'))
@@ -570,7 +570,7 @@ cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
 cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
 cox_res$study <- 'IDH wild-type'
-write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_wt_mv_part1.csv'), row.names=FALSE)
+write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_wt_mv.csv'), row.names=FALSE)
 
 ## --- Step 3: Mut patients
 res <- read.csv(file.path(dir_output, 'clinical', 'cox_os_clin_mut.csv'))
@@ -643,7 +643,7 @@ cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
 cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
 cox_res$study <- 'IDH mutant'
-write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_mut_mv_part1.csv'), row.names=FALSE)
+write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_mut_mv.csv'), row.names=FALSE)
 
 ## --- Step 3: Mut patients
 res <- read.csv(file.path(dir_output, 'clinical', 'cox_os_clin_gbm.csv'))
@@ -716,5 +716,5 @@ cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
 cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
 cox_res$study <- 'GBM'
-write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_gbm_mv_part1.csv'), row.names=FALSE)
+write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_gbm_mv.csv'), row.names=FALSE)
 
