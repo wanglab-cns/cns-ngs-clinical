@@ -1,4 +1,6 @@
 ##--------------------------------------------------------------------
+## Script: CNS NGS Clinical Variables Table
+##
 ## Description:
 ## This script generates baseline clinical summary statistics for
 ## a CNS NGS cohort stratified by IDH mutation status using
