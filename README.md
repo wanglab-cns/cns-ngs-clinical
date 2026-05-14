@@ -1,58 +1,59 @@
 # cns-ngs-clinical
 
-**Authors:** [Farnoosh Abbas Aghababazadeh](https://github.com/RibaA)
+## Clinicogenomic Landscape of CNS Tumours:
+## A Retrospective NGS-Based Study from a Canadian Quaternary Center
 
-**Contact:** [farnoosh.abbasaghababazadeh@uhn.ca](farnoosh.abbasaghababazadeh@uhn.ca)
+**Author:** [Farnoosh Abbas Aghababazadeh](https://github.com/RibaA)
 
-**Description:** Clinicogenomic landscape of CNS tumours: a retrospective NGS-based study from a Canadian quaternary center
+**Contact:** farnoosh.abbasaghababazadeh@uhn.ca
 
-This repository provides a reproducible analysis framework for integrating clinical metadata and next-generation sequencing (NGS) mutation data in central nervous system (CNS) tumors.
+---
 
-The workflow supports mutation profiling, clinical association testing, and survival analyses using harmonized data structures and modular R scripts.
+## Description
 
-Data are organized within a `MultiAssayExperiment` object, enabling consistent alignment of mutation matrices and clinical variables across analyses.
+This repository provides a reproducible computational framework for the analysis of clinicogenomic features in central nervous system (CNS) tumours using harmonized clinical and next-generation sequencing (NGS) data.
 
-----
+The project supports integrative analyses of molecular alterations, clinical characteristics, and survival outcomes in a retrospective CNS tumour cohort from a Canadian quaternary care center.
+
+Clinical and molecular datasets are organized within a `MultiAssayExperiment` object to enable standardized, reproducible, and modular downstream analyses across mutation profiling, clinical association testing, visualization, and survival modeling workflows.
+
+---
 
 ## Overview
 
-The `cns-ngs-clinical` framework supports:
+The `cns-ngs-clinical` framework supports reproducible clinicogenomic analyses of CNS tumours using harmonized clinical and next-generation sequencing (NGS) data.
 
-- Integration of clinical and mutation data
-- Construction of binary and oncoprint mutation matrices
-- OncoPrint visualization 
-- Mutation–clinical association analysis
-- Clinical and mutation-based survival modelin
-- IDH-stratified subgroup analyses
-- IDH-stratified subgroup analyses
-- Automated export of publication-ready tables and figures
+The repository includes workflows for:
 
-The pipeline is modular, allowing individual analyses to be run independently or as part of a full workflow.
+- Clinical and molecular data integration
+- Mutation profiling and visualization
+- Clinicogenomic association analyses
+- Survival and subgroup analyses
+- Co-mutation analyses
+- Generation of publication-ready figures and tables
 
------
+The workflow is modular, allowing analyses to be run independently or as part of a complete analytical pipeline.
 
-**Analytical Modules**
+---
 
-The repository is organized into modular scripts:
+## Analytical Modules
 
-- **Data Integration**
-  - Clinical and mutation harmonization
-  - Construction of `MultiAssayExperiment` objects
+- Data Integration
+- Visualization
+- Association and Survival Analyses (UV and MV)
+- Co-Mutation Analysis
 
-- **Visualization**
-  - OncoPrint generation using `ComplexHeatmap`
+---
 
-- **Association Analyses**
-  - Mutation–clinical associations (Fisher / logistic regression)
-  - Binary outcome modeling (short vs long survival)
+## Data Structure
 
-- **Survival Analysis**
-  - Gene-level Cox proportional hazards models
-  - Clinical variable survival associations
-  - Multivariable and stratified models (IDH WT / Mut)
+Processed datasets are stored within a `MultiAssayExperiment` object containing:
 
-- **Co-Mutation Analysis**
-  - Pairwise gene co-occurrence and mutual exclusivity
+- Binary mutation matrices
+- OncoPrint-compatible mutation matrices
+- Harmonized clinical metadata
+
+This structure enables consistent patient alignment across molecular and clinical analyses.
 
 ---
 
@@ -62,31 +63,43 @@ The repository is organized into modular scripts:
 
 This project uses **Pixi** for environment and dependency management.
 
-If you haven't installed it yet, [follow these instructions](https://pixi.sh/latest/)
+Installation instructions are available at:
+
+https://pixi.sh/latest/
+
+---
 
 ### Installation
 
 ```bash
 # Clone repository
 git clone https://github.com/wanglab-cns/cns-ngs-clinical.git
+
+# Navigate to repository
 cd cns-ngs-clinical
 
-# Install environment
+# Install project environment
 pixi install
 ```
 
+---
+
 ## Repository Structure
 
-```
+```text
 cns-ngs-clinical/
-├── data/               # Input datasets and intermediate objects
-├── result/             # Analysis outputs (tables, figures)
+├── data/               # Input datasets and processed objects
+├── result/             # Analysis outputs (tables and figures)
 ├── scripts/            # Modular R analysis scripts
-├── docs/               # Documentation (MkDocs)
+├── docs/               # Documentation and project notes
 ├── pixi.toml           # Environment specification
 ├── mkdocs.yml          # Documentation configuration
 └── README.md           # Project overview
 ```
 
+---
 
+## Notes
 
+- Analyses are implemented in R/Bioconductor, including penalized Cox survival models for sparse subgroups, with IDH status defined using combined IDH1/IDH2 mutation events. 
+- The repository is designed to support reproducible and extensible clinicogenomic analyses in CNS tumours.
