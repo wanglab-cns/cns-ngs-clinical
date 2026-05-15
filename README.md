@@ -1,5 +1,4 @@
-## Clinicogenomic Landscape of CNS Tumours:
-## A Retrospective NGS-Based Study from a Canadian Quaternary Center
+## Clinicogenomic Landscape of CNS Tumours: A Retrospective NGS-Based Study from a Canadian Quaternary Center
 
 **Author:** [Farnoosh Abbas Aghababazadeh](https://github.com/RibaA)
 
