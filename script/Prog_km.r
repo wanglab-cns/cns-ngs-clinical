@@ -78,6 +78,7 @@ library(dplyr)
 library(tidyr)
 library(stringr)
 library(paletteer)
+library(readxl)
 
 ####################################################
 ## Setup directories
@@ -1291,3 +1292,135 @@ print(p_idh)
 dev.off()
 
 }
+
+#############################################################
+## KM figure --- OS association with subtypes/treatment
+#############################################################
+## step 1 --- all patients: IDH-mut, IDH-wt-gbm and IDH-wt-other
+
+clin$group <- NA
+clin$group[clin$IDH_status == "WT" &
+           clin$Histo == "Glioblastoma"] <- "IDH-WT-GBM"
+clin$group[clin$IDH_status == "WT" &
+           clin$Histo != "Glioblastoma"] <- "IDH-WT-NonGBM"
+clin$group[clin$IDH_status == "Mut"] <- "IDH-Mut"
+
+clin$group <- factor(
+  clin$group,
+  levels = c("IDH-WT-GBM",
+             "IDH-WT-NonGBM",
+             "IDH-Mut")
+)
+
+data <- data.frame( status=clin$os.event , time=clin$os.time)
+data$time <- as.numeric(as.character(data$time))
+    
+for(i in 1:nrow(data)){
+    
+    if( !is.na(as.numeric(as.character(data[ i , "time" ]))) && as.numeric(as.character(data[ i , "time" ])) > time.censor.mut ){
+      data[ i , "time" ] = time.censor.mut
+      data[ i , "status" ] = 0
+      
+    }
+  }   
+
+data$variable <- clin$group
+                      
+
+surv_obj <- with(data, Surv(time, status))
+fit_idh <- survfit(surv_obj ~ variable, data = data)
+
+p_idh <- ggsurvplot(
+  fit_idh,
+  data = data,
+  risk.table = TRUE,
+  pval = TRUE,
+  conf.int = FALSE,
+  legend.title = " ",
+  legend.labs = c('IDH-WT-GBM', 'IDH-Mut', 'IDH-WT-NonGBM'),
+  palette = c("#A12A19FF", "#1E466EFF", "#787878FF"),
+  xlab = "Time (months)",
+  ylab = "Overall survival probability",
+  ggtheme = theme_bw(base_size = 8) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+
+      legend.position = "bottom",
+      legend.title = element_blank(),
+      legend.text = element_text(size = 6),
+
+      axis.text = element_text(size = 6),
+      axis.title = element_text(size = 7),
+
+      plot.title = element_text(size = 8)
+    ),
+
+  pval.size = 3,
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
+)
+
+pdf(file.path(dir_output, 'clinical', "KM_OS_a.pdf"), width =4.5, height = 4.5)
+print(p_idh)
+dev.off()
+
+## step 2 --- GBM patients: Targeted therapy and others
+clin_gbm <- clin[clin$Histo == "Glioblastoma", ] # 105 patients
+
+clin_gbm$group <- clin_gbm$Therapy_status
+clin_gbm$group <- factor(
+  clin_gbm$group,
+  levels = c("1",
+             "0"),
+  labels = c("Any therapy", "No therapy")
+)
+
+data <- data.frame( status=clin_gbm$os.event , time=clin_gbm$os.time)
+data$time <- as.numeric(as.character(data$time))
+    
+for(i in 1:nrow(data)){
+    
+    if( !is.na(as.numeric(as.character(data[ i , "time" ]))) && as.numeric(as.character(data[ i , "time" ])) > time.censor.mut ){
+      data[ i , "time" ] = time.censor.mut
+      data[ i , "status" ] = 0
+      
+    }
+  }   
+
+data$variable <- clin_gbm$group
+
+surv_obj <- with(data, Surv(time, status))
+fit_idh <- survfit(surv_obj ~ variable, data = data)
+
+p_idh <- ggsurvplot(
+  fit_idh,
+  data = data,
+  risk.table = TRUE,
+  pval = TRUE,
+  conf.int = FALSE,
+  legend.title = " ",
+  legend.labs = c("Any therapy", "No therapy"),
+  palette = c("#4B5A69FF", "#A5872DFF"),
+  xlab = "Time (months)",
+  ylab = "Overall survival probability",
+   ggtheme = theme_bw(base_size = 10) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 7),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 9)
+    ),
+
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
+)
+
+pdf(file.path(dir_output, 'clinical', "KM_OS_b.pdf"), width = 3.5, height = 4.5)
+print(p_idh)
+dev.off()
+
