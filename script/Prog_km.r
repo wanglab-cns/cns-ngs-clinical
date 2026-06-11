@@ -1297,7 +1297,6 @@ dev.off()
 ## KM figure --- OS association with subtypes/treatment
 #############################################################
 ## step 1 --- all patients: IDH-mut, IDH-wt-gbm and IDH-wt-other
-
 clin$group <- NA
 clin$group[clin$IDH_status == "WT" &
            clin$Histo == "Glioblastoma"] <- "IDH-WT-GBM"
@@ -1317,15 +1316,14 @@ data$time <- as.numeric(as.character(data$time))
     
 for(i in 1:nrow(data)){
     
-    if( !is.na(as.numeric(as.character(data[ i , "time" ]))) && as.numeric(as.character(data[ i , "time" ])) > time.censor.mut ){
-      data[ i , "time" ] = time.censor.mut
+    if( !is.na(as.numeric(as.character(data[ i , "time" ]))) && as.numeric(as.character(data[ i , "time" ])) > time.censor ){
+      data[ i , "time" ] = time.censor
       data[ i , "status" ] = 0
       
     }
   }   
 
-data$variable <- clin$group
-                      
+data$variable <- clin$group                      
 
 surv_obj <- with(data, Surv(time, status))
 fit_idh <- survfit(surv_obj ~ variable, data = data)
@@ -1367,14 +1365,18 @@ print(p_idh)
 dev.off()
 
 ## step 2 --- GBM patients: Targeted therapy and others
-clin_gbm <- clin[clin$Histo == "Glioblastoma", ] # 105 patients
+clin_targeted_therapy <- readxl::read_xlsx(file.path('data', 'Feb 2026 updated survival status.xlsx'), 
+                          sheet = 3, .name_repair = "minimal")
+clin_gbm <- clin[clin$Histo == 'Glioblastoma', ] 
+patientid <- intersect(clin_targeted_therapy$'Study #', clin_gbm$Study)
+clin_gbm <- clin_gbm[clin_gbm$Study %in% patientid, ]
+clin_targeted_therapy <- clin_targeted_therapy[clin_targeted_therapy$'Study #' %in% patientid, ]
 
-clin_gbm$group <- clin_gbm$Therapy_status
+clin_gbm$group <- clin_targeted_therapy$"Was patient treated with 2nd line chemotherapy?"
 clin_gbm$group <- factor(
   clin_gbm$group,
-  levels = c("1",
-             "0"),
-  labels = c("Any therapy", "No therapy")
+  levels = c("No",
+             "Yes")
 )
 
 data <- data.frame( status=clin_gbm$os.event , time=clin_gbm$os.time)
@@ -1382,8 +1384,8 @@ data$time <- as.numeric(as.character(data$time))
     
 for(i in 1:nrow(data)){
     
-    if( !is.na(as.numeric(as.character(data[ i , "time" ]))) && as.numeric(as.character(data[ i , "time" ])) > time.censor.mut ){
-      data[ i , "time" ] = time.censor.mut
+    if( !is.na(as.numeric(as.character(data[ i , "time" ]))) && as.numeric(as.character(data[ i , "time" ])) > time.censor ){
+      data[ i , "time" ] = time.censor
       data[ i , "status" ] = 0
       
     }
