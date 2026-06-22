@@ -8,16 +8,17 @@
 ##
 ##   The plot summarizes treatment duration, radiographic
 ##   response, treatment status, molecular alterations,
-##   and clinical subgroup classification at the individual
+##   histologic subtype, and tumour grade at the individual
 ##   patient level.
-##
 ##
 ## Input:
 ##
-##   - data/CNS_NGS_Swimmers_Plot_Data.csv
+##   - data/CNS_NGS_Swimmers_Plot_Data-2.csv
 ##
 ##       Patient-level dataset containing:
 ##         • clinical characteristics
+##         • histologic diagnosis
+##         • tumour grade
 ##         • targeted therapy information
 ##         • actionable molecular alterations
 ##         • treatment dates
@@ -27,9 +28,10 @@
 ##
 ## Outputs:
 ##
-##   1) Publication-quality swimmer plot PDF
+##   1) Publication-quality swimmer plot PDF and JPEG
 ##
 ##        - swimmers_plot.pdf
+##        - swimmers_plot.jpeg
 ##
 ##   2) Visualization of:
 ##
@@ -38,8 +40,9 @@
 ##        - Treatment status
 ##        - Molecular alterations
 ##        - Targeted therapies administered
-##        - Clinical subgroup membership
-##
+##        - Histologic subtype
+##        - Tumour grade
+##        - Patient identifier
 ##
 ## Processing Overview:
 ##
@@ -53,14 +56,16 @@
 ##   4) Annotate actionable molecular alterations using
 ##        simplified gene-level labels
 ##
-##   5) Classify patients into molecular subgroups:
+##   5) Classify patients by histologic subtype:
 ##
-##        - Glioblastoma (GBM)
-##        - BRAF-driven non-GBM glioma
-##        - IDH-mutant glioma
+##        - Glioblastoma
+##        - Oligodendroglioma
+##        - Astrocytoma
+##        - Pilocytic Astrocytoma
+##        - Other
 ##
-##   6) Order patients within each subgroup by decreasing
-##        PFS duration
+##   6) Order patients within each histologic subtype by
+##        decreasing PFS duration
 ##
 ##   7) Generate swimmer plot displaying:
 ##
@@ -69,38 +74,35 @@
 ##        - Treatment status by endpoint symbol
 ##        - Targeted therapy administered
 ##        - Actionable molecular alteration
-##        - GBM status
+##        - Tumour grade
 ##        - Patient identifier
 ##
-##   8) Add subgroup annotations, legends, and
+##   8) Add histologic subtype annotations, legends, and
 ##        publication-ready formatting
 ##
-##   9) Export final figure as PDF
-##
+##   9) Export final figure as PDF and JPEG
 ##
 ## Notes:
 ##
 ##   - PFS is calculated from targeted therapy initiation
 ##     to progression, treatment discontinuation, or last
 ##     follow-up for ongoing therapy.
-##
 ##   - Bars exceeding 25 months are truncated and
 ##     indicated with arrowheads.
-##
 ##   - Best response categories include:
 ##        • CR = Complete response
 ##        • PR = Partial response
 ##        • SD = Stable disease
 ##        • PD = Progressive disease
-##
 ##   - Treatment status is displayed using endpoint
 ##     symbols indicating ongoing treatment, completion
 ##     without progression, or progression while on
 ##     therapy.
-##
-##   - Patients are ranked within each molecular subgroup
+##   - Patients are ranked within each histologic subtype
 ##     according to decreasing PFS to facilitate visual
 ##     comparison of treatment outcomes.
+##   - Tumour grade is displayed as a dedicated annotation
+##     column using distinct point symbols.
 ##-------------------------------------------------------------------
 ###############################################################
 ## load libraries
@@ -313,9 +315,6 @@ x_grade     <- -5.2    # was -2.2
 x_pt      <- -2.8    # was -0.6
 
 # Vertical separators sit in the GAPS between columns (never over text):
-#   -2.8  : between gene alteration and GBM   (right of gene's right edge)
-#   -1.4  : between GBM and Pt
-#   -0.05 : between Pt and the bars
 sep_x <- c(-6.35, -4, -1.4)
 
 # Far-right legend column (single tidy stack)
@@ -326,7 +325,6 @@ grey_line <- "grey80"
 header_y  <- n_pt + 1.4
 
 # Group section boundaries, computed from the (possibly reordered) rows so
-# they always track the actual group blocks rather than fixed patient numbers.
 grp_sizes <- as.numeric(table(factor(dat$group, levels = c("Glioblastoma", "Oligodendroglioma", "Astrocytoma", "Pilocytic Astrocytoma", "Other"))))
 grp_cum   <- cumsum(grp_sizes)
 # Divider lines sit between the last row of one group and the first of the next
@@ -383,9 +381,6 @@ geom_text(aes(x = x_therapy, y = y_pos, label = therapy),
           hjust = 1, size = 4.5) + # fontface = "bold"
   geom_text(aes(x = x_gene, y = y_pos, label = mutation),
             hjust = 1, size = 4, colour = "grey15") +
-  # GBM dot: filled navy = GBM, open = non-GBM
-  #geom_point(aes(x = x_gbm, y = y_pos, shape = is_gbm),
-  #           size = 3.8, colour = "#4B5A69FF", fill = "#4B5A69FF", stroke = 0.9) +
  geom_point(
   aes(x = x_grade, y = y_pos, shape = grade),
   size = 3.2,
