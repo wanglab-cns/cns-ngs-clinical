@@ -1360,6 +1360,9 @@ p_idh <- ggsurvplot(
   risk.table.fontsize = 3
 )
 
-pdf(file.path(dir_output, 'clinical', "KM_OS_a.pdf"), width =4.5, height = 4.5)
+pdf(file.path(dir_output, 'clinical', "KM_OS_a.pdf"), width =4, height = 4)
+
+jpeg(file.path(dir_output, "clinical", "KM_OS_a.jpeg"), width = 4, height = 4, units = "in", res = 300)
+
 print(p_idh)
 dev.off()
