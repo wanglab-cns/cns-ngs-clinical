@@ -109,6 +109,7 @@ library(ggplot2)
 library(dplyr)
 library(stringr)
 library(paletteer)
+library(lubridate)
 
 ###############################################################
 ## setup directory
@@ -121,39 +122,23 @@ dir_output <- 'result/data'
 ###############################################################
 
 parse_date <- function(x) {
-  if (inherits(x, "Date"))    return(x)
-  if (inherits(x, "POSIXct")) return(as.Date(x))
-
-  x <- as.character(x)
-
-  out <- as.Date(rep(NA_real_, length(x)), origin = "1970-01-01")
-
-  num <- suppressWarnings(as.numeric(x))
-  is_num <- !is.na(num)
-
-  out[is_num] <- as.Date(num[is_num], origin = "1899-12-30")
-
-  is_chr <- !is_num & !is.na(x) & !(trimws(x) %in% c("NA", "", "Ongoing"))
-
-  if (any(is_chr)) {
-    out[is_chr] <- as.Date(
-      suppressWarnings(
-        as.POSIXct(
-          trimws(x[is_chr]),
-          tryFormats = c(
-            "%Y-%m-%d",
-            "%Y/%m/%d",
-            "%d/%m/%Y",
-            "%m/%d/%Y",
-            "%B %d, %Y",
-            "%b %d, %Y"
-          )
-        )
+  x <- trimws(as.character(x))
+  x[x %in% c("", "NA", "N/A", "null", "Unknown")] <- NA
+  
+  suppressWarnings(
+    lubridate::parse_date_time(
+      x,
+      orders = c(
+        "d-b-y",   # 28-Mar-24
+        "d-b-Y",   # 28-Mar-2024
+        "Y-m-d",   # 2022-05-30
+        "d/m/Y",
+        "m/d/Y",
+        "d-m-Y",
+        "d-m-y"
       )
-    )
-  }
-
-  out
+    ) |> as.Date()
+  )
 }
 
 short_mutation <- function(s) {
@@ -174,7 +159,9 @@ short_mutation <- function(s) {
 }
 
 
-get_col <- function(pattern) nm[str_detect(nm, regex(pattern, ignore_case = TRUE))][1]
+get_col <- function(pattern) {
+  nm[str_detect(nm, regex(pattern, ignore_case = TRUE))][1]
+}
 
 
 add_legend_block <- function(p, title, y0, labels, shapes, colours,
@@ -194,27 +181,30 @@ add_legend_block <- function(p, title, y0, labels, shapes, colours,
 ###############################################################
 ## data preparation
 ###############################################################
-
 Swimmersplot <- read.csv(
-  file.path(dir_input, "CNS_NGS_Swimmers_Plot_Data.csv"),
+  file.path(dir_input, "CNS_NGS_Swimmers_Plot_Data-2.csv"),
   fileEncoding = "Windows-1252",
   stringsAsFactors = FALSE,
   check.names = FALSE
 )
+
 df <- Swimmersplot
 nm <- names(df)
+df$Diagnosis <- ifelse(df$Diagnosis %in% c('Diffuse HGG', 'Pleomorphic Xanthoastrocytoma'), 'Other', df$Diagnosis)
 
 col_ptnum   <- get_col("^Patient Number")
 col_ptid    <- get_col("^Patient Identifier")
-col_therapy <- get_col("^Targeted Therapy$")
+col_therapy <- get_col("Targeted Therapy$")
 col_mut     <- get_col("Actionable Mutation")
 col_start   <- get_col("Targeted Therapy Start Date")
 col_end     <- get_col("Targeted Therapy End Date")
 col_status  <- get_col("Treatment Status")
 col_reason  <- get_col("Reason Stopped")
 col_resp    <- get_col("Best Response")
-col_gbm     <- get_col("^GBM")
+col_gbm     <- get_col("GBM")
 col_lfu     <- get_col("Last Follow Up Date")
+col_histo   <- get_col("Diagnosis")
+col_grade   <- get_col("Tumour Grade")
 
 dat <- df %>%
   transmute(
@@ -228,7 +218,9 @@ dat <- df %>%
     status    = trimws(.data[[col_status]]),
     reason    = trimws(.data[[col_reason]]),
     response  = trimws(.data[[col_resp]]),
-    gbm       = trimws(.data[[col_gbm]])
+    gbm       = trimws(.data[[col_gbm]]),
+    histo     = trimws(.data[[col_histo]]),
+    grade     = trimws(.data[[col_grade]])
   ) %>%
   # Drop legend / note rows at the bottom of the sheet
   filter(!is.na(pt_num), !is.na(pt_id), !is.na(therapy), therapy != "") %>%
@@ -238,50 +230,77 @@ dat <- df %>%
 #   Ongoing                       -> Last Follow Up Date
 #   Reason == Disease Progression -> Targeted Therapy End Date
 #   otherwise                     -> Targeted Therapy End Date
+histo_levels <- c(
+  "Glioblastoma",
+  "Oligodendroglioma",
+  "Astrocytoma",
+  "Pilocytic Astrocytoma",
+  "Other"
+)
+
+grade_levels <- c(
+  "CNS WHO Grade 1",
+  "CNS WHO Grade 2",
+  "CNS WHO Grade 3",
+  "CNS WHO Grade 4",
+  "Unknown"
+)
+
 dat <- dat %>%
   mutate(
     end_for_pfs = dplyr::case_when(
-      status == "Ongoing"                  ~ lfu_dt,
-      reason == "Disease Progression"      ~ end_dt,
-      TRUE                                 ~ end_dt
+      status == "Ongoing"             ~ lfu_dt,
+      reason == "Disease Progression" ~ end_dt,
+      TRUE                            ~ end_dt
     ),
     pfs_months = as.numeric(end_for_pfs - start_dt) / 30.44,
     prog_on_tx = reason == "Disease Progression",
     mutation   = short_mutation(mut_raw),
-    is_gbm     = str_to_lower(gbm) == "yes",
     response   = factor(response, levels = c("PD", "SD", "PR", "CR")),
-    # End-of-bar marker category
+
     marker = dplyr::case_when(
       status == "Ongoing" ~ "Ongoing",
       prog_on_tx          ~ "Progressed on therapy",
       TRUE                ~ "Finished (no progression)"
     ),
-    # Clinical group (defined by patient number, as before)
+
     group = dplyr::case_when(
-      pt_num <= 5  ~ "GBM",
-      pt_num <= 11 ~ "BRAF",
-      TRUE         ~ "IDH"
+      !is.na(histo) & histo != "" ~ histo,
+      TRUE ~ "Other"
     ),
-    group = factor(group, levels = c("GBM", "BRAF", "IDH")),
-    # Cap bars at 25 months; flag bars that hit the cap (need an arrow)
+    group = factor(group, levels = histo_levels),
+
+    grade = dplyr::case_when(
+      is.na(grade) | grade == "" ~ "Unknown",
+      TRUE ~ grade
+    ),
+    grade = factor(grade, levels = grade_levels),
+
     pfs_capped = pmin(pfs_months, 25),
     hit_cap    = pfs_months >= 25
-  )
-
-n_pt <- nrow(dat)   # 28
-
-# Order rows: keep the groups top->bottom (GBM, BRAF, IDH); within each group
-# sort by PFS so the LONGEST lane is on top and the shortest at the bottom.
-dat <- dat %>%
+  ) %>%
   arrange(group, desc(pfs_months)) %>%
   mutate(
     row_order = row_number(),
-    y_pos     = n_pt - row_order + 1   # first row at the top
+    y_pos = n() - row_order + 1
   )
+
+n_pt <- nrow(dat)
 
 ###############################################################
 ## layout constants
 ###############################################################
+sections <- dat %>%
+  group_by(group) %>%
+  summarise(
+    y_min = min(y_pos),
+    y_max = max(y_pos),
+    ymid  = mean(y_pos),
+    .groups = "drop"
+  )
+
+div_y <- sections$y_min[-1] - 0.5
+
 # Colours for Best Response
 resp_cols <- c(PD = "#A5693CFF", SD = "#526A83FF", PR = "#A5872DFF", CR = "#68855CFF")
 resp_labs <- c(PD = "Progressive disease", SD = "Stable disease",
@@ -290,7 +309,7 @@ resp_labs <- c(PD = "Progressive disease", SD = "Stable disease",
 # x anchors for the left-hand annotation columns (text is right-aligned)
 x_therapy <- -14.5   # was -9.0
 x_gene    <- -7.5    # was -3.4
-x_gbm     <- -5.2    # was -2.2
+x_grade     <- -5.2    # was -2.2
 x_pt      <- -2.8    # was -0.6
 
 # Vertical separators sit in the GAPS between columns (never over text):
@@ -308,7 +327,7 @@ header_y  <- n_pt + 1.4
 
 # Group section boundaries, computed from the (possibly reordered) rows so
 # they always track the actual group blocks rather than fixed patient numbers.
-grp_sizes <- as.numeric(table(factor(dat$group, levels = c("GBM", "BRAF", "IDH"))))
+grp_sizes <- as.numeric(table(factor(dat$group, levels = c("Glioblastoma", "Oligodendroglioma", "Astrocytoma", "Pilocytic Astrocytoma", "Other"))))
 grp_cum   <- cumsum(grp_sizes)
 # Divider lines sit between the last row of one group and the first of the next
 div_y <- n_pt - grp_cum[-length(grp_cum)] + 0.5
@@ -316,7 +335,7 @@ div_y <- n_pt - grp_cum[-length(grp_cum)] + 0.5
 sections <- dat %>%
   group_by(group) %>%
   summarise(ymid = mean(y_pos), .groups = "drop") %>%
-  mutate(label = c("GBM", "BRAF-driven", "IDH-mutant")[as.integer(group)]) %>%
+  mutate(label = c("Glioblastoma", "Oligodendroglioma", "Astrocytoma", "Pilocytic Astrocytoma", "Other")[as.integer(group)]) %>%
   arrange(group)
 
 # ---------------------------------------------------------------------
@@ -365,19 +384,30 @@ geom_text(aes(x = x_therapy, y = y_pos, label = therapy),
   geom_text(aes(x = x_gene, y = y_pos, label = mutation),
             hjust = 1, size = 4, colour = "grey15") +
   # GBM dot: filled navy = GBM, open = non-GBM
-  geom_point(aes(x = x_gbm, y = y_pos, shape = is_gbm),
-             size = 3.8, colour = "#4B5A69FF", fill = "#4B5A69FF", stroke = 0.9) +
+  #geom_point(aes(x = x_gbm, y = y_pos, shape = is_gbm),
+  #           size = 3.8, colour = "#4B5A69FF", fill = "#4B5A69FF", stroke = 0.9) +
+ geom_point(
+  aes(x = x_grade, y = y_pos, shape = grade),
+  size = 3.2,
+  colour = "#4B5A69FF",
+  fill = "white",
+  stroke = 1.1
+) +
+  scale_shape_manual(  values = c(
+    "CNS WHO Grade 1" = 21,
+    "CNS WHO Grade 2" = 22,
+    "CNS WHO Grade 3" = 23,
+    "CNS WHO Grade 4" = 24), guide = "none", drop = FALSE) +
   geom_text(aes(x = x_pt, y = y_pos, label = pt_num),
             hjust = 1, size = 4, colour = "grey15") +
-  scale_shape_manual(values = c(`TRUE` = 16, `FALSE` = 1), guide = "none") +
   
   # ----- Column headers + subtle underline -----
 annotate("text", x = x_therapy, y = header_y, label = "Targeted therapy",
          hjust = 1, fontface = "bold", size = 5) +
   annotate("text", x = x_gene, y = header_y, label = "Gene alteration",
            hjust = 1, fontface = "bold", size = 5) +
-  annotate("text", x = x_gbm, y = header_y, label = "GBM",
-           hjust = 0.5, fontface = "bold", size = 5) +
+  annotate("text", x = x_grade, y = header_y, label = "Grade",
+         hjust = 0.5, fontface = "bold", size = 5) +
   annotate("text", x = x_pt, y = header_y, label = "Pt.",
            hjust = 1, fontface = "bold", size = 5) +
   annotate("segment", x = x_therapy - 4.0, xend = x_pt + 0.3,
@@ -390,7 +420,7 @@ annotate("segment", x = sep_x, xend = sep_x,
          colour = grey_line, linewidth = 0.3) +
   
   # ----- Italic grey section labels (left-aligned, just right of the bars) -----
-annotate("text", x = 25.5, y = sections$ymid, label = sections$label,
+annotate("text", x = 25.5, y = sections$ymid, label = sections$group,
          hjust = 0, fontface = "italic", colour = "grey55", size = 5.2) +
   
   # ----- Bar colours (legend drawn manually below, so no auto guide) -----
@@ -424,25 +454,32 @@ plot.margin = margin(15, 15, 15, 15)
 
 # --- Group (top) ---
 p <- add_legend_block(
-  p, "Group", y0 = 27,
-  labels  = c("GBM", "Non-GBM"),
-  shapes  = c(16, 1),
-  colours = c("#4B5A69FF", "#4B5A69FF"))
+  p, "Tumour grade", y0 = 28,
+  labels  = c("Grade 1", "Grade 2", "Grade 3", "Grade 4"),
+  shapes  = c(21, 22, 23, 24),
+  colours = rep("#4B5A69FF", 4),
+  fills   = rep("white", 4),
+  line_gap = 0.75
+)
 
 # --- Treatment status (middle) ---
 p <- add_legend_block(
-  p, "Treatment status", y0 = 23,
+  p, "Treatment status", y0 = 22,
   labels  = c("Ongoing", "Finished (no progression)", "Progressed on therapy"),
   shapes  = c(17, 15, 4),
-  colours = c("black", "black", "black"))
+  colours = c("black", "black", "black"),
+  line_gap = 0.8
+)
 
 # --- Best response (bottom) — filled squares in the response colours ---
 p <- add_legend_block(
-  p, "Best response", y0 = 18,
+  p, "Best response", y0 = 16.5,
   labels  = c("Progressive disease", "Stable disease",
               "Partial response", "Complete response"),
   shapes  = c(15, 15, 15, 15),
-  colours = unname(resp_cols[c("PD", "SD", "PR", "CR")]))
+  colours = unname(resp_cols[c("PD", "SD", "PR", "CR")]),
+  line_gap = 0.8
+)
 
 # ---------------------------------------------------------------------
 # 6. Display
@@ -452,3 +489,5 @@ dev.new(width = 22, height = 11)
 print(p)
 
 ggsave(file.path(dir_output, "swimmers_plot.pdf"), p, width = 22, height = 11)
+
+ggsave(file.path(dir_output, "swimmers_plot.jpeg"), p, width = 22, height = 11, dpi = 300)
