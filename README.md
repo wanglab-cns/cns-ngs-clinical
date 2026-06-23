@@ -98,5 +98,5 @@ cns-ngs-clinical/
 
 ## Notes
 
-- Analyses are implemented in R/Bioconductor, including penalized Cox survival models for sparse subgroups, with IDH status defined using combined IDH1/IDH2 mutation events. 
+- Analyses are implemented in R/Bioconductor using standard statistical and bioinformatics approaches, with IDH status determined from combined IDH1 and IDH2 mutation data.
 - The repository is designed to support reproducible and extensible clinicogenomic analyses in CNS tumours.
