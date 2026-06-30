@@ -63,8 +63,9 @@ os_mut_wt_sig <- os[os$pval < 0.5, ]
 os_mut_wt <- os
 
 os <- read.csv(file.path(dir_mut, "cox_os_mut_mut.csv"))
-os_mut_mut_sig <-  os[os$pval < 0.5, ]
-os_mut_mut <-  os[os$HR < 10, ]
+#os_mut_mut_sig <-  os[os$pval < 0.5, ]
+os_mut_mut_sig <- os
+os_mut_mut <- os
 
 #########################################################
 ## Mutation & clinical: OS
@@ -74,8 +75,9 @@ os_mut_clin_wt_sig <-  os[os$pval < 0.5, ]
 os_mut_clin_wt <-  os
 
 os <- read.csv(file.path(dir_clin_mut, 'mutation & clinical', "cox_os_mut_mv.csv"))
-os_mut_clin_mut_sig <-  os[os$pval < 0.5, ]
-os_mut_clin_mu <-  os
+# os_mut_clin_mut_sig <-  os[os$pval < 0.5, ]
+os_mut_clin_mut_sig <- os
+os_mut_clin_mut <-  os
 
 ######################################################
 ## prepare data for forestplot:  WT
@@ -196,13 +198,13 @@ forestplot(
 
   # Reference line
   zero = 1,
-  lwd.zero = 1.5,
+  lwd.zero = 1,
 
   # Axis
   xlab = "Hazard Ratio",
-  xlog = TRUE,
-  xticks = c(0.25, 0.5, 1, 2, 4),
-  clip = c(0.25, 5),
+  xlog = FALSE,
+  xticks = c(0, 0.5, 1, 2, 4),
+  clip = c(0, 5),
 
   # Colors
   col = fpColors(
@@ -364,13 +366,13 @@ forestplot(
 
   # Reference line
   zero = 1,
-  lwd.zero = 1.5,
+  lwd.zero = 1,
 
   # Axis
   xlab = "Hazard Ratio",
-  xlog = TRUE,
-  xticks = c(0.25, 0.5, 1, 2, 4),
-  clip = c(0.25, 5),
+  xlog = FALSE,
+  xticks = c(0, 1, 2, 5, 10),
+  clip = c(0, 10),
 
   # Colors
   col = fpColors(
