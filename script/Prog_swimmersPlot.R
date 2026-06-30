@@ -343,8 +343,8 @@ sections <- dat %>%
 p <- ggplot(dat) +
   
   # --- dashed vertical grid lines at 5,10,15,20,25 ---
-  geom_vline(xintercept = c(5, 10, 15, 20, 25),
-             linetype = "dashed", colour = grey_line, linewidth = 0.3) +
+  #geom_vline(xintercept = c(5, 10, 15, 20, 25),
+  #           linetype = "dashed", colour = grey_line, linewidth = 0.3) +
   
   # --- horizontal group divider lines ---
   geom_hline(yintercept = div_y, colour = grey_line, linewidth = 0.3) +
