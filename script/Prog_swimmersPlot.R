@@ -381,18 +381,22 @@ geom_text(aes(x = x_therapy, y = y_pos, label = therapy),
           hjust = 1, size = 4.5) + # fontface = "bold"
   geom_text(aes(x = x_gene, y = y_pos, label = mutation),
             hjust = 1, size = 4, colour = "grey15") +
- geom_point(
-  aes(x = x_grade, y = y_pos, shape = grade),
-  size = 3.2,
-  colour = "#4B5A69FF",
-  fill = "white",
-  stroke = 1.1
-) +
-  scale_shape_manual(  values = c(
-    "CNS WHO Grade 1" = 21,
-    "CNS WHO Grade 2" = 22,
-    "CNS WHO Grade 3" = 23,
-    "CNS WHO Grade 4" = 24), guide = "none", drop = FALSE) +
+ geom_text(
+  aes(
+    x = x_grade,
+    y = y_pos,
+    label = dplyr::case_when(
+      grade == "CNS WHO Grade 1" ~ "1",
+      grade == "CNS WHO Grade 2" ~ "2",
+      grade == "CNS WHO Grade 3" ~ "3",
+      grade == "CNS WHO Grade 4" ~ "4",
+      TRUE ~ ""
+    )
+  ),
+  size = 4,
+  colour = "grey15"
+  #fontface = "bold"
+  ) +
   geom_text(aes(x = x_pt, y = y_pos, label = pt_num),
             hjust = 1, size = 4, colour = "grey15") +
   
@@ -448,14 +452,14 @@ plot.margin = margin(15, 15, 15, 15)
 # ---------------------------------------------------------------------
 
 # --- Group (top) ---
-p <- add_legend_block(
-  p, "Tumour grade", y0 = 28,
-  labels  = c("Grade 1", "Grade 2", "Grade 3", "Grade 4"),
-  shapes  = c(21, 22, 23, 24),
-  colours = rep("#4B5A69FF", 4),
-  fills   = rep("white", 4),
-  line_gap = 0.75
-)
+#p <- add_legend_block(
+#  p, "Tumour grade", y0 = 28,
+#  labels  = c("Grade 1", "Grade 2", "Grade 3", "Grade 4"),
+#  shapes  = c(21, 22, 23, 24),
+#  colours = rep("#4B5A69FF", 4),
+#  fills   = rep("white", 4),
+#  line_gap = 0.75
+#)
 
 # --- Treatment status (middle) ---
 p <- add_legend_block(
