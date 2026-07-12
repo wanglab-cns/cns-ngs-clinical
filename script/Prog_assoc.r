@@ -419,6 +419,63 @@ cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
 cox_res$study <- 'GBM'
 write.csv(cox_res, file = file.path(dir_output, 'mutation', 'cox_os_mut_gbm.csv'), row.names=FALSE)
 
+## --- Step 5: WT and nonGBM patients 
+clin_nongbm <- clin[clin$Histo == 'Non-GBM' & clin$IDH_status == 'WT', ] # 105
+df <- mut[, colnames(mut) %in% clin_nongbm$Study]
+
+cox_res <- lapply(1:nrow(df), function(k){
+
+data <- data.frame( status=clin_nongbm$os.event , 
+                    time=clin_nongbm$os.time , 
+                    variable=as.numeric(unlist(df[k, ]) ) )
+
+data <- data[!is.na(data$variable), ]
+data$variable <- factor(data$variable)
+
+data$status[data$time > time.censor] <- 0
+data$time[data$time > time.censor] <- time.censor
+
+n1 <- sum(data$variable == 1)
+n0 <- sum(data$variable == 0)
+e1 <- sum(data$status[data$variable == 1] == 1)
+e0 <- sum(data$status[data$variable == 0] == 1)
+
+  if( n1 >= n1.cutoff & n0 >= n0.cutoff & e1 >= 2 & e0 >= 2 ){
+    
+    fit <- coxphf(Surv(time, status) ~ variable, data = data)
+    res <- data.frame(gene = rownames(df)[k],
+                      logHR = fit$coefficients, 
+                      HR = exp(fit$coefficients),   
+                      se = sqrt(diag(fit$var)),
+                      n = nrow(data),
+                      low = fit$ci.lower,
+                      up  = fit$ci.upper,
+                      pval = fit$prob)
+                      
+
+  } else{
+    
+   res <- data.frame(gene = rownames(df)[k],
+                     logHR = NA, 
+                     HR = NA,
+                     se = NA,
+                     n = NA,
+                     low = NA,
+                     up = NA,
+                     pval = NA)
+    
+  }
+  
+  res
+
+})
+
+cox_res <- do.call(rbind, cox_res)
+cox_res <- cox_res[!is.na(cox_res$HR), ]
+cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
+cox_res$study <- 'nonGBM'
+write.csv(cox_res, file = file.path(dir_output, 'mutation', 'cox_os_mut_wt_nongbm.csv'), row.names=FALSE)
+
 ########################################################################################################
 ########################################################################################################
 ######################################### MV OS association (Part 1) ###################################
@@ -645,7 +702,7 @@ cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
 cox_res$study <- 'IDH mutant'
 write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_mut_mv.csv'), row.names=FALSE)
 
-## --- Step 3: Mut patients
+## --- Step 4: GBM patients
 res <- read.csv(file.path(dir_output, 'clinical', 'cox_os_clin_gbm.csv'))
 varnames <- res[res$pval < 0.05, 'variable']
 
@@ -717,4 +774,77 @@ cox_res <- cox_res[!is.na(cox_res$HR), ]
 cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
 cox_res$study <- 'GBM'
 write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_gbm_mv.csv'), row.names=FALSE)
+
+## --- Step 5: WT and nonGBM patients
+res <- read.csv(file.path(dir_output, 'clinical', 'cox_os_clin_wt_nongbm.csv'))
+varnames <- res[res$pval < 0.05, 'variable']
+
+clin_nongbm <- clin[clin$Histo != 'GBM' & clin$IDH_status == 'WT', ]
+df <- mut[, colnames(mut) %in% clin_nongbm$Study]
+mut_freq <- rowMeans(df == 1)
+genes <- names(mut_freq[mut_freq >= 0.1])
+df <- df[rownames(df) %in% genes, ]
+
+cox_res <- lapply(1:nrow(df), function(k){
+
+data <- data.frame( status=clin_nongbm$os.event , 
+                    time=clin_nongbm$os.time , 
+                    variable=as.numeric(unlist(df[k, ]) ), 
+                    Age = clin_nongbm$Age,
+                    Grade = clin_nongbm$Grade,
+                    Histo = clin_nongbm$Histo,
+                    ECOG = clin_nongbm$ECOG,
+                    MGMT = clin_nongbm$MGMT,
+                    Resection = clin_nongbm$Resection
+                    )
+
+data <- data[!is.na(data$variable), ]
+data$variable <- factor(data$variable)
+
+data$status[data$time > time.censor] <- 0
+data$time[data$time > time.censor] <- time.censor
+  
+  n1 <- sum(data$variable == 1)
+  n0 <- sum(data$variable == 0)
+  e1 <- sum(data$status[data$variable == 1] == 1)
+  e0 <- sum(data$status[data$variable == 0] == 1)
+
+  if( n1 >= n1.cutoff & n0 >= n0.cutoff & e1 >= 2 & e0 >= 2 ){
+    
+    fit <- coxphf( formula= Surv( time , status ) ~ variable + ECOG, data=data )
+    res <- data.frame(gene = rownames(df)[k],
+                      level = names(fit$coefficients),
+                      logHR = fit$coefficients,
+                      HR = exp(fit$coefficients),
+                      se = sqrt(diag(fit$var)),
+                      n = nrow(data),
+                      low = fit$ci.lower,
+                      up  = fit$ci.upper,
+                      pval = fit$prob)
+    
+    res <- res[grep("^variable", res$level), ]
+
+  } else{
+    
+   res <- data.frame(gene = rownames(df)[k],
+                     level = NA,
+                     logHR = NA,
+                     HR = NA,
+                     se = NA,
+                     n = NA,
+                     low = NA,
+                     up = NA,
+                     pval = NA)
+    
+  }
+  
+  res
+
+})
+
+cox_res <- do.call(rbind, cox_res)
+cox_res <- cox_res[!is.na(cox_res$HR), ]
+cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
+cox_res$study <- 'nonGBM'
+write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_wt_nongbm_mv.csv'), row.names=FALSE)
 
