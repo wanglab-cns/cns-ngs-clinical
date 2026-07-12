@@ -181,6 +181,38 @@ clin$Resection <- factor(
 
 mut <- mut[, colnames(mut) %in% clin$Study] # 199 patients and 39 gene-mutations
 
+###############################################################
+## OS and PFS density
+###############################################################
+pdf(file=file.path(dir_output, "desnity_os.pdf"),
+     width = 4, height = 3)
+
+ggplot(clin) +
+  geom_density(aes(x = os.time), fill = "#4e4a1c", alpha = 0.4) +
+  labs(x = "Time (months)", y = "Density", fill = "") +
+  theme_classic()
+
+dev.off()
+
+##############################################################################
+## KM: OS
+##############################################################################
+# Fit models
+fit_os  <- survfit(Surv(os.time, os.event) ~ 1, data = clin)
+
+# Plots
+pdf(file.path(dir_output, "KM_os.pdf"), width = 4, height = 4)
+ ggsurvplot(
+  fit_os,
+  data = clin,
+  conf.int = TRUE,
+  palette = c("#4e4a1c"),
+  ggtheme = theme_classic(),
+  xlab = "Time (months)",
+  ylab = "Overall Survival"
+)
+dev.off()
+
 ####################################################
 ## KM figure --- clinical variables (all patients)
 ####################################################
