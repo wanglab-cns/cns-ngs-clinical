@@ -418,3 +418,60 @@ write.csv(cox_res,
           file = file.path(dir_output, 'clinical', 'cox_os_clin_gbm.csv'),
           row.names = FALSE)
           
+
+## --- Step 4: GBM patients 
+clin_nongbm <- clin[clin$Histo != 'GBM' & clin$IDH_status == 'WT', ] # 47 cases
+df <- clin_nongbm[, c('Age', 'Sex', 'Grade', 'MGMT', 'ECOG', 'Resection')]
+
+cox_res <- lapply(names(df), function(varname){
+
+  data <- data.frame(
+    status = clin_nongbm$os.event,
+    time   = as.numeric(clin_nongbm$os.time),
+    variable = df[[varname]]
+  )
+
+  # remove NA
+  data <- data[!is.na(data$variable), ]
+
+  # ensure factor (important)
+  data$variable <- as.factor(data$variable)
+
+  # censoring (vectorized)
+  data$status[data$time > time.censor] <- 0
+  data$time[data$time > time.censor] <- time.censor
+
+  # skip if only one level
+  if(nlevels(data$variable) < 2) return(NULL)
+
+  # run Cox
+  fit <- tryCatch(
+    coxphf(Surv(time, status) ~ variable, data = data),
+    error = function(e) return(NULL)
+  )
+
+  if(is.null(fit)) return(NULL)
+
+  res <- data.frame(
+    variable = varname,
+    level = names(fit$coefficients),
+    logHR = fit$coefficients,
+    HR = exp(fit$coefficients),   
+    se = sqrt(diag(fit$var)),
+    n = nrow(data),
+    low = fit$ci.lower,
+    up  = fit$ci.upper,
+    pval = fit$prob
+  )
+
+  res
+})
+
+cox_res <- do.call(rbind, cox_res)
+cox_res <- cox_res[!is.na(cox_res$HR), ]
+cox_res$study <- 'nonGBM'
+
+write.csv(cox_res,
+          file = file.path(dir_output, 'clinical', 'cox_os_clin_wt_nongbm.csv'),
+          row.names = FALSE)
+          
