@@ -1,6 +1,5 @@
 ##-------------------------------------------------------------------
 ## Script: CNS NGS Mutation–Clinical Association Analysis
-##
 ## Purpose:
 ##   To evaluate associations between recurrent gene-level
 ##   mutations and selected clinical variables in CNS
@@ -10,57 +9,42 @@
 ##   frequency visualizations are generated for the
 ##   full cohort and IDH-stratified subgroups.
 ##
-##
 ## Input:
-##
 ##   - result/data/mae_mut_clin.RData
-##
 ##       MultiAssayExperiment object containing:
 ##         • binary mutation matrix
 ##         • harmonized clinical metadata
-##
-##
 ## Outputs:
-##
 ##   1) Statistical association result tables
-##
 ##   2) Mutation frequency bar plot visualizations
 ##
-##
 ## Processing Overview:
-##
 ##   1) Load mutation and clinical data
-##
 ##   2) Harmonize clinical variables including:
 ##        - Age
 ##        - Sex
 ##        - IDH status
-##
+##        - Histology
 ##   3) Filter recurrent mutations and prepare
 ##      patient-level datasets
-##
 ##   4) Perform Fisher’s exact tests between
 ##      mutation status and:
 ##        - Age group
 ##        - Sex
-##
 ##   5) Repeat analyses within:
 ##        - Full cohort
 ##        - IDH wild-type subgroup
 ##        - IDH mutant subgroup
-##
+##        - IDH wild-type glioblastoma subgroup
+##        - IDH wild-type non-glioblastoma subgroup
 ##   6) Generate mutation frequency bar plots
-##
 ##   7) Export statistical results and figures
-##
 ##
 ## Notes:
 ##   - Analyses are based on binary gene-level
 ##     mutation matrices.
-##
 ##   - Multiple testing correction is performed
 ##     using false discovery rate (FDR) adjustment.
-##
 ##   - Outputs are intended for downstream
 ##     visualization and reporting.
 ##-------------------------------------------------------------------
@@ -123,7 +107,7 @@ mut_long <- mut_long %>%
   left_join(
     clin %>% 
       mutate(Sample = Study) %>%
-      select(Sample, Age, Sex, IDH_status),
+      select(Sample, Age, Sex, IDH_status, histo),
     by = "Sample"
   )
 
@@ -154,9 +138,9 @@ plot_age <- mut_long %>%
 age_assoc <- age_assoc %>%
   mutate(
     sig = case_when(
-      pval < 0.001 ~ "***",
-      pval < 0.01  ~ "**",
-      pval < 0.05  ~ "*",
+      pval < 0.001 ~ "****",
+      pval < 0.01  ~ "***",
+      pval < 0.05  ~ "**",
       TRUE        ~ ""
     )
   )
@@ -167,9 +151,7 @@ plot_age_sig <- plot_age %>%
   summarise(y_pos = max(freq) + 5, .groups = "drop") %>%
   left_join(age_assoc %>% select(Gene, sig), by = "Gene")
 
-pdf(file.path(dir_output, 'mut_age.pdf'), width = 5, height = 3.5)
-
-ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
+p <- ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
   geom_bar(stat = "identity", position = "dodge", width = 0.6) +
   scale_fill_manual(
     values = c(">40" = "#08306B",
@@ -196,6 +178,13 @@ ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
   labs(y = "Mutation frequency (%)", x = "", 
        title = " ")
 
+pdf(file.path(dir_output, 'mut_age.pdf'), width = 5, height = 3.5)
+print(p)
+dev.off()
+
+jpeg(file.path(dir_output, "mut_age.jpeg"), width = 5, height = 3.5, units = "in", 
+     res = 300, quality = 100)
+print(p)
 dev.off()
 
 ## Step 2 --- Mutant patients
@@ -245,9 +234,8 @@ plot_age_sig <- plot_age %>%
   summarise(y_pos = max(freq) + 5, .groups = "drop") %>%
   left_join(age_assoc %>% select(Gene, sig), by = "Gene")
 
-pdf(file.path(dir_output, 'mut_age_mut.pdf'), width = 6, height = 3.5)
 
-ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
+p <- ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
   geom_bar(stat = "identity", position = "dodge", width = 0.6) +
   scale_fill_manual(
     values = c(">40" = "#08306B",
@@ -274,7 +262,13 @@ ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
   labs(y = "Mutation frequency (%)", x = "", 
        title = " ")
 
+pdf(file.path(dir_output, 'mut_age_mut.pdf'), width = 6, height = 3.5)
+print(p)
+dev.off()
 
+jpeg(file.path(dir_output, "mut_age_mut.jpeg"), width = 6, height = 3.5, units = "in", 
+     res = 300, quality = 100)
+print(p)
 dev.off()
 
 ## Step 3 --- Wild type patients
@@ -324,9 +318,7 @@ plot_age_sig <- plot_age %>%
   summarise(y_pos = max(freq) + 5, .groups = "drop") %>%
   left_join(age_assoc %>% select(Gene, sig), by = "Gene")
 
-pdf(file.path(dir_output, 'mut_age_wt.pdf'), width = 6, height = 3.5)
-
-ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
+p <- ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
   geom_bar(stat = "identity", position = "dodge", width = 0.6) +
   scale_fill_manual(
     values = c(">40" = "#08306B",
@@ -353,7 +345,180 @@ ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
   labs(y = "Mutation frequency (%)", x = "", 
        title = " ")
 
+pdf(file.path(dir_output, 'mut_age_wt.pdf'), width = 6, height = 3.5)
+print(p)
+dev.off()
 
+jpeg(file.path(dir_output, "mut_age_wt.jpeg"), width = 6, height = 3.5, units = "in", 
+     res = 300, quality = 100)
+print(p)
+dev.off()
+
+## Step 4 --- Wild type GBM patients
+mut_long_wt_gbm <- mut_long[mut_long$IDH_status == 'WT' & mut_long$histo == 'Glioblastoma', ]
+age_assoc <- mut_long_wt_gbm %>%
+  group_by(Gene) %>%
+  summarise(
+    pval = {
+      tbl <- table(Mutation, Age)
+      if (all(dim(tbl) == c(2, 2))) {
+        fisher.test(tbl)$p.value
+      } else {
+        NA_real_
+      }
+    },
+    .groups = "drop"
+  )
+
+age_assoc <- age_assoc[!is.na(age_assoc$pval), ]
+age_assoc$fdr <- p.adjust(age_assoc$pval, method = "BH")
+write.csv(age_assoc, file = file.path(dir_output, 'csv', 'mut_age_wt_gbm.csv'))
+
+## bar plot age
+gene_order <- mut_long_wt_gbm %>%
+  group_by(Gene) %>%
+  summarise(overall = mean(Mutation)) %>%
+  arrange(desc(overall)) %>%
+  pull(Gene)
+
+plot_age <- mut_long_wt_gbm %>%
+  group_by(Gene, Age) %>%
+  summarise(freq = mean(Mutation) * 100, .groups = "drop")
+
+age_assoc <- age_assoc %>%
+  mutate(
+    sig = case_when(
+      pval < 0.001 ~ "***",
+      pval < 0.01  ~ "**",
+      pval < 0.05  ~ "*",
+      TRUE        ~ ""
+    )
+  )
+
+plot_age$Gene <- factor(plot_age$Gene, levels = gene_order)
+plot_age_sig <- plot_age %>%
+  group_by(Gene) %>%
+  summarise(y_pos = max(freq) + 5, .groups = "drop") %>%
+  left_join(age_assoc %>% select(Gene, sig), by = "Gene")
+
+p <- ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.6) +
+  scale_fill_manual(
+    values = c(">40" = "#08306B",
+               "<40" = "#C6DBEF")
+  ) +
+  geom_text(
+    data = plot_age_sig,
+    aes(x = Gene, y = y_pos, label = sig),
+    inherit.aes = FALSE,
+    size = 5
+  ) +
+   guides(
+  fill = guide_legend(
+    keywidth  = unit(0.5, "cm"),
+    keyheight = unit(0.5, "cm")
+  )
+) + 
+  theme_classic() +
+  theme(axis.text.x = element_text(size = 7, angle = 45, hjust = 1),
+        axis.text.y = element_text(size = 7),
+        axis.title = element_text(size = 8),
+        legend.title = element_text(size = 7, face= 'bold'),
+        legend.text = element_text(size = 7)) +
+  labs(y = "Mutation frequency (%)", x = "", 
+       title = " ")
+
+pdf(file.path(dir_output, 'mut_age_wt_gbm.pdf'), width = 6, height = 3.5)
+print(p)
+dev.off()
+
+jpeg(file.path(dir_output, "mut_age_wt_gbm.jpeg"), width = 6, height = 3.5, units = "in", 
+     res = 300, quality = 100)
+print(p)
+dev.off()
+
+
+## Step 5 --- Wild type nonGBM patients
+mut_long_wt_nongbm <- mut_long[mut_long$IDH_status == 'WT' & mut_long$histo != 'Glioblastoma', ]
+age_assoc <- mut_long_wt_nongbm %>%
+  group_by(Gene) %>%
+  summarise(
+    pval = {
+      tbl <- table(Mutation, Age)
+      if (all(dim(tbl) == c(2, 2))) {
+        fisher.test(tbl)$p.value
+      } else {
+        NA_real_
+      }
+    },
+    .groups = "drop"
+  )
+
+age_assoc <- age_assoc[!is.na(age_assoc$pval), ]
+age_assoc$fdr <- p.adjust(age_assoc$pval, method = "BH")
+write.csv(age_assoc, file = file.path(dir_output, 'csv', 'mut_age_wt_nongbm.csv'))
+
+## bar plot age
+gene_order <- mut_long_wt_nongbm %>%
+  group_by(Gene) %>%
+  summarise(overall = mean(Mutation)) %>%
+  arrange(desc(overall)) %>%
+  pull(Gene)
+
+plot_age <- mut_long_wt_nongbm %>%
+  group_by(Gene, Age) %>%
+  summarise(freq = mean(Mutation) * 100, .groups = "drop")
+
+age_assoc <- age_assoc %>%
+  mutate(
+    sig = case_when(
+      pval < 0.001 ~ "****",
+      pval < 0.01  ~ "***",
+      pval < 0.05  ~ "**",
+      TRUE        ~ ""
+    )
+  )
+
+plot_age$Gene <- factor(plot_age$Gene, levels = gene_order)
+plot_age_sig <- plot_age %>%
+  group_by(Gene) %>%
+  summarise(y_pos = max(freq) + 5, .groups = "drop") %>%
+  left_join(age_assoc %>% select(Gene, sig), by = "Gene")
+
+p <- ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.6) +
+  scale_fill_manual(
+    values = c(">40" = "#08306B",
+               "<40" = "#C6DBEF")
+  ) +
+  geom_text(
+    data = plot_age_sig,
+    aes(x = Gene, y = y_pos, label = sig),
+    inherit.aes = FALSE,
+    size = 5
+  ) +
+   guides(
+  fill = guide_legend(
+    keywidth  = unit(0.5, "cm"),
+    keyheight = unit(0.5, "cm")
+  )
+) + 
+  theme_classic() +
+  theme(axis.text.x = element_text(size = 7, angle = 45, hjust = 1),
+        axis.text.y = element_text(size = 7),
+        axis.title = element_text(size = 8),
+        legend.title = element_text(size = 7, face= 'bold'),
+        legend.text = element_text(size = 7)) +
+  labs(y = "Mutation frequency (%)", x = "", 
+       title = " ")
+
+pdf(file.path(dir_output, 'mut_age_wt_nongbm.pdf'), width = 6, height = 3.5)
+print(p)
+dev.off()
+
+jpeg(file.path(dir_output, "mut_age_wt_nongbm.jpeg"), width = 6, height = 3.5, units = "in", 
+     res = 300, quality = 100)
+print(p)
 dev.off()
 
 ###########################################################
@@ -376,9 +541,7 @@ plot_sex <- mut_long %>%
 
 plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order)
 
-pdf(file.path(dir_output, 'mut_sex.pdf'), width = 6, height = 3.5)
-
-ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
+p <- ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
   geom_bar(stat = "identity", position = "dodge", width = 0.6) +
   scale_fill_manual(
     values = c("Female" = "#DD8452",
@@ -399,10 +562,16 @@ ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
   labs(y = "Mutation frequency (%)", x = "", 
        title = " ")
 
-
+pdf(file.path(dir_output, 'mut_sex.pdf'), width = 6, height = 3.5)
+print(p)
 dev.off()
 
-## Step 2 --- mutant patients
+jpeg(file.path(dir_output, "mut_sex.jpeg"), width = 6, height = 3.5, units = "in", 
+     res = 300, quality = 100)
+print(p)
+dev.off()
+
+## Step 2 --- Mutant patients
 mut_long_mut <- mut_long[mut_long$IDH_status == 'Mut', ]
 sex_assoc <- mut_long_mut %>%
   group_by(Gene) %>%
@@ -429,9 +598,8 @@ plot_sex <- mut_long_mut %>%
 
 plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order)
 
-pdf(file.path(dir_output,  'mut_sex_mut.pdf'), width = 6, height = 3.5)
 
-ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
+p <- ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
   geom_bar(stat = "identity", position = "dodge", width = 0.6) +
   scale_fill_manual(
     values = c("Female" = "#DD8452",
@@ -452,10 +620,16 @@ ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
   labs(y = "Mutation frequency (%)", x = "", 
        title = " ")
 
-
+pdf(file.path(dir_output,  'mut_sex_mut.pdf'), width = 6, height = 3.5)
+print(p)
 dev.off()
 
-## Step 2 --- mutant patients
+jpeg(file.path(dir_output, "mut_sex_mut.jpeg"), width = 6, height = 3.5, units = "in", 
+     res = 300, quality = 100)
+print(p)
+dev.off()
+
+## Step 3 --- Wild type patients
 mut_long_wt <- mut_long[mut_long$IDH_status == 'WT', ]
 sex_assoc <- mut_long_wt %>%
   group_by(Gene) %>%
@@ -482,9 +656,7 @@ plot_sex <- mut_long_wt %>%
 
 plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order)
 
-pdf(file.path(dir_output, 'mut_sex_wt.pdf'), width = 6, height = 3.5)
-
-ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
+p <- ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
   geom_bar(stat = "identity", position = "dodge", width = 0.6) +
   scale_fill_manual(
     values = c("Female" = "#DD8452",
@@ -505,5 +677,128 @@ ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
   labs(y = "Mutation frequency (%)", x = "", 
        title = " ")
 
+pdf(file.path(dir_output, 'mut_sex_wt.pdf'), width = 6, height = 3.5)
+print(p)
 dev.off()
 
+
+jpeg(file.path(dir_output, "mut_sex_wt.jpeg"), width = 6, height = 3.5, units = "in", 
+     res = 300, quality = 100)
+print(p)
+dev.off()
+
+
+## Step 4 --- Wild type GBM patients
+mut_long_wt_gbm <- mut_long[mut_long$IDH_status == 'WT' & mut_long$histo == 'Glioblastoma', ]
+sex_assoc <- mut_long_wt_gbm %>%
+  group_by(Gene) %>%
+  summarise(
+    pval = {
+      tbl <- table(Mutation, Sex)
+      if (all(dim(tbl) == c(2, 2))) {
+        fisher.test(tbl)$p.value
+      } else {
+        NA_real_
+      }
+    },
+    .groups = "drop"
+  )
+
+sex_assoc <- sex_assoc[!is.na(sex_assoc$pval), ]
+sex_assoc$fdr <- p.adjust(sex_assoc$pval, method = "BH")
+write.csv(sex_assoc, file = file.path(dir_output, 'csv', 'mut_sex_wt_gbm.csv'))
+
+## bar plot sex
+plot_sex <- mut_long_wt_gbm %>%
+  group_by(Gene, Sex) %>%
+  summarise(freq = mean(Mutation) * 100, .groups = "drop")
+
+plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order)
+
+p <- ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.6) +
+  scale_fill_manual(
+    values = c("Female" = "#DD8452",
+               "Male"   = "#4C72B0")
+  ) +
+ guides(
+  fill = guide_legend(
+    keywidth  = unit(0.5, "cm"),
+    keyheight = unit(0.5, "cm")
+  )
+) + 
+  theme_classic() +
+  theme(axis.text.x = element_text(size = 7, angle = 45, hjust = 1),
+        axis.text.y = element_text(size = 7),
+        axis.title = element_text(size = 8),
+        legend.title = element_text(size = 7, face= 'bold'),
+        legend.text = element_text(size = 7)) +
+  labs(y = "Mutation frequency (%)", x = "", 
+       title = " ")
+
+pdf(file.path(dir_output, 'mut_sex_wt_gbm.pdf'), width = 6, height = 3.5)
+print(p)
+dev.off()
+
+jpeg(file.path(dir_output, "mut_sex_wt_gbm.jpeg"), width = 6, height = 3.5, units = "in", 
+     res = 300, quality = 100)
+print(p)
+dev.off()
+
+
+## Step 5 --- Wild type nonGBM patients
+mut_long_wt_nongbm <- mut_long[mut_long$IDH_status == 'WT' & mut_long$histo != 'Glioblastoma', ]
+sex_assoc <- mut_long_wt_nongbm %>%
+  group_by(Gene) %>%
+  summarise(
+    pval = {
+      tbl <- table(Mutation, Sex)
+      if (all(dim(tbl) == c(2, 2))) {
+        fisher.test(tbl)$p.value
+      } else {
+        NA_real_
+      }
+    },
+    .groups = "drop"
+  )
+
+sex_assoc <- sex_assoc[!is.na(sex_assoc$pval), ]
+sex_assoc$fdr <- p.adjust(sex_assoc$pval, method = "BH")
+write.csv(sex_assoc, file = file.path(dir_output, 'csv', 'mut_sex_wt_nongbm.csv'))
+
+## bar plot sex
+plot_sex <- mut_long_wt_nongbm %>%
+  group_by(Gene, Sex) %>%
+  summarise(freq = mean(Mutation) * 100, .groups = "drop")
+
+plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order)
+
+p <- ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.6) +
+  scale_fill_manual(
+    values = c("Female" = "#DD8452",
+               "Male"   = "#4C72B0")
+  ) +
+ guides(
+  fill = guide_legend(
+    keywidth  = unit(0.5, "cm"),
+    keyheight = unit(0.5, "cm")
+  )
+) + 
+  theme_classic() +
+  theme(axis.text.x = element_text(size = 7, angle = 45, hjust = 1),
+        axis.text.y = element_text(size = 7),
+        axis.title = element_text(size = 8),
+        legend.title = element_text(size = 7, face= 'bold'),
+        legend.text = element_text(size = 7)) +
+  labs(y = "Mutation frequency (%)", x = "", 
+       title = " ")
+
+pdf(file.path(dir_output, 'mut_sex_wt_nongbm.pdf'), width = 6, height = 3.5)
+print(p)
+dev.off()
+
+jpeg(file.path(dir_output, "mut_sex_wt_nongbm.jpeg"), width = 6, height = 3.5, units = "in", 
+     res = 300, quality = 100)
+print(p)
+dev.off()
