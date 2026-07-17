@@ -1,7 +1,6 @@
 ##-------------------------------------------------------------------
 ## Script: Clinical Variable Associations with Overall Survival in
 ##         CNS Tumours
-##
 ## Purpose:
 ##   To evaluate associations between key clinical variables and
 ##   overall survival (OS) in CNS tumour patients using Cox
@@ -12,22 +11,19 @@
 ##   Cox regression is applied to improve model stability in small
 ##   or sparse subgroups.
 ##
-##
 ## Input:
 ##   - result/data/mae_mut_clin.RData
-##
 ##       MultiAssayExperiment object containing:
-##         • binary mutation data
-##         • harmonized clinical metadata
-##
+##         - binary mutation data
+##         - harmonized clinical metadata
 ##
 ## Outputs:
 ##   CSV files summarizing univariable Cox regression results for:
-##
 ##     - Full cohort
 ##     - IDH wild-type subgroup
 ##     - IDH mutant subgroup
-##     - GBM subgroup
+##     - IDH wild-type glioblastoma subgroup
+##     - IDH wild-type non-glioblastoma subgroup
 ##
 ##   Output tables include:
 ##     - clinical variable
@@ -36,11 +32,8 @@
 ##     - confidence intervals
 ##     - p-value
 ##
-##
 ## Processing Overview:
-##
 ##   1) Load mutation and clinical data
-##
 ##   2) Harmonize and recode clinical variables including:
 ##        - Age
 ##        - Sex
@@ -49,22 +42,15 @@
 ##        - MGMT
 ##        - ECOG (0–1 vs 2–3)
 ##        - Resection
-##
 ##   3) Apply administrative censoring to overall survival
-##
 ##   4) Perform univariable penalized Cox regression analyses
-##
 ##   5) Repeat analyses within clinically relevant subgroups
-##
 ##   6) Export results for downstream analysis and reporting
-##
 ##
 ## Notes:
 ##   - Factor reference levels are predefined for model estimation.
-##   - Category collapsing is applied where appropriate to reduce
-##     sparsity.
-##   - Stratified analyses should be interpreted cautiously due to
-##     reduced subgroup sample sizes.
+##   - Category collapsing is applied where appropriate to reduce sparsity.
+##   - Stratified analyses should be interpreted cautiously due to reduced subgroup sample sizes.
 ##-------------------------------------------------------------------
 ####################################################
 ## Load libraries
@@ -299,7 +285,7 @@ cox_res <- lapply(names(df), function(varname){
 
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
-cox_res$study <- 'IDH wilde-type'
+cox_res$study <- 'WT'
 
 write.csv(cox_res,
           file = file.path(dir_output, 'clinical', 'cox_os_clin_wt.csv'),
@@ -355,22 +341,22 @@ cox_res <- lapply(names(df), function(varname){
 
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
-cox_res$study <- 'IDH mutant'
+cox_res$study <- 'Mut'
 
 write.csv(cox_res,
           file = file.path(dir_output, 'clinical', 'cox_os_clin_mut.csv'),
           row.names = FALSE)
           
 
-## --- Step 4: GBM patients 
-clin_gbm <- clin[clin$Histo == 'GBM', ] # 105 cases
-df <- clin_gbm[, c('Age', 'Sex', 'Grade', 'MGMT', 'ECOG', 'Resection')]
+## --- Step 4: WT GBM patients 
+clin_wt_gbm <- clin[clin$Histo == 'GBM', ] # 105 cases
+df <- clin_wt_gbm[, c('Age', 'Sex', 'Grade', 'MGMT', 'ECOG', 'Resection')]
 
 cox_res <- lapply(names(df), function(varname){
 
   data <- data.frame(
-    status = clin_gbm$os.event,
-    time   = as.numeric(clin_gbm$os.time),
+    status = clin_wt_gbm$os.event,
+    time   = as.numeric(clin_wt_gbm$os.time),
     variable = df[[varname]]
   )
 
@@ -412,22 +398,22 @@ cox_res <- lapply(names(df), function(varname){
 
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
-cox_res$study <- 'GBM'
+cox_res$study <- 'WT-GBM'
 
 write.csv(cox_res,
-          file = file.path(dir_output, 'clinical', 'cox_os_clin_gbm.csv'),
+          file = file.path(dir_output, 'clinical', 'cox_os_clin_wt_gbm.csv'),
           row.names = FALSE)
           
 
-## --- Step 4: GBM patients 
-clin_nongbm <- clin[clin$Histo != 'GBM' & clin$IDH_status == 'WT', ] # 47 cases
-df <- clin_nongbm[, c('Age', 'Sex', 'Grade', 'MGMT', 'ECOG', 'Resection')]
+## --- Step 4: nonGBM patients 
+clin_wt_nongbm <- clin[clin$Histo != 'GBM' & clin$IDH_status == 'WT', ] # 43 cases
+df <- clin_wt_nongbm[, c('Age', 'Sex', 'Grade', 'MGMT', 'ECOG', 'Resection')]
 
 cox_res <- lapply(names(df), function(varname){
 
   data <- data.frame(
-    status = clin_nongbm$os.event,
-    time   = as.numeric(clin_nongbm$os.time),
+    status = clin_wt_nongbm$os.event,
+    time   = as.numeric(clin_wt_nongbm$os.time),
     variable = df[[varname]]
   )
 
@@ -469,7 +455,7 @@ cox_res <- lapply(names(df), function(varname){
 
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
-cox_res$study <- 'nonGBM'
+cox_res$study <- 'WT-nonGBM'
 
 write.csv(cox_res,
           file = file.path(dir_output, 'clinical', 'cox_os_clin_wt_nongbm.csv'),
