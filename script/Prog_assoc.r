@@ -1,7 +1,6 @@
 ##-------------------------------------------------------------------
 ## Script: Clinical Variables and Overall Survival Association
 ##         (CNS Tumours)
-##
 ## Purpose:
 ##   To evaluate associations between clinical variables and
 ##   overall survival (OS) in CNS tumour patients using
@@ -10,30 +9,24 @@
 ##   Analyses are performed in the full cohort and within
 ##   IDH- and histology-stratified subgroups.
 ##
-##
 ## Input:
 ##   - result/data/mae_mut_clin.RData
-##
 ##       MultiAssayExperiment object containing:
 ##         • binary mutation matrix including combined
 ##           IDH1/IDH2 status
 ##         • harmonized clinical metadata
 ##
-##
 ## Outputs:
 ##   CSV files containing univariable Cox regression
 ##   results for:
-##
 ##     - Full cohort
 ##     - IDH wild-type subgroup
 ##     - IDH mutant subgroup
 ##     - GBM subgroup
-##
-##
+##     - IDH wild-type glioblastoma subgroup
+##     - IDH wild-type non-glioblastoma subgroup
 ## Processing Overview:
-##
 ##   1) Load mutation and clinical data
-##
 ##   2) Harmonize and recode clinical variables including:
 ##        - Age
 ##        - Sex
@@ -42,27 +35,15 @@
 ##        - MGMT
 ##        - ECOG (0–1 vs 2–3)
 ##        - Resection
-##
 ##   3) Apply administrative censoring to overall survival
-##
 ##   4) Perform penalized Cox regression analyses
-##
-##   5) Repeat analyses within clinically relevant
-##      subgroups
-##
-##   6) Export results for downstream analysis and
-##      reporting
-##
+##   5) Repeat analyses within clinically relevant subgroups
+##   6) Export results for downstream analysis and reporting
 ##
 ## Notes:
-##   - Reference levels are predefined for model
-##     estimation.
-##
-##   - Category collapsing is applied to reduce
-##     sparsity.
-##
-##   - Stratified analyses should be interpreted
-##     cautiously due to reduced subgroup sample sizes.
+##   - Reference levels are predefined for model estimation.
+##   - Category collapsing is applied to reduce sparsity.
+##   - Stratified analyses should be interpreted cautiously due to reduced subgroup sample sizes.
 ##-------------------------------------------------------------------
 ####################################################
 ## Load libraries
@@ -302,7 +283,7 @@ e0 <- sum(data$status[data$variable == 0] == 1)
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
 cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
-cox_res$study <- 'IDH wilde-type'
+cox_res$study <- 'WT'
 write.csv(cox_res, file = file.path(dir_output, 'mutation', 'cox_os_mut_wt.csv'), row.names=FALSE)
 
 ## --- Step 3: Mut patients 
@@ -359,17 +340,17 @@ e0 <- sum(data$status[data$variable == 0] == 1)
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
 cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
-cox_res$study <- 'IDH mutant'
+cox_res$study <- 'Mut'
 write.csv(cox_res, file = file.path(dir_output, 'mutation', 'cox_os_mut_mut.csv'), row.names=FALSE)
 
 ## --- Step 4: GBM patients 
-clin_gbm <- clin[clin$Histo == 'GBM', ] # 105
+clin_wt_gbm <- clin[clin$Histo == 'GBM', ] # 105
 df <- mut[, colnames(mut) %in% clin_gbm$Study]
 
 cox_res <- lapply(1:nrow(df), function(k){
 
-data <- data.frame( status=clin_gbm$os.event , 
-                    time=clin_gbm$os.time , 
+data <- data.frame( status=clin_wt_gbm$os.event , 
+                    time=clin_wt_gbm$os.time , 
                     variable=as.numeric(unlist(df[k, ]) ) )
 
 data <- data[!is.na(data$variable), ]
@@ -416,17 +397,17 @@ e0 <- sum(data$status[data$variable == 0] == 1)
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
 cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
-cox_res$study <- 'GBM'
-write.csv(cox_res, file = file.path(dir_output, 'mutation', 'cox_os_mut_gbm.csv'), row.names=FALSE)
+cox_res$study <- 'WT-GBM'
+write.csv(cox_res, file = file.path(dir_output, 'mutation', 'cox_os_mut_wt_gbm.csv'), row.names=FALSE)
 
 ## --- Step 5: WT and nonGBM patients 
-clin_nongbm <- clin[clin$Histo == 'Non-GBM' & clin$IDH_status == 'WT', ] # 105
-df <- mut[, colnames(mut) %in% clin_nongbm$Study]
+clin_wt_nongbm <- clin[clin$Histo == 'Non-GBM' & clin$IDH_status == 'WT', ] # 105
+df <- mut[, colnames(mut) %in% clin_wt_nongbm$Study]
 
 cox_res <- lapply(1:nrow(df), function(k){
 
-data <- data.frame( status=clin_nongbm$os.event , 
-                    time=clin_nongbm$os.time , 
+data <- data.frame( status=clin_wt_nongbm$os.event , 
+                    time=clin_wt_nongbm$os.time , 
                     variable=as.numeric(unlist(df[k, ]) ) )
 
 data <- data[!is.na(data$variable), ]
@@ -473,7 +454,7 @@ e0 <- sum(data$status[data$variable == 0] == 1)
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
 cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
-cox_res$study <- 'nonGBM'
+cox_res$study <- 'WT-nonGBM'
 write.csv(cox_res, file = file.path(dir_output, 'mutation', 'cox_os_mut_wt_nongbm.csv'), row.names=FALSE)
 
 ########################################################################################################
@@ -626,7 +607,7 @@ data$time[data$time > time.censor] <- time.censor
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
 cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
-cox_res$study <- 'IDH wild-type'
+cox_res$study <- 'WT'
 write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_wt_mv.csv'), row.names=FALSE)
 
 ## --- Step 3: Mut patients
@@ -699,30 +680,30 @@ data$time[data$time > time.censor.mut] <- time.censor.mut
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
 cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
-cox_res$study <- 'IDH mutant'
+cox_res$study <- 'Mut'
 write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_mut_mv.csv'), row.names=FALSE)
 
 ## --- Step 4: GBM patients
-res <- read.csv(file.path(dir_output, 'clinical', 'cox_os_clin_gbm.csv'))
+res <- read.csv(file.path(dir_output, 'clinical', 'cox_os_clin_wt_gbm.csv'))
 varnames <- res[res$pval < 0.05, 'variable']
 
-clin_gbm <- clin[clin$Histo == 'GBM', ]
-df <- mut[, colnames(mut) %in% clin_gbm$Study]
+clin_wt_gbm <- clin[clin$Histo == 'GBM', ]
+df <- mut[, colnames(mut) %in% clin_wt_gbm$Study]
 mut_freq <- rowMeans(df == 1)
 genes <- names(mut_freq[mut_freq >= 0.1])
 df <- df[rownames(df) %in% genes, ]
 
 cox_res <- lapply(1:nrow(df), function(k){
 
-data <- data.frame( status=clin_gbm$os.event , 
-                    time=clin_gbm$os.time , 
+data <- data.frame( status=clin_wt_gbm$os.event , 
+                    time=clin_wt_gbm$os.time , 
                     variable=as.numeric(unlist(df[k, ]) ), 
-                    Age = clin_gbm$Age,
-                    Grade = clin_gbm$Grade,
-                    Histo = clin_gbm$Histo,
-                    ECOG = clin_gbm$ECOG,
-                    MGMT = clin_gbm$MGMT,
-                    Resection = clin_gbm$Resection
+                    Age = clin_wt_gbm$Age,
+                    Grade = clin_wt_gbm$Grade,
+                    Histo = clin_wt_gbm$Histo,
+                    ECOG = clin_wt_gbm$ECOG,
+                    MGMT = clin_wt_gbm$MGMT,
+                    Resection = clin_wt_gbm$Resection
                     )
 
 data <- data[!is.na(data$variable), ]
@@ -772,30 +753,30 @@ data$time[data$time > time.censor] <- time.censor
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
 cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
-cox_res$study <- 'GBM'
-write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_gbm_mv.csv'), row.names=FALSE)
+cox_res$study <- 'WT-GBM'
+write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_wt_gbm_mv.csv'), row.names=FALSE)
 
 ## --- Step 5: WT and nonGBM patients
 res <- read.csv(file.path(dir_output, 'clinical', 'cox_os_clin_wt_nongbm.csv'))
 varnames <- res[res$pval < 0.05, 'variable']
 
-clin_nongbm <- clin[clin$Histo != 'GBM' & clin$IDH_status == 'WT', ]
-df <- mut[, colnames(mut) %in% clin_nongbm$Study]
+clin_wt_nongbm <- clin[clin$Histo != 'GBM' & clin$IDH_status == 'WT', ]
+df <- mut[, colnames(mut) %in% clin_wt_nongbm$Study]
 mut_freq <- rowMeans(df == 1)
 genes <- names(mut_freq[mut_freq >= 0.1])
 df <- df[rownames(df) %in% genes, ]
 
 cox_res <- lapply(1:nrow(df), function(k){
 
-data <- data.frame( status=clin_nongbm$os.event , 
-                    time=clin_nongbm$os.time , 
+data <- data.frame( status=clin_wt_nongbm$os.event , 
+                    time=clin_wt_nongbm$os.time , 
                     variable=as.numeric(unlist(df[k, ]) ), 
-                    Age = clin_nongbm$Age,
-                    Grade = clin_nongbm$Grade,
-                    Histo = clin_nongbm$Histo,
-                    ECOG = clin_nongbm$ECOG,
-                    MGMT = clin_nongbm$MGMT,
-                    Resection = clin_nongbm$Resection
+                    Age = clin_wt_nongbm$Age,
+                    Grade = clin_wt_nongbm$Grade,
+                    Histo = clin_wt_nongbm$Histo,
+                    ECOG = clin_wt_nongbm$ECOG,
+                    MGMT = clin_wt_nongbm$MGMT,
+                    Resection = clin_wt_nongbm$Resection
                     )
 
 data <- data[!is.na(data$variable), ]
@@ -845,6 +826,6 @@ data$time[data$time > time.censor] <- time.censor
 cox_res <- do.call(rbind, cox_res)
 cox_res <- cox_res[!is.na(cox_res$HR), ]
 cox_res$fdr <- p.adjust(cox_res$pval, method = 'BH')
-cox_res$study <- 'nonGBM'
+cox_res$study <- 'WT-nonGBM'
 write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_wt_nongbm_mv.csv'), row.names=FALSE)
 
