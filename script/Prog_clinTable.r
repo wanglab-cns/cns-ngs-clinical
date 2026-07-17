@@ -20,6 +20,8 @@
 ##        - All patients
 ##        - IDH wild-type
 ##        - IDH mutant
+##        - IDH wild-type glioblastoma subgroup
+##        - IDH wild-type non-glioblastoma subgroup
 ##   4) Compute descriptive summary statistics:
 ##        - Median (IQR) for continuous variables
 ##        - Frequency and percentage for categorical variables
@@ -55,10 +57,22 @@ dir_output <- 'result/Table'
 ####################################################
 summarize_cont <- function(x) {
   x <- as.numeric(x)
-  med <- median(x, na.rm = TRUE)
-  q1  <- quantile(x, 0.25, na.rm = TRUE)
-  q3  <- quantile(x, 0.75, na.rm = TRUE)
-  sprintf("%.1f (%.1f–%.1f)", med, q1, q3)
+  x <- x[!is.na(x)]
+
+  if (length(x) == 0) {
+    return(NA_character_)
+  }
+
+  med <- median(x)
+  q1  <- quantile(x, 0.25)
+  q3  <- quantile(x, 0.75)
+  mn  <- min(x)
+  mx  <- max(x)
+
+  sprintf(
+    "%.1f (%.1f–%.1f); range %.1f–%.1f",
+    med, q1, q3, mn, mx
+  )
 }
 
 summarize_cat <- function(x) {
@@ -176,11 +190,15 @@ vars_cont <- c("os.time")
 clin_all <- clin
 clin_wt  <- clin[clin$IDH_status == "WT", ]
 clin_mut <- clin[clin$IDH_status == "Mut", ]
+clin_wt_gbm <- clin[clin$IDH_status == "WT" & clin$Histo == 'Glioblastoma', ]
+clin_wt_nongbm <- clin[clin$IDH_status == "WT" & clin$Histo != 'Glioblastoma', ]
 
 results <- data.frame(Variable = character(),
                       All = character(),
                       IDH_WT = character(),
                       IDH_Mut = character(),
+                      IDH_WT_GBM = character(),
+                      IDH_WT_nonGBM = character(),
                       stringsAsFactors = FALSE)
 
 ## Continuous
@@ -189,7 +207,9 @@ for (v in vars_cont) {
     Variable = v,
     All = summarize_cont(clin_all[[v]]),
     IDH_WT = summarize_cont(clin_wt[[v]]),
-    IDH_Mut = summarize_cont(clin_mut[[v]])
+    IDH_Mut = summarize_cont(clin_mut[[v]]),
+    IDH_WT_GBM = summarize_cont(clin_wt_gbm[[v]]),
+    IDH_WT_nonGBM = summarize_cont(clin_wt_nongbm[[v]])
   ))
 }
 
@@ -199,7 +219,9 @@ for (v in vars_cat) {
     Variable = v,
     All = summarize_cat(clin_all[[v]]),
     IDH_WT = summarize_cat(clin_wt[[v]]),
-    IDH_Mut = summarize_cat(clin_mut[[v]])
+    IDH_Mut = summarize_cat(clin_mut[[v]]),
+    IDH_WT_GBM = summarize_cat(clin_wt_gbm[[v]]),
+    IDH_WT_nonGBM = summarize_cat(clin_wt_nongbm[[v]])
   ))
 }
 
