@@ -1,6 +1,5 @@
 ##-------------------------------------------------------------------
 ## Script: CNS NGS Gene-Level Co-Mutation Analysis
-##
 ## Purpose:
 ##   To evaluate pairwise gene co-mutation and mutual
 ##   exclusivity patterns in CNS tumour patients using
@@ -10,65 +9,39 @@
 ##   events are assessed and summarized through analysis-
 ##   ready outputs and publication-quality visualizations.
 ##
-##
 ## Input:
-##
 ##   - result/data/mae_mut_clin.RData
-##
 ##       MultiAssayExperiment object containing:
-##         • binary mutation matrix
-##         • harmonized clinical metadata
-##
+##         - binary mutation matrix
+##         - harmonized clinical metadata
 ##
 ## Outputs:
-##
 ##   1) Pairwise co-mutation result tables for:
 ##        - Full cohort
 ##        - IDH wild-type subgroup
 ##        - IDH mutant subgroup
-##
 ##   2) Volcano plot visualizations
-##
 ##   3) UpSet plot visualizations
 ##
-##
 ## Processing Overview:
-##
 ##   1) Load mutation and clinical data
-##
 ##   2) Filter genes based on mutation frequency
-##
-##   3) Perform pairwise co-mutation analyses using
-##        Fisher’s exact test
-##
-##   4) Estimate odds ratios and adjust p-values for
-##        multiple testing
-##
+##   3) Perform pairwise co-mutation analyses using Fisher’s exact test
+##   4) Estimate odds ratios and adjust p-values for multiple testing
 ##   5) Repeat analyses within IDH-stratified subgroups
-##
 ##   6) Generate volcano and UpSet plot visualizations
-##
 ##   7) Export statistical results and figures
 ##
-##
 ## Notes:
-##   - Analyses are based on binary gene-level mutation
-##     matrices.
-##
-##   - Positive odds ratios indicate co-occurrence,
-##     whereas negative associations suggest mutual
-##     exclusivity.
-##
-##   - Multiple testing correction is performed using
-##     false discovery rate (FDR) adjustment.
+##   - Analyses are based on binary gene-level mutation matrices.
+##   - Positive odds ratios indicate co-occurrence, whereas negative associations suggest mutual exclusivity.
+##   - Multiple testing correction is performed using false discovery rate (FDR) adjustment.
 ##-------------------------------------------------------------------
 ####################################################
 ## Load libraries
 ####################################################
 library(MultiAssayExperiment)
 library(ggplot2)
-library(survival)
-library(survminer)
 library(dplyr) 
 library(tidyr)
 library(stringr)
@@ -238,7 +211,7 @@ co_res$fdr <- p.adjust(co_res$pval, method = "BH")
 
 write.csv(co_res, file = file.path(dir_output, 'coMut_res_wt.csv'), row.names=FALSE)
 
-## Step 2 --- MUT patients
+## Step 3 --- MUT patients
 # filter genes with sufficient mutation frequency
 min_mut_freq <- 5
 clin_mut <- clin[clin$IDH_status == 'Mut', ]
@@ -306,6 +279,142 @@ co_res$fdr <- p.adjust(co_res$pval, method = "BH")
 
 write.csv(co_res, file = file.path(dir_output, 'coMut_res_mut.csv'), row.names=FALSE)
 
+## Step 4 --- WT GBM patients
+# filter genes with sufficient mutation frequency
+min_mut_freq <- 5
+clin_wt_gbm <- clin[clin$IDH_status == 'WT' & clin$histo == 'Glioblastoma', ]
+mut_wt_gbm <- mut[ , colnames(mut) %in% clin_wt_gbm$Study]
+
+mut_counts <- rowSums(mut_wt_gbm == 1)
+genes_keep <- names(mut_counts[mut_counts >= min_mut_freq])
+
+mut_filt <- mut_wt_gbm[genes_keep, ]
+gene_pairs <- combn(rownames(mut_filt), 2)
+
+co_res <- lapply(1:ncol(gene_pairs), function(i) {
+ 
+  g1 <- gene_pairs[1, i]
+  g2 <- gene_pairs[2, i]
+
+  vec1 <- as.numeric(mut_filt[g1, ])
+  vec2 <- as.numeric(mut_filt[g2, ])
+
+   tab <- table(factor(vec1, levels = c(0,1)),
+               factor(vec2, levels = c(0,1)))
+
+  if(all(dim(tab) == c(2,2))) {
+    
+    n11 = tab["1","1"]
+    n10 = tab["1","0"]
+    n01 = tab["0","1"]
+    n00 = tab["0","0"]
+
+    fit <- fisher.test(tab)
+    OR_corrected <- (n11 + 0.5)*(n00 + 0.5) / ((n10 + 0.5)*(n01 + 0.5))
+
+    data.frame(
+      gene1 = g1,
+      gene2 = g2,
+      OR_raw = as.numeric(fit$estimate),
+      OR = OR_corrected,                 
+      pval = fit$p.value,
+      n11 = n11,
+      n10 = n10,
+      n01 = n01,
+      n00 = n00
+    )
+
+  } else {
+    
+     data.frame(
+      gene1 = g1,
+      gene2 = g2,
+      OR_raw = NA,
+      OR = NA, 
+      pval = NA,
+      n11 = NA,
+      n10 =NA,
+      n01 = NA,
+      n00 = NA
+    )
+
+  }
+})
+
+co_res <- do.call(rbind, co_res)
+co_res <- co_res[!is.na(co_res$OR), ]
+co_res$fdr <- p.adjust(co_res$pval, method = "BH")
+
+write.csv(co_res, file = file.path(dir_output, 'coMut_res_wt_gbm.csv'), row.names=FALSE)
+
+## Step 5 --- WT nonGBM patients
+# filter genes with sufficient mutation frequency
+min_mut_freq <- 5
+clin_wt_nongbm <- clin[clin$IDH_status == 'WT' & clin$histo != 'Glioblastoma', ]
+mut_wt_nongbm <- mut[ , colnames(mut) %in% clin_wt_nongbm$Study]
+
+mut_counts <- rowSums(mut_wt_nongbm == 1)
+genes_keep <- names(mut_counts[mut_counts >= min_mut_freq])
+
+mut_filt <- mut_wt_nongbm[genes_keep, ]
+gene_pairs <- combn(rownames(mut_filt), 2)
+
+co_res <- lapply(1:ncol(gene_pairs), function(i) {
+ 
+  g1 <- gene_pairs[1, i]
+  g2 <- gene_pairs[2, i]
+
+  vec1 <- as.numeric(mut_filt[g1, ])
+  vec2 <- as.numeric(mut_filt[g2, ])
+
+   tab <- table(factor(vec1, levels = c(0,1)),
+               factor(vec2, levels = c(0,1)))
+
+  if(all(dim(tab) == c(2,2))) {
+    
+    n11 = tab["1","1"]
+    n10 = tab["1","0"]
+    n01 = tab["0","1"]
+    n00 = tab["0","0"]
+
+    fit <- fisher.test(tab)
+    OR_corrected <- (n11 + 0.5)*(n00 + 0.5) / ((n10 + 0.5)*(n01 + 0.5))
+
+    data.frame(
+      gene1 = g1,
+      gene2 = g2,
+      OR_raw = as.numeric(fit$estimate),
+      OR = OR_corrected,                 
+      pval = fit$p.value,
+      n11 = n11,
+      n10 = n10,
+      n01 = n01,
+      n00 = n00
+    )
+
+  } else {
+    
+     data.frame(
+      gene1 = g1,
+      gene2 = g2,
+      OR_raw = NA,
+      OR = NA, 
+      pval = NA,
+      n11 = NA,
+      n10 =NA,
+      n01 = NA,
+      n00 = NA
+    )
+
+  }
+})
+
+co_res <- do.call(rbind, co_res)
+co_res <- co_res[!is.na(co_res$OR), ]
+co_res$fdr <- p.adjust(co_res$pval, method = "BH")
+
+write.csv(co_res, file = file.path(dir_output, 'coMut_res_wt_nongbm.csv'), row.names=FALSE)
+
 #############################################################
 ## Visualize ---- volcano plot
 #############################################################
@@ -321,9 +430,7 @@ vol_idh1 <- co_res %>%
     sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
   )
 
-pdf(file.path(dir_output,  'volcano_coMut_all.pdf'), width = 4, height = 3)
-
-ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
+p <- ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
   geom_point(aes(color = sig), size = 2) +
   geom_text_repel(
     data = subset(vol_idh1, fdr < 0.05),
@@ -349,6 +456,13 @@ ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
     legend.title = element_text(size = 8)
   )
 
+pdf(file.path(dir_output,  'volcano_coMut_all.pdf'), width = 4, height = 3)
+print(p)
+dev.off()
+
+jpeg(file.path(dir_output,  'volcano_coMut_all.jpeg'), width = 4, height = 3,
+     units = "in", res = 300, quality = 100)
+print(p)
 dev.off()
 
 ## Step 2 --- WT patients
@@ -363,9 +477,7 @@ vol_idh1 <- co_res %>%
     sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
   )
 
-pdf(file.path(dir_output,  'volcano_coMut_wt.pdf'), width = 3.5, height = 2.5)
-
-ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
+p <- ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
   geom_point(aes(color = sig), size = 1.8) +
   geom_text_repel(
     data = subset(vol_idh1, fdr < 0.05),
@@ -391,6 +503,13 @@ ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
     legend.title = element_text(size = 7)
   )
 
+pdf(file.path(dir_output,  'volcano_coMut_wt.pdf'), width = 3.5, height = 2.5)
+print(p)
+dev.off()
+
+jpeg(file.path(dir_output,  'volcano_coMut_wt.jpeg'), width = 3.5, height = 2.5,
+     units = "in", res = 300, quality = 100)
+print(p)
 dev.off()
 
 ## Step 3 --- Mut patients
@@ -405,9 +524,7 @@ vol_idh1 <- co_res %>%
     sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
   )
 
-pdf(file.path(dir_output,  'volcano_coMut_mut.pdf'), width = 3.5, height = 2.5)
-
-ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
+p <- ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
   geom_point(aes(color = sig), size = 2) +
   geom_text_repel(
     data = subset(vol_idh1, fdr < 0.05),
@@ -433,11 +550,125 @@ ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
     legend.title = element_text(size = 7)
   )
 
+pdf(file.path(dir_output,  'volcano_coMut_mut.pdf'), width = 3.5, height = 2.5)
+print(p)
+dev.off()
+
+jpeg(file.path(dir_output,  'volcano_coMut_mut.jpeg'), width = 3.5, height = 2.5,
+     units = "in", res = 300, quality = 100)
+print(p)
+dev.off()
+
+## Step 4 --- WT GBM patients
+co_res <- read.csv(file.path(dir_output, 'coMut_res_wt_gbm.csv'))
+
+vol_idh1 <- co_res %>%
+  #filter(gene1 == "IDH1") %>%
+  mutate(
+    pair = paste(gene1, gene2, sep = "–"),
+    log2_or = log2(ifelse(OR == 0, 1e-6, OR)),
+    neglog10 = -log10(pval),
+    sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
+  )
+
+p <- ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
+  geom_point(aes(color = sig), size = 1.8) +
+  geom_text_repel(
+    data = subset(vol_idh1, fdr < 0.05),
+    aes(label = pair),
+    size = 1.8
+  ) +
+  scale_color_manual(
+    values = c("FDR < 0.05" = "#1d587a",
+               "NS" = "grey70")
+  ) +
+  theme_classic() +
+  labs(
+    title = " ",
+    x = "log2(Odds Ratio)",
+    y = "-log10(p-value)",
+    color = ""
+  ) +
+  theme(
+    axis.title = element_text(size = 8),
+    axis.text  = element_text(size = 7),
+   # plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    legend.text = element_text(size = 7),
+    legend.title = element_text(size = 7)
+  )
+
+pdf(file.path(dir_output,  'volcano_coMut_wt_gbm.pdf'), width = 3.5, height = 2.5)
+print(p)
+dev.off()
+
+jpeg(file.path(dir_output,  'volcano_coMut_wt_gbm.jpeg'), width = 3.5, height = 2.5,
+     units = "in", res = 300, quality = 100)
+print(p)
+dev.off()
+
+## Step 5 --- WT nonGBM patients
+co_res <- read.csv(file.path(dir_output, 'coMut_res_wt_nongbm.csv'))
+
+vol_idh1 <- co_res %>%
+  #filter(gene1 == "IDH1") %>%
+  mutate(
+    pair = paste(gene1, gene2, sep = "–"),
+    log2_or = log2(ifelse(OR == 0, 1e-6, OR)),
+    neglog10 = -log10(pval),
+    sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
+  )
+
+p <- ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
+  geom_point(aes(color = sig), size = 1.8) +
+  geom_text_repel(
+    data = subset(vol_idh1, fdr < 0.05),
+    aes(label = pair),
+    size = 1.8
+  ) +
+  scale_color_manual(
+    values = c("FDR < 0.05" = "#1d587a",
+               "NS" = "grey70")
+  ) +
+  theme_classic() +
+  labs(
+    title = " ",
+    x = "log2(Odds Ratio)",
+    y = "-log10(p-value)",
+    color = ""
+  ) +
+  theme(
+    axis.title = element_text(size = 8),
+    axis.text  = element_text(size = 7),
+   # plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    legend.text = element_text(size = 7),
+    legend.title = element_text(size = 7)
+  )
+
+pdf(file.path(dir_output,  'volcano_coMut_wt_nongbm.pdf'), width = 3.5, height = 2.5)
+print(p)
+dev.off()
+
+jpeg(file.path(dir_output,  'volcano_coMut_wt_nongbm.jpeg'), width = 3.5, height = 2.5,
+     units = "in", res = 300, quality = 100)
+print(p)
 dev.off()
 
 #############################################################
 ## Visualize ---- UpSet plot
 #############################################################
+gene_colors <- c(
+  "TERTp"  = '#855C75FF',
+  "IDH"    = '#99B6BDFF',
+  "TP53"   = '#736F4CFF',
+  "EGFR"   = '#4A7169FF',
+  "CDK4"   = '#BF816BFF',
+  "CDKN2A" = '#E3CA97FF',
+  "PIK3CA" = '#B49696FF',
+  "FGFR1"  = "#788787FF",
+  "ATRX"   = "#D29678FF"
+)
+
+
 ## Step 1 --- all patients
 co_res <- read.csv(file.path(dir_output, 'coMut_res_all.csv'))
 co_res <- co_res[order(co_res$pval), ]
@@ -463,7 +694,7 @@ listInput <- lapply(rownames(mut_top), function(g) {
 })
 
 names(listInput) <- rownames(mut_top)
-col.id <- c('#855C75FF', '#736F4CFF', "#99B6BDFF", '#BF816BFF', '#4A7169FF')
+col.id <- gene_colors[top5_genes]
 sets <- rownames(mut_top)
 sets.bar.color <- col.id
 mainbar.y.label <- "Number of Patients"
@@ -477,6 +708,14 @@ suppressWarnings(
 
 dev.off()
 
+jpeg(file.path(dir_output,  'upset_coMut_all.jpeg'), width = 7, height = 5,
+     units = "in", res = 300, quality = 100)
+
+suppressWarnings(
+  upset.fun(fromList(listInput))
+)
+
+dev.off()
 
 ## Step 2 --- WT patients
 co_res <- read.csv(file.path(dir_output, 'coMut_res_wt.csv'))
@@ -504,11 +743,20 @@ listInput <- lapply(rownames(mut_top), function(g) {
 })
 
 names(listInput) <- rownames(mut_top)
-col.id <- c('#855C75FF', '#736F4CFF', "#99B6BDFF", '#BF816BFF', '#4A7169FF')
+col.id <- gene_colors[top5_genes]
 sets <- rownames(mut_top)
 sets.bar.color <- col.id
 
 pdf(file.path(dir_output,  'upset_coMut_wt.pdf'), width = 7, height = 5)
+
+suppressWarnings(
+  upset.fun(fromList(listInput))
+)
+
+dev.off()
+
+jpeg(file.path(dir_output,  'upset_coMut_wt.jpeg'), width = 7, height = 5,
+     units = "in", res = 300, quality = 100)
 
 suppressWarnings(
   upset.fun(fromList(listInput))
@@ -542,11 +790,115 @@ listInput <- lapply(rownames(mut_top), function(g) {
 })
 
 names(listInput) <- rownames(mut_top)
-col.id <- c('#855C75FF', '#736F4CFF', "#99B6BDFF")
+col.id <- gene_colors[top5_genes]
 sets <- rownames(mut_top)
 sets.bar.color <- col.id
 
 pdf(file.path(dir_output,  'upset_coMut_mut.pdf'), width = 7, height = 5)
+
+suppressWarnings(
+  upset.fun(fromList(listInput))
+)
+
+dev.off()
+
+jpeg(file.path(dir_output,  'upset_coMut_mut.jpeg'), width = 7, height = 5,
+     units = "in", res = 300, quality = 100)
+
+suppressWarnings(
+  upset.fun(fromList(listInput))
+)
+
+dev.off()
+
+## Step 4 --- WT GBM patients
+co_res <- read.csv(file.path(dir_output, 'coMut_res_wt_gbm.csv'))
+
+sig_pairs <- subset(co_res, pval < 0.05)
+selected_genes <- unique(c(sig_pairs$gene1, sig_pairs$gene2))
+selected_genes <- intersect(selected_genes, rownames(mut))
+gene_freq <- rowSums(mut)
+
+selected_genes <- selected_genes[
+  gene_freq[selected_genes] >= 5
+]
+
+gene_degree <- table(c(sig_pairs$gene1, sig_pairs$gene2))
+gene_degree <- sort(gene_degree, decreasing = TRUE)
+
+selected_genes <- intersect(names(gene_degree), selected_genes)
+
+top5_genes <- head(selected_genes, 3)
+top5_genes  # check what you selected
+
+mut_top <- mut[top5_genes, , drop = FALSE]
+listInput <- lapply(rownames(mut_top), function(g) {
+  colnames(mut_top)[mut_top[g, ] == 1]
+})
+
+names(listInput) <- rownames(mut_top)
+col.id <- gene_colors[top5_genes]
+sets <- rownames(mut_top)
+sets.bar.color <- col.id
+
+pdf(file.path(dir_output,  'upset_coMut_wt_gbm.pdf'), width = 7, height = 5)
+
+suppressWarnings(
+  upset.fun(fromList(listInput))
+)
+
+dev.off()
+
+jpeg(file.path(dir_output,  'upset_coMut_wt_gbm.jpeg'), width = 7, height = 5,
+     units = "in", res = 300, quality = 100)
+
+suppressWarnings(
+  upset.fun(fromList(listInput))
+)
+
+dev.off()
+
+
+## Step 5 --- WT nonGBM patients
+co_res <- read.csv(file.path(dir_output, 'coMut_res_wt_nongbm.csv'))
+
+sig_pairs <- subset(co_res, pval < 0.05)
+selected_genes <- unique(c(sig_pairs$gene1, sig_pairs$gene2))
+selected_genes <- intersect(selected_genes, rownames(mut))
+gene_freq <- rowSums(mut)
+
+selected_genes <- selected_genes[
+  gene_freq[selected_genes] >= 5
+]
+
+gene_degree <- table(c(sig_pairs$gene1, sig_pairs$gene2))
+gene_degree <- sort(gene_degree, decreasing = TRUE)
+
+selected_genes <- intersect(names(gene_degree), selected_genes)
+
+top5_genes <- head(selected_genes, 5)
+top5_genes  # check what you selected
+
+mut_top <- mut[top5_genes, , drop = FALSE]
+listInput <- lapply(rownames(mut_top), function(g) {
+  colnames(mut_top)[mut_top[g, ] == 1]
+})
+
+names(listInput) <- rownames(mut_top)
+col.id <- gene_colors[top5_genes]
+sets <- rownames(mut_top)
+sets.bar.color <- col.id
+
+pdf(file.path(dir_output,  'upset_coMut_wt_nongbm.pdf'), width = 7, height = 5)
+
+suppressWarnings(
+  upset.fun(fromList(listInput))
+)
+
+dev.off()
+
+jpeg(file.path(dir_output,  'upset_coMut_wt_nongbm.jpeg'), width = 7, height = 5,
+     units = "in", res = 300, quality = 100)
 
 suppressWarnings(
   upset.fun(fromList(listInput))
