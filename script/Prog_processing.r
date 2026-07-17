@@ -1,7 +1,6 @@
 ##----------------------------------------------------------------------------------------------------
 ## Script: CNS NGS Clinical–Mutation Integration
 ##         Binary and Oncoprint Mutation Matrices
-##
 ## Purpose:
 ##   To integrate curated clinical metadata with CNS tumour
 ##   next-generation sequencing (NGS) alteration data and
@@ -17,63 +16,40 @@
 ##   downstream survival analysis, biomarker discovery,
 ##   clustering, and visualization.
 ##
-##
 ## Inputs:
-##
 ##   1) data/Feb 18 2026 CNS Tumours NGS & Clinical Data Lock.xlsx
-##        • Clinical metadata
-##        • Curated Tier I/II mutation calls
-##
+##        - Clinical metadata
+##        - Curated Tier I/II mutation calls
 ##   2) data/clin.xlsx
-##        • Updated clinical annotations
-##
+##        - Updated clinical annotations
 ##
 ## Outputs:
-##
 ##   1) result/data/mae_mut_clin.RData
-##
 ##        MultiAssayExperiment containing:
-##
 ##          - Binary mutation matrix
 ##          - Oncoprint mutation matrix
 ##          - Harmonized clinical metadata
 ##
-##
 ## Processing Overview:
-##
 ##   1) Import and standardize clinical and mutation data
-##
 ##   2) Curate and harmonize clinical variables including:
 ##        - Overall survival
 ##        - Age
 ##        - Treatment status
 ##        - Histology
-##
 ##   3) Filter and recode clinically curated mutation events
-##
 ##   4) Generate:
 ##        - Binary gene-level mutation matrix
 ##        - Oncoprint-compatible mutation matrix
-##
 ##   5) Derive patient-level IDH mutation status
-##
 ##   6) Harmonize patients across datasets
-##
 ##   7) Construct and export a MultiAssayExperiment object
 ##
-##
 ## Notes:
-##   - Only Tier I and Tier II clinically curated variants are
-##     retained.
-##
-##   - Mutation classes include:
-##        SNV/Indel, Fusion, Amplification, and Deletion.
-##
-##   - Clinical and molecular datasets are aligned using
-##     harmonized patient identifiers.
-##
-##   - The exported object is designed for downstream analyses
-##     within the Bioconductor ecosystem.
+##   - Only Tier I and Tier II clinically curated variants are retained.
+##   - Mutation classes include: SNV/Indel, Fusion, Amplification, and Deletion.
+##   - Clinical and molecular datasets are aligned using harmonized patient identifiers.
+##   - The exported object is designed for downstream analyses within the Bioconductor ecosystem.
 ##----------------------------------------------------------------------------------------------------
 ####################################################
 ## Load libraries
