@@ -1,6 +1,5 @@
 ##--------------------------------------------------------------------
 ## Script: CNS NGS Clinical Variables Table
-##
 ## Description:
 ## This script generates baseline clinical summary statistics for
 ## a CNS NGS cohort stratified by IDH mutation status using
@@ -8,7 +7,6 @@
 ##
 ## Workflow:
 ##   1) Load processed clinical and molecular data
-##
 ##   2) Harmonize and recode clinical variables including:
 ##        - Age
 ##        - Sex
@@ -18,16 +16,13 @@
 ##        - ECOG
 ##        - MGMT
 ##        - Resection
-##
 ##   3) Stratify patients by:
 ##        - All patients
 ##        - IDH wild-type
 ##        - IDH mutant
-##
 ##   4) Compute descriptive summary statistics:
 ##        - Median (IQR) for continuous variables
 ##        - Frequency and percentage for categorical variables
-##
 ##   5) Export summary statistics table for downstream
 ##      reporting and visualization
 ##
@@ -181,7 +176,6 @@ vars_cont <- c("os.time")
 clin_all <- clin
 clin_wt  <- clin[clin$IDH_status == "WT", ]
 clin_mut <- clin[clin$IDH_status == "Mut", ]
-
 
 results <- data.frame(Variable = character(),
                       All = character(),
