@@ -1,6 +1,5 @@
 ##-------------------------------------------------------------------
 ## Script: CNS NGS OncoPrint Visualization
-##
 ## Purpose:
 ## To generate publication-quality OncoPrint visualizations
 ## for CNS tumour NGS data using the ComplexHeatmap framework.
@@ -10,18 +9,14 @@
 ## OncoPrints for the full cohort, IDH-stratified subgroups,
 ## and IDH wild-type histology-defined subgroups.
 ##
-##
 ## Input:
-##
 ## - result/data/mae_mut_clin.RData
 ##
 ## MultiAssayExperiment object containing:
-## • oncoprint mutation matrix
-## • harmonized clinical metadata
-##
+## - oncoprint mutation matrix
+## - harmonized clinical metadata
 ##
 ## Outputs:
-##
 ## PDF and JPEG figures including:
 ##
 ## - Full cohort OncoPrint
@@ -49,14 +44,10 @@
 ## 7) Export publication-quality PDF and JPEG figures
 ##
 ## Notes:
-## - Alteration classes include:
-##   SNV/Indel, Amplification, Fusion, and Deletion.
-## - Clinical annotations include demographic,
-##   histological, and molecular subgroup information.
-## - The IDH wild-type cohort is further divided into
-##   glioblastoma and non-glioblastoma subgroups.
-## - Visualizations are generated using the
-##   ComplexHeatmap framework.
+## - Alteration classes include: SNV/Indel, Amplification, Fusion, and Deletion.
+## - Clinical annotations include demographic, histological, and molecular subgroup information.
+## - The IDH wild-type cohort is further divided into glioblastoma and non-glioblastoma subgroups.
+## - Visualizations are generated using the ComplexHeatmap framework.
 ##-------------------------------------------------------------------
 ####################################################
 ## Load libraries
