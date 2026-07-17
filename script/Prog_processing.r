@@ -147,26 +147,26 @@ clin$Age <- clin$'Age at diagnosis'
 clin <- clin[order(clin$Study), ]
 
 ## therapy status 
-clin <- clin %>%
-  mutate(
-    RT_Treated = case_when(
-      `Was patient treated with radiotherapy?.1` == "Yes" ~ 1L,
-      `Was patient treated with radiotherapy?.1` == "No"  ~ 0L,
-      TRUE ~ NA_integer_
-    ),
+#clin <- clin %>%
+#  mutate(
+#    RT_Treated = case_when(
+#      `Was patient treated with radiotherapy?.1` == "Yes" ~ 1L,
+#      `Was patient treated with radiotherapy?.1` == "No"  ~ 0L,
+#      TRUE ~ NA_integer_
+#    ),
     
-    Concurrent_TMZ = case_when(
-      `Was temozolomide given concurrent to radiotherapy?` == "Yes" ~ 1L,
-      `Was temozolomide given concurrent to radiotherapy?` == "No"  ~ 0L,
-      TRUE ~ NA_integer_
-    ),
+#    Concurrent_TMZ = case_when(
+#      `Was temozolomide given concurrent to radiotherapy?` == "Yes" ~ 1L,
+#      `Was temozolomide given concurrent to radiotherapy?` == "No"  ~ 0L,
+#      TRUE ~ NA_integer_
+#    ),
     
-    Therapy_status = case_when(
-      RT_Treated == 1 | Concurrent_TMZ == 1 ~ 1L,
-      RT_Treated == 0 & Concurrent_TMZ == 0 ~ 0L,
-      TRUE ~ NA_integer_
-    )
-  )
+#    Therapy_status = case_when(
+#      RT_Treated == 1 | Concurrent_TMZ == 1 ~ 1L,
+#      RT_Treated == 0 & Concurrent_TMZ == 0 ~ 0L,
+#      TRUE ~ NA_integer_
+#    )
+#  )
 
 #################################################
 ## Create mutation matrix
@@ -176,16 +176,16 @@ mut_dat <- mut_dat[mut_dat$'Mutation Type' != 'Unclassified', ] # 1 patient
 mut_dat <- mut_dat[order(mut_dat$Study), ]
 
 ## extract IDH status
-IDH_status <- mut_dat %>%
-  group_by(`Study`) %>%
-  summarise(
-    IDH_status = ifelse(
-      any(Gene %in% c("IDH1", "IDH2") & `Mutation Type` == "SNV/Indel"), 
-      "Mut",
-      "WT"
-    ),
-    .groups = "drop"
-  )
+#IDH_status <- mut_dat %>%
+#  group_by(`Study`) %>%
+#  summarise(
+#    IDH_status = ifelse(
+#      any(Gene %in% c("IDH1", "IDH2") & `Mutation Type` == "SNV/Indel"), 
+#      "Mut",
+#      "WT"
+#    ),
+#    .groups = "drop"
+#  )
 
 ## table(IDH_status$IDH_status)
 
@@ -259,7 +259,7 @@ mat_onco <- mat_onco[, sort(colnames(mat_onco)), drop = FALSE]
 ## Create SE objects
 ###############################################
 ## Common patients  
-clin_updated <- readxl::read_xlsx(file.path(dir_input, 'clin.xlsx'))
+clin_updated <- read.csv(file.path(dir_input, 'clin.csv'))
 clin_updated <- clin_updated[order(clin_updated$Study), ]
 
 int <- intersect(clin$Study, colnames(mat_bin)) # 213 patients (all) & 199 for Tier 1 & II
@@ -270,12 +270,13 @@ mat_bin <- mat_bin[, colnames(mat_bin) %in% int]
 mat_onco <- mat_onco[, colnames(mat_onco) %in% int]
 
 clin <- clin %>%
-  left_join(IDH_status, by = "Study")
-
-clin <- clin %>%
   left_join(
-    clin_updated %>% 
-      select(Study, histo = Histo_updated),
+    clin_updated %>%
+      select(
+        Study,
+        histo = Histo_updated,
+        IDH_status = IDH_status
+      ),
     by = "Study"
   )
 
