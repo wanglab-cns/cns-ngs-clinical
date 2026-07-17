@@ -1,63 +1,62 @@
 ##-------------------------------------------------------------------
-## Script: CNS NGS OncoPrint Visualization 
+## Script: CNS NGS OncoPrint Visualization
 ##
 ## Purpose:
-##   To generate publication-quality OncoPrint visualizations
-##   for CNS tumour NGS data using the ComplexHeatmap framework.
+## To generate publication-quality OncoPrint visualizations
+## for CNS tumour NGS data using the ComplexHeatmap framework.
 ##
-##   The workflow standardizes mutation labels, integrates
-##   harmonized clinical metadata, and generates annotated
-##   OncoPrints for the full cohort and IDH-stratified
-##   subgroups.
+## The workflow standardizes mutation labels, integrates
+## harmonized clinical metadata, and generates annotated
+## OncoPrints for the full cohort, IDH-stratified subgroups,
+## and IDH wild-type histology-defined subgroups.
 ##
 ##
 ## Input:
 ##
-##   - result/data/mae_mut_clin.RData
+## - result/data/mae_mut_clin.RData
 ##
-##       MultiAssayExperiment object containing:
-##         • oncoprint mutation matrix
-##         • harmonized clinical metadata
+## MultiAssayExperiment object containing:
+## • oncoprint mutation matrix
+## • harmonized clinical metadata
 ##
 ##
 ## Outputs:
 ##
-##   PDF figures including:
+## PDF and JPEG figures including:
 ##
-##     - Full cohort OncoPrint
-##     - Annotated full cohort OncoPrint
-##     - IDH wild-type OncoPrint
-##     - IDH mutant OncoPrint
-##
+## - Full cohort OncoPrint
+## - IDH wild-type OncoPrint
+## - IDH mutant OncoPrint
+## - IDH wild-type glioblastoma OncoPrint
+## - IDH wild-type non-glioblastoma OncoPrint
 ##
 ## Processing Overview:
+## 1) Load mutation and clinical data
+## 2) Standardize and harmonize mutation labels
+## 3) Generate OncoPrint-compatible mutation matrices
+## 4) Process and harmonize clinical annotations
+## 5) Generate annotated OncoPrint visualizations
 ##
-##   1) Load mutation and clinical data
+## for:
+## - Full cohort
+## - IDH wild-type subgroup
+## - IDH mutant subgroup
+## - IDH wild-type glioblastoma subgroup
+## - IDH wild-type non-glioblastoma subgroup
 ##
-##   2) Standardize and harmonize mutation labels
-##
-##   3) Generate OncoPrint-compatible mutation matrices
-##
-##   4) Process and harmonize clinical annotations
-##
-##   5) Generate annotated OncoPrint visualizations
-##        for:
-##          - Full cohort
-##          - IDH wild-type subgroup
-##          - IDH mutant subgroup
-##
-##   6) Export publication-quality PDF figures
-##
+## 6) Filter low-frequency alterations for selected
+## subgroup-specific OncoPrints
+## 7) Export publication-quality PDF and JPEG figures
 ##
 ## Notes:
-##   - Alteration classes include:
-##        SNV/Indel, Amplification, Fusion, and Deletion.
-##
-##   - Clinical annotations include demographic and
-##     molecular subgroup information.
-##
-##   - Visualizations are generated using the
-##     ComplexHeatmap framework.
+## - Alteration classes include:
+##   SNV/Indel, Amplification, Fusion, and Deletion.
+## - Clinical annotations include demographic,
+##   histological, and molecular subgroup information.
+## - The IDH wild-type cohort is further divided into
+##   glioblastoma and non-glioblastoma subgroups.
+## - Visualizations are generated using the
+##   ComplexHeatmap framework.
 ##-------------------------------------------------------------------
 ####################################################
 ## Load libraries
@@ -307,7 +306,7 @@ top_anno <- HeatmapAnnotation(
   col = anno_col,
   simple_anno_size = unit(3, "mm"), 
   annotation_name_side = "left",
-  annotation_name_gp = gpar(fontsize = 7) 
+  annotation_name_gp = gpar(fontsize = 7), 
 
   annotation_legend_param = annotation_legend_param
 )
@@ -342,6 +341,17 @@ draw(
 
 dev.off()
 
+jpeg(filename = file.path(dir_output, "fig1.jpeg"), width = 7, height = 8, units = "in", 
+    res = 300, quality = 100)
+
+draw(
+  p,
+  heatmap_legend_side = "right",
+  annotation_legend_side = "right"
+)
+
+dev.off()
+
 ####################################################
 ## OncoPrint ---> clinbical metadata (IDH WT)
 ####################################################
@@ -352,10 +362,9 @@ clin_wt <- clin[clin$IDH_status == 'WT', ]
 anno_df <- data.frame(
   Sex = factor(clin_wt$Sex, levels = c("Male", "Female")),
   Age = factor(clin_wt$Age, levels = c(">40", "<40")),
-  #IDH = factor(clin_wt$IDH_status, levels = c("WT", "Mut")),
-  Histo = factor(clin_wt$Histo, c('Glioblastoma', 'Astrocytoma', 'Circumscribed glioma',
-                                  'Glioneuronal tumor', 'Pediatric-type HGG', 'Pediatric-type LGG', 
-                                  'Ependymoma')),
+  Histo = factor(clin_wt$Histo, c('Glioblastoma', 'Circumscribed glioma',
+                                  'Glioneuronal tumor', 'Pediatric-type HGG', 
+                                  'Pediatric-type LGG', 'Ependymoma')),
   Grade = factor(clin_wt$Grade, levels = c('I', 'II', 'III', 'IV'))
 )
 
@@ -369,10 +378,6 @@ anno_col <- list(
     Male   = "#4C72B0",
     Female = "#DD8452"
   ),
- # IDH = c(
- #   WT  = "#C44E52",
- #   Mut = "#55A868"
- # ),
   Age = c(
     '>40'  = "#08306B",
     '<40' = "#C6DBEF"
@@ -383,26 +388,14 @@ anno_col <- list(
     'III' = "#FAE093FF",
     'IV' = "#7C7189FF"
   ),
- # Location = c(
- #   'Lobar'  = "#A54B2DFF",
- #   'Cerebellum' = "#577E2FFF",
- #   'Thalamic'  = "#B49696FF",
- #   'Other' = "#96A5A5FF"
- # ),
   Histo = c(
     'Glioblastoma'          = "#4A7169FF",
-    'Astrocytoma'           = "#735231FF",
     'Circumscribed glioma'  = "#E76254FF", 
     'Glioneuronal tumor'    = "#99B6BDFF",
-  #  'Oligodendroglioma'     = "#E3CA97FF",
     'Pediatric-type HGG'    = "#B49696FF",
     'Pediatric-type LGG'    = "#AAC197FF",
     'Ependymoma'            = "#96A5A5FF"
   )
-  # Therapy = c(
-  #  'Yes'       = "#846D86FF",
-  #  'No'        = "#ABB2A5FF"
-  #)
 )
 
 # create annotation
@@ -452,6 +445,18 @@ draw(
 
 dev.off()
 
+
+jpeg(filename = file.path(dir_output, "fig2_wt.jpeg"), width = 6.5, height = 5, units = "in", 
+    res = 300, quality = 100)
+
+draw(
+  p,
+  heatmap_legend_side = "right",
+  annotation_legend_side = "right"
+)
+
+dev.off()
+
 ####################################################
 ## OncoPrint ---> clinbical metadata (IDH MUT)
 ####################################################
@@ -462,7 +467,6 @@ clin_mut <- clin[clin$IDH_status == 'Mut', ]
 anno_df <- data.frame(
   Sex = factor(clin_mut$Sex, levels = c("Male", "Female")),
   Age = factor(clin_mut$Age, levels = c(">40", "<40")),
- #IDH = factor(clin_mut$IDH_status, levels = c("WT", "Mut")),
   Histo = factor(clin_mut$Histo, levels = c('Astrocytoma', 'Oligodendroglioma')),
   Grade = factor(clin_mut$Grade, levels = c('II', 'III', 'IV'))
 )
@@ -477,11 +481,6 @@ anno_col <- list(
     Male   = "#4C72B0",
     Female = "#DD8452"
   ),
- # IDH = c(
- #   WT  = "#C44E52",
- #   Mut = "#55A868",
- #   Unknown = "#96A5A5FF"
- # ),
   Age = c(
     '>40'  = "#08306B",
     '<40' = "#C6DBEF"
@@ -491,18 +490,10 @@ anno_col <- list(
     'III' = "#FAE093FF",
     'IV' = "#7C7189FF"
   ),
- # Location = c(
- #   'Lobar'  = "#A54B2DFF",
- #   'Cerebellum' = "#577E2FFF"
- # ),
   Histo = c(
     'Astrocytoma'           = "#735231FF",
     'Oligodendroglioma'     = "#E3CA97FF"
   )
-  # Therapy = c(
-  #  'Yes'       = "#846D86FF",
-  #  'No'        = "#ABB2A5FF"
-  #)
 )
 
 # create annotation
@@ -548,3 +539,211 @@ draw(
 
 dev.off()
 
+
+jpeg(filename = file.path(dir_output, "fig3_mut.jpeg"), width = 6.5, height = 5, units = "in", 
+    res = 300, quality = 100)
+
+draw(
+  p,
+  heatmap_legend_side = "right",
+  annotation_legend_side = "right"
+)
+
+dev.off()
+
+####################################################
+## OncoPrint ---> clinbical metadata (IDH WT-GBM)
+####################################################
+# sample-level metadata
+clin <- as.data.frame(clin)
+clin_wt_gbm <- clin[clin$IDH_status == 'WT' & clin$Histo == 'Glioblastoma', ]
+
+anno_df <- data.frame(
+  Sex = factor(clin_wt_gbm$Sex, levels = c("Male", "Female")),
+  Age = factor(clin_wt_gbm$Age, levels = c(">40", "<40")),
+  Grade = factor(clin_wt_gbm$Grade, levels = c('I', 'II', 'IV'))
+)
+
+# make sure rownames match sample IDs
+mut_wt_gbm <- mut_fixed[, colnames(mut_fixed) %in% clin_wt_gbm$Study]
+rownames(anno_df) <- colnames(mut_wt_gbm)
+
+# colors
+anno_col <- list(
+  Sex = c(
+    Male   = "#4C72B0",
+    Female = "#DD8452"
+  ),
+  Age = c(
+    '>40'  = "#08306B",
+    '<40' = "#C6DBEF"
+  ),
+  Grade = c(
+    'I'  = "#A8C3A0FF",
+    'II'  = "#BC8E7DFF",
+    'IV' = "#7C7189FF"
+  )
+)
+
+# create annotation
+top_anno <- HeatmapAnnotation(
+  
+  # ---- alteration barplot ----
+  Alterations = anno_oncoprint_barplot(
+    border = FALSE,
+    height = unit(1.2, "cm")
+  ),
+
+  # ---- metadata ----
+  df = anno_df,
+  col = anno_col,
+  simple_anno_size = unit(3, "mm"), 
+  annotation_name_side = "left",
+  annotation_name_gp = gpar(fontsize = 7) 
+)
+
+freq <- rowMeans(mut_wt_gbm != '')
+keep <- freq[freq >= 0.03]
+mut_wt_gbm_filtered <- mut_wt_gbm[rownames(mut_wt_gbm) %in% names(keep), ]
+
+p <- oncoPrint(
+  mut_wt_gbm_filtered,
+  get_type = function(x) strsplit(x, ";")[[1]],
+  alter_fun = alter_fun,
+  col = col,
+  remove_empty_rows = TRUE,
+  remove_empty_columns = TRUE,
+  heatmap_legend_param = heatmap_legend_param,
+  row_names_gp = grid::gpar(fontsize = 8),
+  top_annotation = top_anno,
+  left_annotation = rowAnnotation(
+    rbar = anno_oncoprint_barplot(axis_param = list(direction = "reverse"))
+  ),
+  right_annotation = NULL
+)
+
+pdf(file.path(dir_output, 'fig4_wt_gbm.pdf'), width = 6.5, height = 5)
+
+draw(
+  p,
+  heatmap_legend_side = "right",
+  annotation_legend_side = "right"
+)
+
+dev.off()
+
+
+jpeg(filename = file.path(dir_output, "fig4_wt_gbm.jpeg"), width = 6.5, height = 5, units = "in", 
+    res = 300, quality = 100)
+
+draw(
+  p,
+  heatmap_legend_side = "right",
+  annotation_legend_side = "right"
+)
+
+dev.off()
+
+####################################################
+## OncoPrint ---> clinbical metadata (IDH WT-nonGBM)
+####################################################
+# sample-level metadata
+clin <- as.data.frame(clin)
+clin_wt_nongbm <- clin[clin$IDH_status == 'WT' & clin$Histo != 'Glioblastoma', ]
+
+anno_df <- data.frame(
+  Sex = factor(clin_wt_nongbm$Sex, levels = c("Male", "Female")),
+  Age = factor(clin_wt_nongbm$Age, levels = c(">40", "<40")),
+  Histo = factor(clin_wt_nongbm$Histo, c('Circumscribed glioma', 'Glioneuronal tumor', 
+                                         'Pediatric-type HGG', 'Pediatric-type LGG', 
+                                         'Ependymoma')),
+  Grade = factor(clin_wt_nongbm$Grade, levels = c('I', 'II', 'III', 'IV'))
+)
+
+# make sure rownames match sample IDs
+mut_wt_nongbm <- mut_fixed[, colnames(mut_fixed) %in% clin_wt_nongbm$Study]
+rownames(anno_df) <- colnames(mut_wt_nongbm)
+
+# colors
+anno_col <- list(
+  Sex = c(
+    Male   = "#4C72B0",
+    Female = "#DD8452"
+  ),
+  Age = c(
+    '>40'  = "#08306B",
+    '<40' = "#C6DBEF"
+  ),
+  Grade = c(
+    'I'  = "#A8C3A0FF",
+    'II'  = "#BC8E7DFF",
+    'III' = "#FAE093FF",
+    'IV' = "#7C7189FF"
+  ),
+  Histo = c(
+    'Circumscribed glioma'  = "#E76254FF", 
+    'Glioneuronal tumor'    = "#99B6BDFF",
+    'Pediatric-type HGG'    = "#B49696FF",
+    'Pediatric-type LGG'    = "#AAC197FF",
+    'Ependymoma'            = "#96A5A5FF"
+  )
+)
+
+# create annotation
+top_anno <- HeatmapAnnotation(
+  
+  # ---- alteration barplot ----
+  Alterations = anno_oncoprint_barplot(
+    border = FALSE,
+    height = unit(1.2, "cm")
+  ),
+
+  # ---- metadata ----
+  df = anno_df,
+  col = anno_col,
+  simple_anno_size = unit(3, "mm"), 
+  annotation_name_side = "left",
+  annotation_name_gp = gpar(fontsize = 7) 
+)
+
+freq <- rowMeans(mut_wt_nongbm != '')
+keep <- freq[freq >= 0.03]
+mut_wt_nongbm_filtered <- mut_wt_nongbm[rownames(mut_wt_nongbm) %in% names(keep), ]
+
+p <- oncoPrint(
+  mut_wt_nongbm_filtered,
+  get_type = function(x) strsplit(x, ";")[[1]],
+  alter_fun = alter_fun,
+  col = col,
+  remove_empty_rows = TRUE,
+  remove_empty_columns = TRUE,
+  heatmap_legend_param = heatmap_legend_param,
+  row_names_gp = grid::gpar(fontsize = 8),
+  top_annotation = top_anno,
+  left_annotation = rowAnnotation(
+    rbar = anno_oncoprint_barplot(axis_param = list(direction = "reverse"))
+  ),
+  right_annotation = NULL
+)
+
+pdf(file.path(dir_output, 'fig5_wt_nongbm.pdf'), width = 6.5, height = 5)
+
+draw(
+  p,
+  heatmap_legend_side = "right",
+  annotation_legend_side = "right"
+)
+
+dev.off()
+
+
+jpeg(filename = file.path(dir_output, "fig5_wt_nongbm.jpeg"), width = 6.5, height = 5, units = "in", 
+    res = 300, quality = 100)
+
+draw(
+  p,
+  heatmap_legend_side = "right",
+  annotation_legend_side = "right"
+)
+
+dev.off()
