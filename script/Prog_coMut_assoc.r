@@ -3,39 +3,67 @@
 ## Purpose:
 ##   To evaluate pairwise gene co-mutation and mutual
 ##   exclusivity patterns in CNS tumour patients using
-##   binary mutation data.
+##   curated binary mutation and clinical data.
 ##
-##   Statistical associations between gene alteration
-##   events are assessed and summarized through analysis-
-##   ready outputs and publication-quality visualizations.
+##   Statistical associations between recurrent gene
+##   alterations are evaluated in the full cohort and
+##   IDH- and histology-stratified subgroups.
 ##
 ## Input:
 ##   - result/data/mae_mut_clin.RData
 ##       MultiAssayExperiment object containing:
-##         - binary mutation matrix
-##         - harmonized clinical metadata
+##         • binary gene-level mutation matrix
+##         • harmonized clinical metadata
 ##
 ## Outputs:
-##   1) Pairwise co-mutation result tables for:
-##        - Full cohort
-##        - IDH wild-type subgroup
-##        - IDH mutant subgroup
+##   1) Pairwise co-mutation association tables
 ##   2) Volcano plot visualizations
 ##   3) UpSet plot visualizations
 ##
 ## Processing Overview:
 ##   1) Load mutation and clinical data
-##   2) Filter genes based on mutation frequency
-##   3) Perform pairwise co-mutation analyses using Fisher’s exact test
-##   4) Estimate odds ratios and adjust p-values for multiple testing
-##   5) Repeat analyses within IDH-stratified subgroups
-##   6) Generate volcano and UpSet plot visualizations
-##   7) Export statistical results and figures
+##   2) Combine IDH1 and IDH2 mutation calls into
+##      a single IDH mutation indicator
+##   3) Retain genes mutated in at least five
+##      patients within each analysis cohort
+##   4) Perform pairwise Fisher's exact tests and
+##      estimate odds ratios
+##   5) Adjust p-values for multiple testing using
+##      the Benjamini-Hochberg FDR method
+##   6) Repeat analyses within:
+##        - Full cohort
+##        - IDH wild-type subgroup
+##        - IDH mutant subgroup
+##        - IDH wild-type glioblastoma subgroup
+##        - IDH wild-type non-glioblastoma subgroup
+##   7) Generate volcano plots showing association
+##      strength and statistical significance
+##   8) Generate UpSet plots showing patient-level
+##      mutation intersections among selected genes
+##   9) Export statistical results and figures
 ##
 ## Notes:
-##   - Analyses are based on binary gene-level mutation matrices.
-##   - Positive odds ratios indicate co-occurrence, whereas negative associations suggest mutual exclusivity.
-##   - Multiple testing correction is performed using false discovery rate (FDR) adjustment.
+##   - Analyses are based on binary gene-level
+##     mutation matrices.
+##   - IDH1 and IDH2 mutations are combined into
+##     a single IDH mutation indicator.
+##   - Fisher's exact test is used for pairwise
+##     mutation association testing.
+##   - Odds ratios greater than 1 indicate
+##     co-occurrence, whereas odds ratios less than
+##     1 indicate negative association or potential
+##     mutual exclusivity.
+##   - A Haldane-Anscombe correction of 0.5 is
+##     applied when calculating odds ratios.
+##   - Multiple testing correction is performed
+##     using false discovery rate (FDR) adjustment.
+##   - Volcano plots distinguish FDR-significant,
+##     nominally significant, and non-significant
+##     associations where applicable.
+##   - UpSet gene selection is based primarily on
+##     FDR-significant associations, with selected
+##     nominal associations included for subgroups
+##     with limited statistical power.
 ##-------------------------------------------------------------------
 ####################################################
 ## Load libraries
@@ -81,7 +109,7 @@ if(all(c("IDH1","IDH2") %in% rownames(mut))){
 # filter genes with sufficient mutation frequency
 min_mut_freq <- 5
 
-mut_counts <- rowSums(mut == 1)
+mut_counts <- rowSums(mut == 1, na.rm = TRUE)
 genes_keep <- names(mut_counts[mut_counts >= min_mut_freq])
 mut_filt <- mut[genes_keep, ]
 
@@ -149,7 +177,7 @@ min_mut_freq <- 5
 clin_wt <- clin[clin$IDH_status == 'WT', ]
 mut_wt <- mut[ , colnames(mut) %in% clin_wt$Study]
 
-mut_counts <- rowSums(mut_wt == 1)
+mut_counts <- rowSums(mut_wt == 1, na.rm = TRUE)
 genes_keep <- names(mut_counts[mut_counts >= min_mut_freq])
 
 mut_filt <- mut_wt[genes_keep, ]
@@ -217,10 +245,10 @@ min_mut_freq <- 5
 clin_mut <- clin[clin$IDH_status == 'Mut', ]
 mut_mut <- mut[ , colnames(mut) %in% clin_mut$Study]
 
-mut_counts <- rowSums(mut_mut == 1)
+mut_counts <- rowSums(mut_mut == 1, na.rm = TRUE)
 genes_keep <- names(mut_counts[mut_counts >= min_mut_freq])
 
-mut_filt <- mut_wt[genes_keep, ]
+mut_filt <- mut_mut[genes_keep, ]
 gene_pairs <- combn(rownames(mut_filt), 2)
 
 co_res <- lapply(1:ncol(gene_pairs), function(i) {
@@ -285,7 +313,7 @@ min_mut_freq <- 5
 clin_wt_gbm <- clin[clin$IDH_status == 'WT' & clin$histo == 'Glioblastoma', ]
 mut_wt_gbm <- mut[ , colnames(mut) %in% clin_wt_gbm$Study]
 
-mut_counts <- rowSums(mut_wt_gbm == 1)
+mut_counts <- rowSums(mut_wt_gbm == 1, na.rm = TRUE)
 genes_keep <- names(mut_counts[mut_counts >= min_mut_freq])
 
 mut_filt <- mut_wt_gbm[genes_keep, ]
@@ -353,7 +381,7 @@ min_mut_freq <- 5
 clin_wt_nongbm <- clin[clin$IDH_status == 'WT' & clin$histo != 'Glioblastoma', ]
 mut_wt_nongbm <- mut[ , colnames(mut) %in% clin_wt_nongbm$Study]
 
-mut_counts <- rowSums(mut_wt_nongbm == 1)
+mut_counts <- rowSums(mut_wt_nongbm == 1, na.rm = TRUE)
 genes_keep <- names(mut_counts[mut_counts >= min_mut_freq])
 
 mut_filt <- mut_wt_nongbm[genes_keep, ]
@@ -421,39 +449,82 @@ write.csv(co_res, file = file.path(dir_output, 'coMut_res_wt_nongbm.csv'), row.n
 ## Step 1 --- all patients
 co_res <- read.csv(file.path(dir_output, 'coMut_res_all.csv'))
 
-vol_idh1 <- co_res %>%
-  #filter(gene1 == "IDH1") %>%
+vol_all <- co_res %>%
   mutate(
     pair = paste(gene1, gene2, sep = "–"),
-    log2_or = log2(ifelse(OR == 0, 1e-6, OR)),
-    neglog10 = -log10(pval),
-    sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
+
+    log2_or = log2(
+      ifelse(is.na(OR) | OR <= 0, 1e-6, OR)
+    ),
+
+    neglog10 = -log10(
+      ifelse(is.na(pval) | pval <= 0, 1e-300, pval)
+    ),
+
+    sig = case_when(
+      fdr < 0.05 ~ "FDR < 0.05",
+      pval < 0.05 ~ "p < 0.05",
+      TRUE       ~ "NS"
+    ),
+
+    sig = factor(
+      sig,
+      levels = c(
+        "FDR < 0.05",
+        "p < 0.05",
+        "NS"
+      )
+    )
   )
 
-p <- ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
-  geom_point(aes(color = sig), size = 2) +
+## Check the number of pairs in each group
+table(vol_all$sig, useNA = "ifany")
+
+p <- ggplot(
+  vol_all,
+  aes(x = log2_or, y = neglog10)
+) +
+  geom_point(
+    aes(color = sig),
+    size = 1.7,
+    alpha = 0.9
+  ) +
+
+  ## Label pairs with FDR < 0.05
   geom_text_repel(
-    data = subset(vol_idh1, fdr < 0.05),
+    data = vol_all %>%
+      filter(fdr < 0.05),
     aes(label = pair),
-    size = 2
+    size = 1.7,
+    max.overlaps = Inf,
+    box.padding = 0.3,
+    point.padding = 0.2,
+    min.segment.length = 0
   ) +
+
   scale_color_manual(
-    values = c("FDR < 0.05" = "#1d587a",
-               "NS" = "grey70")
+    values = c(
+      "FDR < 0.05"      = "#515260FF",
+      "p < 0.05"        = "#A56A3EFF",  
+      "NS"               = "#A5A6AEFF"
+    ),
+    drop = FALSE
   ) +
+
   theme_classic() +
+
   labs(
-    title = " ",
+    title = "",
     x = "log2(Odds Ratio)",
     y = "-log10(p-value)",
     color = ""
   ) +
+
   theme(
-    axis.title = element_text(size = 9),
-    axis.text  = element_text(size = 8),
-   # plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
-    legend.text = element_text(size = 8),
-    legend.title = element_text(size = 8)
+    axis.title = element_text(size = 8),
+    axis.text = element_text(size = 7),
+    legend.text = element_text(size = 7),
+    legend.title = element_text(size = 7)
   )
 
 pdf(file.path(dir_output,  'volcano_coMut_all.pdf'), width = 4, height = 3)
@@ -469,36 +540,79 @@ dev.off()
 co_res <- read.csv(file.path(dir_output, 'coMut_res_wt.csv'))
 
 vol_idh1 <- co_res %>%
-  #filter(gene1 == "IDH1") %>%
   mutate(
     pair = paste(gene1, gene2, sep = "–"),
-    log2_or = log2(ifelse(OR == 0, 1e-6, OR)),
-    neglog10 = -log10(pval),
-    sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
+
+    log2_or = log2(
+      ifelse(is.na(OR) | OR <= 0, 1e-6, OR)
+    ),
+
+    neglog10 = -log10(
+      ifelse(is.na(pval) | pval <= 0, 1e-300, pval)
+    ),
+
+    sig = case_when(
+      fdr < 0.05 ~ "FDR < 0.05",
+      pval < 0.05 ~ "p < 0.05",
+      TRUE       ~ "NS"
+    ),
+
+    sig = factor(
+      sig,
+      levels = c(
+        "FDR < 0.05",
+        "p < 0.05",
+        "NS"
+      )
+    )
   )
 
-p <- ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
-  geom_point(aes(color = sig), size = 1.8) +
+## Check the number of pairs in each group
+table(vol_idh1$sig, useNA = "ifany")
+
+p <- ggplot(
+  vol_idh1,
+  aes(x = log2_or, y = neglog10)
+) +
+  geom_point(
+    aes(color = sig),
+    size = 1.7,
+    alpha = 0.9
+  ) +
+
+  ## Label pairs with FDR < 0.05
   geom_text_repel(
-    data = subset(vol_idh1, fdr < 0.05),
+    data = vol_idh1 %>%
+      filter(fdr < 0.05),
     aes(label = pair),
-    size = 1.8
+    size = 1.7,
+    max.overlaps = Inf,
+    box.padding = 0.3,
+    point.padding = 0.2,
+    min.segment.length = 0
   ) +
+
   scale_color_manual(
-    values = c("FDR < 0.05" = "#1d587a",
-               "NS" = "grey70")
+    values = c(
+      "FDR < 0.05"      = "#515260FF",
+      "p < 0.05"        = "#A56A3EFF",  
+      "NS"               = "#A5A6AEFF"
+    ),
+    drop = FALSE
   ) +
+
   theme_classic() +
+
   labs(
-    title = " ",
+    title = "",
     x = "log2(Odds Ratio)",
     y = "-log10(p-value)",
     color = ""
   ) +
+
   theme(
     axis.title = element_text(size = 8),
-    axis.text  = element_text(size = 7),
-   # plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    axis.text = element_text(size = 7),
     legend.text = element_text(size = 7),
     legend.title = element_text(size = 7)
   )
@@ -516,36 +630,79 @@ dev.off()
 co_res <- read.csv(file.path(dir_output, 'coMut_res_mut.csv'))
 
 vol_idh1 <- co_res %>%
-  #filter(gene1 == "IDH1") %>%
   mutate(
     pair = paste(gene1, gene2, sep = "–"),
-    log2_or = log2(ifelse(OR == 0, 1e-6, OR)),
-    neglog10 = -log10(pval),
-    sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
+
+    log2_or = log2(
+      ifelse(is.na(OR) | OR <= 0, 1e-6, OR)
+    ),
+
+    neglog10 = -log10(
+      ifelse(is.na(pval) | pval <= 0, 1e-300, pval)
+    ),
+
+    sig = case_when(
+      fdr < 0.05 ~ "FDR < 0.05",
+      pval < 0.05 ~ "p < 0.05",
+      TRUE       ~ "NS"
+    ),
+
+    sig = factor(
+      sig,
+      levels = c(
+        "FDR < 0.05",
+        "p < 0.05",
+        "NS"
+      )
+    )
   )
 
-p <- ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
-  geom_point(aes(color = sig), size = 2) +
+## Check the number of pairs in each group
+table(vol_idh1$sig, useNA = "ifany")
+
+p <- ggplot(
+  vol_idh1,
+  aes(x = log2_or, y = neglog10)
+) +
+  geom_point(
+    aes(color = sig),
+    size = 1.7,
+    alpha = 0.9
+  ) +
+
+  ## Label pairs with pval < 0.05
   geom_text_repel(
-    data = subset(vol_idh1, fdr < 0.05),
+    data = vol_idh1 %>%
+      filter(pval < 0.05),
     aes(label = pair),
-    size = 2
+    size = 1.7,
+    max.overlaps = Inf,
+    box.padding = 0.3,
+    point.padding = 0.2,
+    min.segment.length = 0
   ) +
-  scale_color_manual(
-    values = c("FDR < 0.05" = "#1d587a",
-               "NS" = "grey70")
+
+   scale_color_manual(
+    values = c(
+      "FDR < 0.05"      = "#515260FF",
+      "p < 0.05"        = "#A56A3EFF",  
+      "NS"               = "#A5A6AEFF"
+    ),
+    drop = FALSE
   ) +
+
   theme_classic() +
+
   labs(
-    title = " ",
+    title = "",
     x = "log2(Odds Ratio)",
     y = "-log10(p-value)",
     color = ""
   ) +
+
   theme(
     axis.title = element_text(size = 8),
-    axis.text  = element_text(size = 7),
-   # plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    axis.text = element_text(size = 7),
     legend.text = element_text(size = 7),
     legend.title = element_text(size = 7)
   )
@@ -563,36 +720,90 @@ dev.off()
 co_res <- read.csv(file.path(dir_output, 'coMut_res_wt_gbm.csv'))
 
 vol_idh1 <- co_res %>%
-  #filter(gene1 == "IDH1") %>%
   mutate(
     pair = paste(gene1, gene2, sep = "–"),
-    log2_or = log2(ifelse(OR == 0, 1e-6, OR)),
-    neglog10 = -log10(pval),
-    sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
+
+    log2_or = log2(
+      ifelse(is.na(OR) | OR <= 0, 1e-6, OR)
+    ),
+
+    neglog10 = -log10(
+      ifelse(is.na(pval) | pval <= 0, 1e-300, pval)
+    ),
+
+    sig = case_when(
+      fdr < 0.05 ~ "FDR < 0.05",
+      pval < 0.05 ~ "p < 0.05",
+      TRUE       ~ "NS"
+    ),
+
+    sig = factor(
+      sig,
+      levels = c(
+        "FDR < 0.05",
+        "p < 0.05",
+        "NS"
+      )
+    )
   )
 
-p <- ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
-  geom_point(aes(color = sig), size = 1.8) +
+## Check the number of pairs in each group
+table(vol_idh1$sig, useNA = "ifany")
+
+## Select labels
+label_pairs <- vol_idh1 %>%
+  filter(fdr < 0.05) %>%
+  bind_rows(
+    vol_idh1 %>%
+      filter(fdr >= 0.05, pval < 0.05) %>%
+      arrange(pval) %>%
+      slice_head(n = 6)
+  ) %>%
+  distinct(pair, .keep_all = TRUE)
+
+
+p <- ggplot(
+  vol_idh1,
+  aes(x = log2_or, y = neglog10)
+) +
+  geom_point(
+    aes(color = sig),
+    size = 1.7,
+    alpha = 0.9
+  ) +
+
+  ## Label pairs with pval < 0.05
   geom_text_repel(
-    data = subset(vol_idh1, fdr < 0.05),
-    aes(label = pair),
-    size = 1.8
+  data = label_pairs,
+  aes(label = pair),
+  size = 1.7,
+  max.overlaps = Inf,
+  box.padding = 0.25,
+  point.padding = 0.15,
+  min.segment.length = 0
+) +
+
+   scale_color_manual(
+    values = c(
+      "FDR < 0.05"      = "#515260FF",
+      "p < 0.05"        = "#A56A3EFF",  
+      "NS"               = "#A5A6AEFF"
+    ),
+    drop = FALSE
   ) +
-  scale_color_manual(
-    values = c("FDR < 0.05" = "#1d587a",
-               "NS" = "grey70")
-  ) +
+
   theme_classic() +
+
   labs(
-    title = " ",
+    title = "",
     x = "log2(Odds Ratio)",
     y = "-log10(p-value)",
     color = ""
   ) +
+
   theme(
     axis.title = element_text(size = 8),
-    axis.text  = element_text(size = 7),
-   # plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    axis.text = element_text(size = 7),
     legend.text = element_text(size = 7),
     legend.title = element_text(size = 7)
   )
@@ -610,36 +821,79 @@ dev.off()
 co_res <- read.csv(file.path(dir_output, 'coMut_res_wt_nongbm.csv'))
 
 vol_idh1 <- co_res %>%
-  #filter(gene1 == "IDH1") %>%
   mutate(
     pair = paste(gene1, gene2, sep = "–"),
-    log2_or = log2(ifelse(OR == 0, 1e-6, OR)),
-    neglog10 = -log10(pval),
-    sig = ifelse(fdr < 0.05, "FDR < 0.05", "NS")
+
+    log2_or = log2(
+      ifelse(is.na(OR) | OR <= 0, 1e-6, OR)
+    ),
+
+    neglog10 = -log10(
+      ifelse(is.na(pval) | pval <= 0, 1e-300, pval)
+    ),
+
+    sig = case_when(
+     # fdr < 0.05 ~ "FDR < 0.05",
+      pval < 0.05 ~ "p < 0.05",
+      TRUE       ~ "NS"
+    ),
+
+    sig = factor(
+      sig,
+      levels = c(
+     #   "FDR < 0.05",
+        "p < 0.05",
+        "NS"
+      )
+    )
   )
 
-p <- ggplot(vol_idh1, aes(x = log2_or, y = neglog10)) +
-  geom_point(aes(color = sig), size = 1.8) +
+## Check the number of pairs in each group
+table(vol_idh1$sig, useNA = "ifany")
+
+p <- ggplot(
+  vol_idh1,
+  aes(x = log2_or, y = neglog10)
+) +
+  geom_point(
+    aes(color = sig),
+    size = 1.7,
+    alpha = 0.9
+  ) +
+
+  ## Label pairs with pval < 0.05
   geom_text_repel(
-    data = subset(vol_idh1, fdr < 0.05),
+    data = vol_idh1 %>%
+      filter(pval < 0.05),
     aes(label = pair),
-    size = 1.8
+    size = 1.7,
+    max.overlaps = Inf,
+    box.padding = 0.3,
+    point.padding = 0.2,
+    min.segment.length = 0
   ) +
-  scale_color_manual(
-    values = c("FDR < 0.05" = "#1d587a",
-               "NS" = "grey70")
+
+   scale_color_manual(
+    values = c(
+    #  "FDR < 0.05"      = "#515260FF",
+      "p < 0.05"        = "#A56A3EFF",  
+      "NS"               = "#A5A6AEFF"
+    ),
+    drop = FALSE
   ) +
+
   theme_classic() +
+
   labs(
-    title = " ",
+    title = "",
     x = "log2(Odds Ratio)",
     y = "-log10(p-value)",
     color = ""
   ) +
+
   theme(
     axis.title = element_text(size = 8),
-    axis.text  = element_text(size = 7),
-   # plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    axis.text = element_text(size = 7),
     legend.text = element_text(size = 7),
     legend.title = element_text(size = 7)
   )
@@ -663,19 +917,23 @@ gene_colors <- c(
   "EGFR"   = '#4A7169FF',
   "CDK4"   = '#BF816BFF',
   "CDKN2A" = '#E3CA97FF',
+  "CDKN2B" = '#7A8FA6FF',
   "PIK3CA" = '#B49696FF',
   "FGFR1"  = "#788787FF",
-  "ATRX"   = "#D29678FF"
+  "ATRX"   = "#E6BCACFF",
+  "MDM4"   = '#9A7FA5FF',
+  "MDM2"   = '#B5A56AFF',
+  "PDGFRA" = '#6F8F8AFF'
 )
-
 
 ## Step 1 --- all patients
 co_res <- read.csv(file.path(dir_output, 'coMut_res_all.csv'))
-co_res <- co_res[order(co_res$pval), ]
-sig_pairs <- subset(co_res, pval < 0.05)
+sig_pairs <- co_res %>%
+  filter(fdr < 0.05) %>%
+  arrange(fdr)
 selected_genes <- unique(c(sig_pairs$gene1, sig_pairs$gene2))
 selected_genes <- intersect(selected_genes, rownames(mut))
-gene_freq <- rowSums(mut)
+gene_freq <- rowSums(mut, na.rm = TRUE)
 
 selected_genes <- selected_genes[
   gene_freq[selected_genes] >= 5
@@ -685,16 +943,16 @@ gene_degree <- table(c(sig_pairs$gene1, sig_pairs$gene2))
 gene_degree <- sort(gene_degree, decreasing = TRUE)
 selected_genes <- intersect(names(gene_degree), selected_genes)
 
-top5_genes <- head(selected_genes, 5)
-top5_genes  # check what you selected
+top_genes <- head(selected_genes, 8)
+top_genes  # check what you selected
 
-mut_top <- mut[top5_genes, , drop = FALSE]
+mut_top <- mut[top_genes, , drop = FALSE]
 listInput <- lapply(rownames(mut_top), function(g) {
   colnames(mut_top)[mut_top[g, ] == 1]
 })
 
 names(listInput) <- rownames(mut_top)
-col.id <- gene_colors[top5_genes]
+col.id <- gene_colors[top_genes]
 sets <- rownames(mut_top)
 sets.bar.color <- col.id
 mainbar.y.label <- "Number of Patients"
@@ -720,10 +978,12 @@ dev.off()
 ## Step 2 --- WT patients
 co_res <- read.csv(file.path(dir_output, 'coMut_res_wt.csv'))
 
-sig_pairs <- subset(co_res, pval < 0.05)
+sig_pairs <- co_res %>%
+  filter(fdr < 0.05) %>%
+  arrange(fdr)
 selected_genes <- unique(c(sig_pairs$gene1, sig_pairs$gene2))
 selected_genes <- intersect(selected_genes, rownames(mut))
-gene_freq <- rowSums(mut)
+gene_freq <- rowSums(mut_wt, na.rm = TRUE)
 
 selected_genes <- selected_genes[
   gene_freq[selected_genes] >= 5
@@ -734,16 +994,16 @@ gene_degree <- sort(gene_degree, decreasing = TRUE)
 
 selected_genes <- intersect(names(gene_degree), selected_genes)
 
-top5_genes <- head(selected_genes, 5)
-top5_genes  # check what you selected
+top_genes <- head(selected_genes, 7)
+top_genes  # check what you selected
 
-mut_top <- mut[top5_genes, , drop = FALSE]
+mut_top <- mut_wt[top_genes, , drop = FALSE]
 listInput <- lapply(rownames(mut_top), function(g) {
   colnames(mut_top)[mut_top[g, ] == 1]
 })
 
 names(listInput) <- rownames(mut_top)
-col.id <- gene_colors[top5_genes]
+col.id <- gene_colors[top_genes]
 sets <- rownames(mut_top)
 sets.bar.color <- col.id
 
@@ -767,10 +1027,12 @@ dev.off()
 ## Step 3 --- Mut patients
 co_res <- read.csv(file.path(dir_output, 'coMut_res_mut.csv'))
 
-sig_pairs <- subset(co_res, pval < 0.05)
+sig_pairs <- co_res %>%
+  filter(pval < 0.05) %>%
+  arrange(pval)
 selected_genes <- unique(c(sig_pairs$gene1, sig_pairs$gene2))
 selected_genes <- intersect(selected_genes, rownames(mut))
-gene_freq <- rowSums(mut)
+gene_freq <- rowSums(mut_mut, na.rm = TRUE)
 
 selected_genes <- selected_genes[
   gene_freq[selected_genes] >= 5
@@ -781,16 +1043,16 @@ gene_degree <- sort(gene_degree, decreasing = TRUE)
 
 selected_genes <- intersect(names(gene_degree), selected_genes)
 
-top5_genes <- head(selected_genes, 3)
-top5_genes  # check what you selected
+top_genes <- head(selected_genes, 7)
+top_genes  # check what you selected
 
-mut_top <- mut[top5_genes, , drop = FALSE]
+mut_top <- mut_mut[top_genes, , drop = FALSE]
 listInput <- lapply(rownames(mut_top), function(g) {
   colnames(mut_top)[mut_top[g, ] == 1]
 })
 
 names(listInput) <- rownames(mut_top)
-col.id <- gene_colors[top5_genes]
+col.id <- gene_colors[top_genes]
 sets <- rownames(mut_top)
 sets.bar.color <- col.id
 
@@ -814,10 +1076,18 @@ dev.off()
 ## Step 4 --- WT GBM patients
 co_res <- read.csv(file.path(dir_output, 'coMut_res_wt_gbm.csv'))
 
-sig_pairs <- subset(co_res, pval < 0.05)
+sig_pairs <- co_res %>%
+  filter(fdr < 0.05) %>%
+  bind_rows(
+    co_res %>%
+      filter(fdr >= 0.05, pval < 0.05) %>%
+      arrange(pval) %>%
+      slice_head(n = 3)
+  ) %>%
+  arrange(fdr, pval)
 selected_genes <- unique(c(sig_pairs$gene1, sig_pairs$gene2))
 selected_genes <- intersect(selected_genes, rownames(mut))
-gene_freq <- rowSums(mut)
+gene_freq <- rowSums(mut_wt_gbm, na.rm = TRUE)
 
 selected_genes <- selected_genes[
   gene_freq[selected_genes] >= 5
@@ -828,16 +1098,16 @@ gene_degree <- sort(gene_degree, decreasing = TRUE)
 
 selected_genes <- intersect(names(gene_degree), selected_genes)
 
-top5_genes <- head(selected_genes, 3)
-top5_genes  # check what you selected
+top_genes <- head(selected_genes, 8)
+top_genes  # check what you selected
 
-mut_top <- mut[top5_genes, , drop = FALSE]
+mut_top <- mut_wt_gbm[top_genes, , drop = FALSE]
 listInput <- lapply(rownames(mut_top), function(g) {
   colnames(mut_top)[mut_top[g, ] == 1]
 })
 
 names(listInput) <- rownames(mut_top)
-col.id <- gene_colors[top5_genes]
+col.id <- gene_colors[top_genes]
 sets <- rownames(mut_top)
 sets.bar.color <- col.id
 
@@ -858,14 +1128,15 @@ suppressWarnings(
 
 dev.off()
 
-
 ## Step 5 --- WT nonGBM patients
 co_res <- read.csv(file.path(dir_output, 'coMut_res_wt_nongbm.csv'))
 
-sig_pairs <- subset(co_res, pval < 0.05)
+sig_pairs <- co_res %>% 
+           filter(pval < 0.05) %>% 
+           arrange(pval)
 selected_genes <- unique(c(sig_pairs$gene1, sig_pairs$gene2))
 selected_genes <- intersect(selected_genes, rownames(mut))
-gene_freq <- rowSums(mut)
+gene_freq <- rowSums(mut_wt_nongbm, na.rm = TRUE)
 
 selected_genes <- selected_genes[
   gene_freq[selected_genes] >= 5
@@ -876,16 +1147,16 @@ gene_degree <- sort(gene_degree, decreasing = TRUE)
 
 selected_genes <- intersect(names(gene_degree), selected_genes)
 
-top5_genes <- head(selected_genes, 5)
-top5_genes  # check what you selected
+top_genes <- head(selected_genes, 8)
+top_genes  # check what you selected
 
-mut_top <- mut[top5_genes, , drop = FALSE]
+mut_top <- mut_wt_nongbm[top_genes, , drop = FALSE]
 listInput <- lapply(rownames(mut_top), function(g) {
   colnames(mut_top)[mut_top[g, ] == 1]
 })
 
 names(listInput) <- rownames(mut_top)
-col.id <- gene_colors[top5_genes]
+col.id <- gene_colors[top_genes]
 sets <- rownames(mut_top)
 sets.bar.color <- col.id
 
