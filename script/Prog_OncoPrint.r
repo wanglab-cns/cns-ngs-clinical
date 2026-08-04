@@ -1,53 +1,60 @@
 ##-------------------------------------------------------------------
 ## Script: CNS NGS OncoPrint Visualization
 ## Purpose:
-## To generate publication-quality OncoPrint visualizations
-## for CNS tumour NGS data using the ComplexHeatmap framework.
+##   To generate publication-quality OncoPrint
+##   visualizations for CNS tumour patients using
+##   curated NGS and clinical data.
 ##
-## The workflow standardizes mutation labels, integrates
-## harmonized clinical metadata, and generates annotated
-## OncoPrints for the full cohort, IDH-stratified subgroups,
-## and IDH wild-type histology-defined subgroups.
+##   Annotated OncoPrint visualizations are generated
+##   for the full cohort and IDH-stratified
+##   subgroups.
 ##
 ## Input:
-## - result/data/mae_mut_clin.RData
-##
-## MultiAssayExperiment object containing:
-## - oncoprint mutation matrix
-## - harmonized clinical metadata
+##   - result/data/mae_mut_clin.RData
+##       MultiAssayExperiment object containing:
+##         • OncoPrint mutation matrix
+##         • harmonized clinical metadata
 ##
 ## Outputs:
-## PDF and JPEG figures including:
-##
-## - Full cohort OncoPrint
-## - IDH wild-type OncoPrint
-## - IDH mutant OncoPrint
-## - IDH wild-type glioblastoma OncoPrint
-## - IDH wild-type non-glioblastoma OncoPrint
+##   1) Annotated OncoPrint visualizations
+##   2) Publication-quality PDF and JPEG figures
 ##
 ## Processing Overview:
-## 1) Load mutation and clinical data
-## 2) Standardize and harmonize mutation labels
-## 3) Generate OncoPrint-compatible mutation matrices
-## 4) Process and harmonize clinical annotations
-## 5) Generate annotated OncoPrint visualizations
-##
-## for:
-## - Full cohort
-## - IDH wild-type subgroup
-## - IDH mutant subgroup
-## - IDH wild-type glioblastoma subgroup
-## - IDH wild-type non-glioblastoma subgroup
-##
-## 6) Filter low-frequency alterations for selected
-## subgroup-specific OncoPrints
-## 7) Export publication-quality PDF and JPEG figures
+##   1) Load mutation and clinical data
+##   2) Standardize mutation alteration labels
+##   3) Harmonize clinical variables including:
+##        - Age group
+##        - Sex
+##        - IDH status
+##        - Histology
+##        - WHO grade
+##   4) Generate annotated OncoPrints for:
+##        - Full cohort
+##        - IDH wild-type subgroup
+##        - IDH mutant subgroup
+##        - IDH wild-type glioblastoma subgroup
+##        - IDH wild-type non-glioblastoma subgroup
+##   5) Filter low-frequency alterations for
+##      subgroup-specific visualizations
+##   6) Export publication-quality PDF and
+##      JPEG figures
 ##
 ## Notes:
-## - Alteration classes include: SNV/Indel, Amplification, Fusion, and Deletion.
-## - Clinical annotations include demographic, histological, and molecular subgroup information.
-## - The IDH wild-type cohort is further divided into glioblastoma and non-glioblastoma subgroups.
-## - Visualizations are generated using the ComplexHeatmap framework.
+##   - Analyses are based on categorical
+##     gene-level alteration matrices.
+##   - Alteration classes include:
+##        - SNV/Indel
+##        - Amplification
+##        - Fusion
+##        - Deletion
+##   - Clinical annotations include demographic,
+##     histological, and molecular subgroup
+##     information.
+##   - The IDH wild-type cohort is further
+##     divided into glioblastoma and
+##     non-glioblastoma subgroups.
+##   - Visualizations are generated using the
+##     ComplexHeatmap framework.
 ##-------------------------------------------------------------------
 ####################################################
 ## Load libraries
@@ -407,7 +414,7 @@ top_anno <- HeatmapAnnotation(
 )
 
 freq <- rowMeans(mut_wt != '')
-keep <- freq[freq >= 0.03]
+keep <- freq[freq > 0.05]
 mut_wt_filtered <- mut_wt[rownames(mut_wt) %in% names(keep), ]
 
 p <- oncoPrint(
@@ -435,7 +442,6 @@ draw(
 )
 
 dev.off()
-
 
 jpeg(filename = file.path(dir_output, "fig2_wt.jpeg"), width = 6.5, height = 5, units = "in", 
     res = 300, quality = 100)
@@ -504,8 +510,12 @@ top_anno <- HeatmapAnnotation(
   annotation_name_gp = gpar(fontsize = 7) 
 )
 
+freq <- rowMeans(mut_mut != '')
+keep <- freq[freq > 0.05]
+mut_mut_filtered <- mut_mut[rownames(mut_mut) %in% names(keep), ]
+
 p <- oncoPrint(
-  mut_mut,
+  mut_mut_filtered,
   get_type = function(x) strsplit(x, ";")[[1]],
   alter_fun = alter_fun,
   col = col,
@@ -529,7 +539,6 @@ draw(
 )
 
 dev.off()
-
 
 jpeg(filename = file.path(dir_output, "fig3_mut.jpeg"), width = 6.5, height = 5, units = "in", 
     res = 300, quality = 100)
@@ -594,7 +603,7 @@ top_anno <- HeatmapAnnotation(
 )
 
 freq <- rowMeans(mut_wt_gbm != '')
-keep <- freq[freq >= 0.03]
+keep <- freq[freq > 0.05]
 mut_wt_gbm_filtered <- mut_wt_gbm[rownames(mut_wt_gbm) %in% names(keep), ]
 
 p <- oncoPrint(
@@ -622,7 +631,6 @@ draw(
 )
 
 dev.off()
-
 
 jpeg(filename = file.path(dir_output, "fig4_wt_gbm.jpeg"), width = 6.5, height = 5, units = "in", 
     res = 300, quality = 100)
@@ -698,7 +706,7 @@ top_anno <- HeatmapAnnotation(
 )
 
 freq <- rowMeans(mut_wt_nongbm != '')
-keep <- freq[freq >= 0.03]
+keep <- freq[freq > 0.05]
 mut_wt_nongbm_filtered <- mut_wt_nongbm[rownames(mut_wt_nongbm) %in% names(keep), ]
 
 p <- oncoPrint(
@@ -726,7 +734,6 @@ draw(
 )
 
 dev.off()
-
 
 jpeg(filename = file.path(dir_output, "fig5_wt_nongbm.jpeg"), width = 6.5, height = 5, units = "in", 
     res = 300, quality = 100)
