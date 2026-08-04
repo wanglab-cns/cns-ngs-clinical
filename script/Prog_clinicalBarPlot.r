@@ -7,13 +7,15 @@
 ##
 ##   Statistical association analyses and mutation
 ##   frequency visualizations are generated for the
-##   full cohort and IDH-stratified subgroups.
+##   full cohort and IDH- and histology-stratified
+##   subgroups.
 ##
 ## Input:
 ##   - result/data/mae_mut_clin.RData
 ##       MultiAssayExperiment object containing:
 ##         • binary mutation matrix
 ##         • harmonized clinical metadata
+##
 ## Outputs:
 ##   1) Statistical association result tables
 ##   2) Mutation frequency bar plot visualizations
@@ -21,28 +23,36 @@
 ## Processing Overview:
 ##   1) Load mutation and clinical data
 ##   2) Harmonize clinical variables including:
-##        - Age
+##        - Age group
 ##        - Sex
 ##        - IDH status
 ##        - Histology
-##   3) Filter recurrent mutations and prepare
-##      patient-level datasets
-##   4) Perform Fisher’s exact tests between
+##   3) Combine IDH1 and IDH2 mutation calls into
+##      a single IDH mutation indicator
+##   4) Filter recurrent mutations (≥5% frequency)
+##      and prepare patient-level datasets
+##   5) Perform Fisher's exact tests between
 ##      mutation status and:
 ##        - Age group
 ##        - Sex
-##   5) Repeat analyses within:
+##   6) Repeat analyses within:
 ##        - Full cohort
 ##        - IDH wild-type subgroup
 ##        - IDH mutant subgroup
 ##        - IDH wild-type glioblastoma subgroup
 ##        - IDH wild-type non-glioblastoma subgroup
-##   6) Generate mutation frequency bar plots
-##   7) Export statistical results and figures
+##   7) Apply false discovery rate (FDR)
+##      adjustment
+##   8) Generate mutation frequency bar plots
+##   9) Export statistical results and figures
 ##
 ## Notes:
 ##   - Analyses are based on binary gene-level
 ##     mutation matrices.
+##   - IDH1 and IDH2 mutations are combined into
+##     a single IDH mutation indicator.
+##   - Recurrent genes are defined using a minimum
+##     mutation frequency threshold of 5%.
 ##   - Multiple testing correction is performed
 ##     using false discovery rate (FDR) adjustment.
 ##   - Outputs are intended for downstream
@@ -123,6 +133,7 @@ age_assoc <- mut_long %>%
 
 age_assoc$fdr <- p.adjust(age_assoc$pval, method = "BH")
 write.csv(age_assoc, file = file.path(dir_output, 'csv', 'mut_age.csv'), row.names=FALSE)
+age_assoc$pval <- round(age_assoc$pval, 1)
 
 ## bar plot age
 gene_order <- mut_long %>%
@@ -141,6 +152,7 @@ age_assoc <- age_assoc %>%
       pval < 0.001 ~ "****",
       pval < 0.01  ~ "***",
       pval < 0.05  ~ "**",
+      pval <= 0.1  ~ "*",
       TRUE        ~ ""
     )
   )
@@ -206,6 +218,7 @@ age_assoc <- mut_long_mut %>%
 age_assoc <- age_assoc[!is.na(age_assoc$pval), ]
 age_assoc$fdr <- p.adjust(age_assoc$pval, method = "BH")
 write.csv(age_assoc, file = file.path(dir_output, 'csv', 'mut_age_mut.csv'))
+age_assoc$pval <- round(age_assoc$pval, 1)
 
 ## bar plot age
 gene_order <- mut_long_mut %>%
@@ -221,9 +234,10 @@ plot_age <- mut_long_mut %>%
 age_assoc <- age_assoc %>%
   mutate(
     sig = case_when(
-      pval < 0.001 ~ "***",
-      pval < 0.01  ~ "**",
-      pval < 0.05  ~ "*",
+      pval < 0.001 ~ "****",
+      pval < 0.01  ~ "***",
+      pval < 0.05  ~ "**",
+      pval <= 0.1  ~ "*",
       TRUE        ~ ""
     )
   )
@@ -290,6 +304,7 @@ age_assoc <- mut_long_wt %>%
 age_assoc <- age_assoc[!is.na(age_assoc$pval), ]
 age_assoc$fdr <- p.adjust(age_assoc$pval, method = "BH")
 write.csv(age_assoc, file = file.path(dir_output, 'csv', 'mut_age_wt.csv'))
+age_assoc$pval <- round(age_assoc$pval, 1)
 
 ## bar plot age
 gene_order <- mut_long_wt %>%
@@ -305,9 +320,10 @@ plot_age <- mut_long_wt %>%
 age_assoc <- age_assoc %>%
   mutate(
     sig = case_when(
-      pval < 0.001 ~ "***",
-      pval < 0.01  ~ "**",
-      pval < 0.05  ~ "*",
+      pval < 0.001 ~ "****",
+      pval < 0.01  ~ "***",
+      pval < 0.05  ~ "**",
+      pval <= 0.1  ~ "*",
       TRUE        ~ ""
     )
   )
@@ -373,6 +389,7 @@ age_assoc <- mut_long_wt_gbm %>%
 age_assoc <- age_assoc[!is.na(age_assoc$pval), ]
 age_assoc$fdr <- p.adjust(age_assoc$pval, method = "BH")
 write.csv(age_assoc, file = file.path(dir_output, 'csv', 'mut_age_wt_gbm.csv'))
+age_assoc$pval <- round(age_assoc$pval, 1)
 
 ## bar plot age
 gene_order <- mut_long_wt_gbm %>%
@@ -388,9 +405,10 @@ plot_age <- mut_long_wt_gbm %>%
 age_assoc <- age_assoc %>%
   mutate(
     sig = case_when(
-      pval < 0.001 ~ "***",
-      pval < 0.01  ~ "**",
-      pval < 0.05  ~ "*",
+      pval < 0.001 ~ "****",
+      pval < 0.01  ~ "***",
+      pval < 0.05  ~ "**",
+      pval <= 0.1  ~ "*",
       TRUE        ~ ""
     )
   )
@@ -437,7 +455,6 @@ jpeg(file.path(dir_output, "mut_age_wt_gbm.jpeg"), width = 6, height = 3.5, unit
 print(p)
 dev.off()
 
-
 ## Step 5 --- Wild type nonGBM patients
 mut_long_wt_nongbm <- mut_long[mut_long$IDH_status == 'WT' & mut_long$histo != 'Glioblastoma', ]
 age_assoc <- mut_long_wt_nongbm %>%
@@ -457,6 +474,7 @@ age_assoc <- mut_long_wt_nongbm %>%
 age_assoc <- age_assoc[!is.na(age_assoc$pval), ]
 age_assoc$fdr <- p.adjust(age_assoc$pval, method = "BH")
 write.csv(age_assoc, file = file.path(dir_output, 'csv', 'mut_age_wt_nongbm.csv'))
+age_assoc$pval <- round(age_assoc$pval, 1)
 
 ## bar plot age
 gene_order <- mut_long_wt_nongbm %>%
@@ -475,6 +493,7 @@ age_assoc <- age_assoc %>%
       pval < 0.001 ~ "****",
       pval < 0.01  ~ "***",
       pval < 0.05  ~ "**",
+      pval <= 0.1  ~ "*",
       TRUE        ~ ""
     )
   )
@@ -533,13 +552,32 @@ sex_assoc <- mut_long %>%
 
 sex_assoc$fdr <- p.adjust(sex_assoc$pval, method = "BH")
 write.csv(sex_assoc, file = file.path(dir_output, 'csv', 'mut_sex.csv'))
+sex_assoc$pval <- round(sex_assoc$pval, 1)
 
+## bar plot sex
 ## bar plot sex
 plot_sex <- mut_long %>%
   group_by(Gene, Sex) %>%
   summarise(freq = mean(Mutation) * 100, .groups = "drop")
 
+
+sex_assoc <- sex_assoc %>%
+  mutate(
+    sig = case_when(
+      pval < 0.001 ~ "****",
+      pval < 0.01  ~ "***",
+      pval < 0.05  ~ "**",
+      pval <= 0.1  ~ "*",
+      TRUE        ~ ""
+    )
+  )
+
 plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order)
+plot_sex_sig <- plot_sex %>%
+  group_by(Gene) %>%
+  summarise(y_pos = max(freq) + 5, .groups = "drop") %>%
+  left_join(sex_assoc %>% select(Gene, sig), by = "Gene")
+
 
 p <- ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
   geom_bar(stat = "identity", position = "dodge", width = 0.6) +
@@ -547,7 +585,13 @@ p <- ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
     values = c("Female" = "#DD8452",
                "Male"   = "#4C72B0")
   ) +
- guides(
+  geom_text(
+    data = plot_sex_sig,
+    aes(x = Gene, y = y_pos, label = sig),
+    inherit.aes = FALSE,
+    size = 5
+  ) +
+   guides(
   fill = guide_legend(
     keywidth  = unit(0.5, "cm"),
     keyheight = unit(0.5, "cm")
@@ -590,13 +634,30 @@ sex_assoc <- mut_long_mut %>%
 sex_assoc <- sex_assoc[!is.na(sex_assoc$pval), ]
 sex_assoc$fdr <- p.adjust(sex_assoc$pval, method = "BH")
 write.csv(sex_assoc, file = file.path(dir_output, 'csv', 'mut_sex_mut.csv'))
+sex_assoc$pval <- round(sex_assoc$pval, 1)
 
+## bar plot sex
 ## bar plot sex
 plot_sex <- mut_long_mut %>%
   group_by(Gene, Sex) %>%
   summarise(freq = mean(Mutation) * 100, .groups = "drop")
 
+sex_assoc <- sex_assoc %>%
+  mutate(
+    sig = case_when(
+      pval < 0.001 ~ "****",
+      pval < 0.01  ~ "***",
+      pval < 0.05  ~ "**",
+      pval <= 0.1  ~ "*",
+      TRUE        ~ ""
+    )
+  )
+
 plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order)
+plot_sex_sig <- plot_sex %>%
+  group_by(Gene) %>%
+  summarise(y_pos = max(freq) + 5, .groups = "drop") %>%
+  left_join(sex_assoc %>% select(Gene, sig), by = "Gene")
 
 
 p <- ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
@@ -605,7 +666,13 @@ p <- ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
     values = c("Female" = "#DD8452",
                "Male"   = "#4C72B0")
   ) +
-  guides(
+  geom_text(
+    data = plot_sex_sig,
+    aes(x = Gene, y = y_pos, label = sig),
+    inherit.aes = FALSE,
+    size = 5
+  ) +
+   guides(
   fill = guide_legend(
     keywidth  = unit(0.5, "cm"),
     keyheight = unit(0.5, "cm")
@@ -648,13 +715,30 @@ sex_assoc <- mut_long_wt %>%
 sex_assoc <- sex_assoc[!is.na(sex_assoc$pval), ]
 sex_assoc$fdr <- p.adjust(sex_assoc$pval, method = "BH")
 write.csv(sex_assoc, file = file.path(dir_output, 'csv', 'mut_sex_wt.csv'))
+sex_assoc$pval <- round(sex_assoc$pval, 1)
 
+## bar plot sex
 ## bar plot sex
 plot_sex <- mut_long_wt %>%
   group_by(Gene, Sex) %>%
   summarise(freq = mean(Mutation) * 100, .groups = "drop")
 
+sex_assoc <- sex_assoc %>%
+  mutate(
+    sig = case_when(
+      pval < 0.001 ~ "****",
+      pval < 0.01  ~ "***",
+      pval < 0.05  ~ "**",
+      pval <= 0.1  ~ "*",
+      TRUE        ~ ""
+    )
+  )
+
 plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order)
+plot_sex_sig <- plot_sex %>%
+  group_by(Gene) %>%
+  summarise(y_pos = max(freq) + 5, .groups = "drop") %>%
+  left_join(sex_assoc %>% select(Gene, sig), by = "Gene")
 
 p <- ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
   geom_bar(stat = "identity", position = "dodge", width = 0.6) +
@@ -662,7 +746,13 @@ p <- ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
     values = c("Female" = "#DD8452",
                "Male"   = "#4C72B0")
   ) +
- guides(
+  geom_text(
+    data = plot_sex_sig,
+    aes(x = Gene, y = y_pos, label = sig),
+    inherit.aes = FALSE,
+    size = 5
+  ) +
+   guides(
   fill = guide_legend(
     keywidth  = unit(0.5, "cm"),
     keyheight = unit(0.5, "cm")
@@ -681,12 +771,10 @@ pdf(file.path(dir_output, 'mut_sex_wt.pdf'), width = 6, height = 3.5)
 print(p)
 dev.off()
 
-
 jpeg(file.path(dir_output, "mut_sex_wt.jpeg"), width = 6, height = 3.5, units = "in", 
      res = 300, quality = 100)
 print(p)
 dev.off()
-
 
 ## Step 4 --- Wild type GBM patients
 mut_long_wt_gbm <- mut_long[mut_long$IDH_status == 'WT' & mut_long$histo == 'Glioblastoma', ]
@@ -707,13 +795,30 @@ sex_assoc <- mut_long_wt_gbm %>%
 sex_assoc <- sex_assoc[!is.na(sex_assoc$pval), ]
 sex_assoc$fdr <- p.adjust(sex_assoc$pval, method = "BH")
 write.csv(sex_assoc, file = file.path(dir_output, 'csv', 'mut_sex_wt_gbm.csv'))
+sex_assoc$pval <- round(sex_assoc$pval, 1)
 
 ## bar plot sex
 plot_sex <- mut_long_wt_gbm %>%
   group_by(Gene, Sex) %>%
   summarise(freq = mean(Mutation) * 100, .groups = "drop")
 
+sex_assoc <- sex_assoc %>%
+  mutate(
+    sig = case_when(
+      pval < 0.001 ~ "****",
+      pval < 0.01  ~ "***",
+      pval < 0.05  ~ "**",
+      pval <= 0.1  ~ "*",
+      TRUE        ~ ""
+    )
+  )
+
 plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order)
+plot_sex_sig <- plot_sex %>%
+  group_by(Gene) %>%
+  summarise(y_pos = max(freq) + 5, .groups = "drop") %>%
+  left_join(sex_assoc %>% select(Gene, sig), by = "Gene")
+
 
 p <- ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
   geom_bar(stat = "identity", position = "dodge", width = 0.6) +
@@ -721,7 +826,13 @@ p <- ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
     values = c("Female" = "#DD8452",
                "Male"   = "#4C72B0")
   ) +
- guides(
+  geom_text(
+    data = plot_sex_sig,
+    aes(x = Gene, y = y_pos, label = sig),
+    inherit.aes = FALSE,
+    size = 5
+  ) +
+   guides(
   fill = guide_legend(
     keywidth  = unit(0.5, "cm"),
     keyheight = unit(0.5, "cm")
@@ -745,7 +856,6 @@ jpeg(file.path(dir_output, "mut_sex_wt_gbm.jpeg"), width = 6, height = 3.5, unit
 print(p)
 dev.off()
 
-
 ## Step 5 --- Wild type nonGBM patients
 mut_long_wt_nongbm <- mut_long[mut_long$IDH_status == 'WT' & mut_long$histo != 'Glioblastoma', ]
 sex_assoc <- mut_long_wt_nongbm %>%
@@ -765,13 +875,31 @@ sex_assoc <- mut_long_wt_nongbm %>%
 sex_assoc <- sex_assoc[!is.na(sex_assoc$pval), ]
 sex_assoc$fdr <- p.adjust(sex_assoc$pval, method = "BH")
 write.csv(sex_assoc, file = file.path(dir_output, 'csv', 'mut_sex_wt_nongbm.csv'))
+sex_assoc$pval <- round(sex_assoc$pval, 1)
 
+## bar plot sex
 ## bar plot sex
 plot_sex <- mut_long_wt_nongbm %>%
   group_by(Gene, Sex) %>%
   summarise(freq = mean(Mutation) * 100, .groups = "drop")
 
+sex_assoc <- sex_assoc %>%
+  mutate(
+    sig = case_when(
+      pval < 0.001 ~ "****",
+      pval < 0.01  ~ "***",
+      pval < 0.05  ~ "**",
+      pval <= 0.1  ~ "*",
+      TRUE        ~ ""
+    )
+  )
+
 plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order)
+plot_sex_sig <- plot_sex %>%
+  group_by(Gene) %>%
+  summarise(y_pos = max(freq) + 5, .groups = "drop") %>%
+  left_join(sex_assoc %>% select(Gene, sig), by = "Gene")
+
 
 p <- ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
   geom_bar(stat = "identity", position = "dodge", width = 0.6) +
@@ -779,7 +907,13 @@ p <- ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
     values = c("Female" = "#DD8452",
                "Male"   = "#4C72B0")
   ) +
- guides(
+  geom_text(
+    data = plot_sex_sig,
+    aes(x = Gene, y = y_pos, label = sig),
+    inherit.aes = FALSE,
+    size = 5
+  ) +
+   guides(
   fill = guide_legend(
     keywidth  = unit(0.5, "cm"),
     keyheight = unit(0.5, "cm")
@@ -793,6 +927,7 @@ p <- ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
         legend.text = element_text(size = 7)) +
   labs(y = "Mutation frequency (%)", x = "", 
        title = " ")
+
 
 pdf(file.path(dir_output, 'mut_sex_wt_nongbm.pdf'), width = 6, height = 3.5)
 print(p)
