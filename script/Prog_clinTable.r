@@ -199,7 +199,8 @@ results <- data.frame(Variable = character(),
                       IDH_Mut = character(),
                       IDH_WT_GBM = character(),
                       IDH_WT_nonGBM = character(),
-                      stringsAsFactors = FALSE)
+                      stringsAsFactors = FALSE
+                     )
 
 ## Continuous
 for (v in vars_cont) {
