@@ -2136,13 +2136,13 @@ clin$group <- NA
 clin$group[clin$IDH_status == "WT" &
            clin$Histo == "Glioblastoma"] <- "IDH-WT-GBM"
 clin$group[clin$IDH_status == "WT" &
-           clin$Histo != "Glioblastoma"] <- "IDH-WT-NonGBM"
+           clin$Histo != "Glioblastoma"] <- "IDH-WT-nonGBM"
 clin$group[clin$IDH_status == "Mut"] <- "IDH-Mut"
 
 clin$group <- factor(
   clin$group,
   levels = c("IDH-WT-GBM",
-             "IDH-WT-NonGBM",
+             "IDH-WT-nonGBM",
              "IDH-Mut")
 )
 
@@ -2170,7 +2170,7 @@ p_idh <- ggsurvplot(
   pval = TRUE,
   conf.int = FALSE,
   legend.title = " ",
-  legend.labs = c('IDH-WT-GBM', 'IDH-Mut', 'IDH-WT-NonGBM'),
+  legend.labs = c('IDH-WT-GBM', 'IDH-Mut', 'IDH-WT-nonGBM'),
   palette = c("#A12A19FF", "#1E466EFF", "#787878FF"),
   xlab = "Time (months)",
   ylab = "Overall survival probability",
