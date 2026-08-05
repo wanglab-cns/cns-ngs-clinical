@@ -234,7 +234,6 @@ write.csv(cox_res,
           file = file.path(dir_output, 'clinical', 'cox_os_clin_all.csv'),
           row.names = FALSE)
 
-
 ## --- Step 2: WT patients 
 clin_wt <- clin[clin$IDH_status == 'WT', ] # 152 cases
 df <- clin_wt[, c('Age', 'Sex', 'Grade', 'Histo', 'MGMT', 'ECOG', 'Resection')]
@@ -345,8 +344,7 @@ cox_res$study <- 'Mut'
 
 write.csv(cox_res,
           file = file.path(dir_output, 'clinical', 'cox_os_clin_mut.csv'),
-          row.names = FALSE)
-          
+          row.names = FALSE)          
 
 ## --- Step 4: WT GBM patients 
 clin_wt_gbm <- clin[clin$Histo == 'GBM', ] # 105 cases
@@ -402,8 +400,7 @@ cox_res$study <- 'WT-GBM'
 
 write.csv(cox_res,
           file = file.path(dir_output, 'clinical', 'cox_os_clin_wt_gbm.csv'),
-          row.names = FALSE)
-          
+          row.names = FALSE)          
 
 ## --- Step 4: nonGBM patients 
 clin_wt_nongbm <- clin[clin$Histo != 'GBM' & clin$IDH_status == 'WT', ] # 43 cases
