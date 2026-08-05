@@ -6,7 +6,7 @@
 ##   overall survival associations in CNS tumours.
 ##
 ##   Forest plots compare mutation-only and mutation +
-##   clinical survival models in IDH wild-type and
+##   clinical survival models in IDH wild-type GBM and
 ##   IDH mutant subgroups.
 ##
 ## Input:
@@ -16,25 +16,20 @@
 ##
 ## Outputs:
 ##
-##   - result/assoc/forestplot_WT.pdf
+##   - result/assoc/forestplot_WT_GBM.pdf
 ##   - result/assoc/forestplot_Mut.pdf
 ##
 ## Processing Overview:
 ##
 ##   1) Load survival analysis results
-##
 ##   2) Prepare hazard ratio and confidence interval
 ##      matrices
-##
 ##   3) Generate forest plot tables and visualizations
-##
 ##   4) Export publication-quality PDF figures
 ##
 ## Notes:
-##
 ##   - Forest plots display hazard ratios with
 ##     95% confidence intervals.
-##
 ##   - Analyses are stratified by IDH status.
 ##-----------------------------------------------------------------
 ###########################################################
@@ -58,35 +53,38 @@ dir_output <- "result/assoc"
 #########################################################
 ## Mutation: OS
 #########################################################
-os <- read.csv(file.path(dir_mut, "cox_os_mut_wt.csv"))
-os_mut_wt_sig <- os[os$pval < 0.5, ]
-os_mut_wt <- os
+os <- read.csv(file.path(dir_mut, "cox_os_mut_wt_gbm.csv"))
+os_mut_wt_gbm_sig <- os[os$pval < 0.5, ]
+os_mut_wt_gbm <- os
 
 os <- read.csv(file.path(dir_mut, "cox_os_mut_mut.csv"))
-#os_mut_mut_sig <-  os[os$pval < 0.5, ]
-os_mut_mut_sig <- os
+os_mut_mut_sig <-  os[os$pval < 0.5, ]
+#os_mut_mut_sig <- os
 os_mut_mut <- os
+
+#os <- read.csv(file.path(dir_mut, "cox_os_mut_wt_nongbm.csv"))
+#os_mut_wt_nongbm_sig <-  os[os$pval < 0.5, ]
+#os_mut_wt_nongbm <- os
 
 #########################################################
 ## Mutation & clinical: OS
 #########################################################
-os <- read.csv(file.path(dir_clin_mut, 'mutation & clinical', "cox_os_wt_mv.csv"))
-os_mut_clin_wt_sig <-  os[os$pval < 0.5, ]
-os_mut_clin_wt <-  os
+os <- read.csv(file.path(dir_clin_mut, 'mutation & clinical', "cox_os_wt_gbm_mv.csv"))
+os_mut_clin_wt_gbm_sig <-  os[os$pval < 0.5, ]
+os_mut_clin_wt_gbm <-  os
 
 os <- read.csv(file.path(dir_clin_mut, 'mutation & clinical', "cox_os_mut_mv.csv"))
-# os_mut_clin_mut_sig <-  os[os$pval < 0.5, ]
-os_mut_clin_mut_sig <- os
+os_mut_clin_mut_sig <-  os[os$pval < 0.5, ]
 os_mut_clin_mut <-  os
 
 ######################################################
-## prepare data for forestplot:  WT
+## prepare data for forestplot:  WT GBM
 ######################################################
-int <- union( os_mut_wt_sig$gene, os_mut_clin_wt_sig$gene)
+int <- union( os_mut_wt_gbm_sig$gene, os_mut_clin_wt_gbm_sig$gene)
 
-os_mut_wt_upd <- lapply(1:length(int), function(k){
+os_mut_wt_gbm_upd <- lapply(1:length(int), function(k){
   
-  res <- os_mut_wt[os_mut_wt$gene == int[k], ]
+  res <- os_mut_wt_gbm[os_mut_wt_gbm$gene == int[k], ]
   if(nrow(res) == 0){
     
     res <- data.frame(gene = int[k],
@@ -106,18 +104,19 @@ os_mut_wt_upd <- lapply(1:length(int), function(k){
   
 })
 
-os_mut_wt_upd <- do.call(rbind, os_mut_wt_upd)
-os_mut_wt_upd$Coef <- os_mut_wt_upd$HR
-os_mut_wt_upd$Lower <- os_mut_wt_upd$low
-os_mut_wt_upd$Upper <- os_mut_wt_upd$up
-os_mut_wt_upd$N <- os_mut_wt_upd$n
+os_mut_wt_gbm_upd <- do.call(rbind, os_mut_wt_gbm_upd)
+os_mut_wt_gbm_upd$Coef <- os_mut_wt_gbm_upd$HR
+os_mut_wt_gbm_upd$Lower <- os_mut_wt_gbm_upd$low
+os_mut_wt_gbm_upd$Upper <- os_mut_wt_gbm_upd$up
+os_mut_wt_gbm_upd$N <- os_mut_wt_gbm_upd$n
 
-os_mut_clin_wt_upd <- lapply(1:length(int), function(k){
+os_mut_clin_wt_gbm_upd <- lapply(1:length(int), function(k){
   
-  res <- os_mut_clin_wt[os_mut_clin_wt$gene == int[k], ]
+  res <- os_mut_clin_wt_gbm[os_mut_clin_wt_gbm$gene == int[k], ]
   if(nrow(res) == 0){
     
  res <- data.frame(gene = int[k],
+                   level = NA, 
                    logHR = NA,
                    HR = NA,
                    se = NA,
@@ -134,22 +133,22 @@ os_mut_clin_wt_upd <- lapply(1:length(int), function(k){
   
 })
 
-os_mut_clin_wt_upd <- do.call(rbind, os_mut_clin_wt_upd)
-os_mut_clin_wt_upd$Coef <- os_mut_clin_wt_upd$HR
-os_mut_clin_wt_upd$Lower <- os_mut_clin_wt_upd$low
-os_mut_clin_wt_upd$Upper <- os_mut_clin_wt_upd$up
-os_mut_clin_wt_upd$N <- os_mut_clin_wt_upd$n
+os_mut_clin_wt_gbm_upd <- do.call(rbind, os_mut_clin_wt_gbm_upd)
+os_mut_clin_wt_gbm_upd$Coef <- os_mut_clin_wt_gbm_upd$HR
+os_mut_clin_wt_gbm_upd$Lower <- os_mut_clin_wt_gbm_upd$low
+os_mut_clin_wt_gbm_upd$Upper <- os_mut_clin_wt_gbm_upd$up
+os_mut_clin_wt_gbm_upd$N <- os_mut_clin_wt_gbm_upd$n
 
 dat <- lapply(1:length(int), function(k){
   
   data.frame(gene = int[k],
              #N = paste(df_pan_upd$N[k], df_male_upd$N[k], df_female_upd$N[k], sep="/"),
-             mut_Effect = os_mut_wt_upd$Coef[k],
-             mut_Lower = os_mut_wt_upd$Lower[k],
-             mut_Upper = os_mut_wt_upd$Upper[k],
-             mut_clin_Effect = os_mut_clin_wt_upd$Coef[k],
-             mut_clin_Lower = os_mut_clin_wt_upd$Lower[k],
-             mut_clin_Upper = os_mut_clin_wt_upd$Upper[k])
+             mut_Effect = os_mut_wt_gbm_upd$Coef[k],
+             mut_Lower = os_mut_wt_gbm_upd$Lower[k],
+             mut_Upper = os_mut_wt_gbm_upd$Upper[k],
+             mut_clin_Effect = os_mut_clin_wt_gbm_upd$Coef[k],
+             mut_clin_Lower = os_mut_clin_wt_gbm_upd$Lower[k],
+             mut_clin_Upper = os_mut_clin_wt_gbm_upd$Upper[k])
 })
 
 dat <- do.call(rbind, dat)
@@ -179,11 +178,9 @@ upper_values <- rbind(
   cbind(dat$mut_Upper, dat$mut_clin_Upper)
 )
 
-
 # generate the forest plot
-pdf(file=file.path(dir_clin_mut, "forestplot_WT.pdf"), 
-    width = 4.5, height = 5.5, useDingbats = FALSE)
-forestplot(
+
+p <- forestplot(
   
   # Table labels
   labeltext = table_text,
@@ -226,11 +223,11 @@ forestplot(
   mar = unit(c(3, 5, 2, 2), "mm"),
 
   # Text formatting
-  txt_gp = fpTxtGp(
-    label = gpar(fontsize = 9),
-    ticks = gpar(fontsize = 11, fontface = "bold"),
-    xlab  = gpar(fontsize = 14, fontface = "bold"),
-    title = gpar(fontsize = 14, fontface = "bold")
+ txt_gp = fpTxtGp(
+    label = gpar(fontsize = 8),
+    ticks = gpar(fontsize = 10, fontface = "bold"),
+    xlab  = gpar(fontsize = 12, fontface = "bold"),
+    title = gpar(fontsize = 12, fontface = "bold")
   ),
 
   # Horizontal separator
@@ -242,10 +239,16 @@ forestplot(
   # title = "IDH Wild-Type Cohort"
 )
 
+pdf(file=file.path(dir_clin_mut, "forestplot_WT_GBM.pdf"), 
+    width = 4.5, height = 3.5, useDingbats = FALSE)
+print(p)
 dev.off()
 
 
-
+jpeg(file=file.path(dir_clin_mut, "forestplot_WT_GBM.jpeg"), 
+    width = 4.5, height = 3.5, units = "in", res = 300, quality = 100)
+print(p)
+dev.off()
 
 ######################################################
 ## prepare data for forestplot: Mut
@@ -286,6 +289,7 @@ os_mut_clin_mut_upd <- lapply(1:length(int), function(k){
   if(nrow(res) == 0){
     
  res <- data.frame(gene = int[k],
+                   level = NA,
                    logHR = NA,
                    HR = NA,
                    se = NA,
@@ -349,9 +353,7 @@ upper_values <- rbind(
 
 
 # generate the forest plot
-pdf(file=file.path(dir_clin_mut, "forestplot_Mut.pdf"), 
-    width = 4.5, height = 3.5, useDingbats = FALSE)
-forestplot(
+p <- forestplot(
   
   # Table labels
   labeltext = table_text,
@@ -395,10 +397,10 @@ forestplot(
 
   # Text formatting
   txt_gp = fpTxtGp(
-    label = gpar(fontsize = 9),
-    ticks = gpar(fontsize = 11, fontface = "bold"),
-    xlab  = gpar(fontsize = 14, fontface = "bold"),
-    title = gpar(fontsize = 14, fontface = "bold")
+    label = gpar(fontsize = 8),
+    ticks = gpar(fontsize = 10, fontface = "bold"),
+    xlab  = gpar(fontsize = 12, fontface = "bold"),
+    title = gpar(fontsize = 12, fontface = "bold")
   ),
 
   # Horizontal separator
@@ -410,6 +412,15 @@ forestplot(
   # title = "IDH Wild-Type Cohort"
 )
 
+pdf(file=file.path(dir_clin_mut, "forestplot_Mut.pdf"), 
+    width = 4.5, height = 3.5, useDingbats = FALSE)
+
+print(p)
+
 dev.off()
 
 
+jpeg(file=file.path(dir_clin_mut, "forestplot_Mut.jpeg"), 
+    width = 4.5, height = 3.5, units = "in", res = 300, quality = 100)
+print(p)
+dev.off()
