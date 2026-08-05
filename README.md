@@ -8,11 +8,19 @@
 
 ## Description
 
-This repository provides a reproducible computational framework for the analysis of clinicogenomic features in central nervous system (CNS) tumours using harmonized clinical and next-generation sequencing (NGS) data.
+This repository provides a reproducible computational framework for investigating the clinicogenomic landscape of central nervous system (CNS) tumours using harmonized clinical and next-generation sequencing (NGS) data.
 
 The project supports integrative analyses of molecular alterations, clinical characteristics, and survival outcomes in a retrospective CNS tumour cohort from a Canadian quaternary care center.
 
-Clinical and molecular datasets are organized within a `MultiAssayExperiment` object to enable standardized, reproducible, and modular downstream analyses across mutation profiling, clinical association testing, visualization, and survival modeling workflows.
+In addition to analyses of the overall cohort, patients are stratified into three clinically and molecularly relevant subgroups:
+
+- IDH-wildtype glioblastoma 
+- IDH-mutant CNS tumours 
+- IDH-wildtype non-glioblastoma CNS tumours 
+
+This subgroup-based framework enables the identification of genomic and clinical associations that may be obscured in analyses of a heterogeneous CNS tumour cohort.
+
+Clinical and molecular datasets are organized within a `MultiAssayExperiment` object to support standardized, reproducible, and modular downstream analyses.
 
 ---
 
@@ -23,34 +31,32 @@ The `cns-ngs-clinical` framework supports reproducible clinicogenomic analyses o
 The repository includes workflows for:
 
 - Clinical and molecular data integration
-- Mutation profiling and visualization
+- Harmonization of histological and molecular annotations
+- IDH-based molecular subgroup classification
+- Mutation frequency profiling and visualization
 - Clinicogenomic association analyses
-- Survival and subgroup analyses
-- Co-mutation analyses
+- Overall and subgroup-specific survival analyses
+- Co-mutation and mutual-exclusivity analyses
 - Generation of publication-ready figures and tables
 
-The workflow is modular, allowing analyses to be run independently or as part of a complete analytical pipeline.
+Analyses may be performed across the complete cohort or separately within subgroups.
+
+The workflow is modular, allowing individual analyses to be run independently or as part of a complete analytical pipeline.
 
 ---
 
 ## Analytical Modules
 
-- Data Integration
-- Visualization
-- Association and Survival Analyses (UV and MV)
+- Data integration and harmonization
+- Mutation profiling and visualization
+- Clinical association analyses (UV and MV)
 - Co-Mutation Analysis
 
 ---
 
 ## Data Structure
 
-Processed datasets are stored within a `MultiAssayExperiment` object containing:
-
-- Binary mutation matrices
-- OncoPrint-compatible mutation matrices
-- Harmonized clinical metadata
-
-This structure enables consistent patient alignment across molecular and clinical analyses.
+Processed datasets are stored within a `MultiAssayExperiment` object containing mutation matrices and harmonized clinical metadata, including histology, IDH status, subgroup classification, and survival information.
 
 ---
 
@@ -98,5 +104,7 @@ cns-ngs-clinical/
 
 ## Notes
 
-- Analyses are implemented in R/Bioconductor using standard statistical and bioinformatics approaches, with IDH status determined from combined IDH1 and IDH2 mutation data.
-- The repository is designed to support reproducible and extensible clinicogenomic analyses in CNS tumours.
+- IDH status is derived from available IDH1 and IDH2 mutation data.
+- Histology is harmonized before subgroup classification.
+- Analyses are performed for the overall cohort and for patients with IDH-wildtype glioblastoma, IDH-mutant tumours, and IDH-wildtype non-glioblastoma tumours.
+- Subgroup results should be interpreted considering sample size and statistical power.
