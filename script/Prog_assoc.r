@@ -287,7 +287,7 @@ cox_res$study <- 'WT'
 write.csv(cox_res, file = file.path(dir_output, 'mutation', 'cox_os_mut_wt.csv'), row.names=FALSE)
 
 ## --- Step 3: Mut patients 
-clin_mut <- clin[clin$IDH_status == 'Mut', ] # 47
+clin_mut <- clin[clin$IDH_status == 'Mut', ] # 51
 df <- mut[, colnames(mut) %in% clin_mut$Study]
 
 cox_res <- lapply(1:nrow(df), function(k){
@@ -345,7 +345,7 @@ write.csv(cox_res, file = file.path(dir_output, 'mutation', 'cox_os_mut_mut.csv'
 
 ## --- Step 4: GBM patients 
 clin_wt_gbm <- clin[clin$Histo == 'GBM', ] # 105
-df <- mut[, colnames(mut) %in% clin_gbm$Study]
+df <- mut[, colnames(mut) %in% clin_wt_gbm$Study]
 
 cox_res <- lapply(1:nrow(df), function(k){
 
@@ -468,7 +468,7 @@ varnames <- res[res$pval < 0.05, 'variable']
 
 df <- mut
 mut_freq <- rowMeans(df == 1)
-genes <- names(mut_freq[mut_freq >= 0.1])
+genes <- names(mut_freq[mut_freq >= 0.05])
 df <- df[rownames(df) %in% genes, ]
 
 cox_res <- lapply(1:nrow(df), function(k){
@@ -543,7 +543,7 @@ varnames <- res[res$pval < 0.05, 'variable']
 clin_wt <- clin[clin$IDH_status == 'WT', ]
 df <- mut[, colnames(mut) %in% clin_wt$Study]
 mut_freq <- rowMeans(df == 1)
-genes <- names(mut_freq[mut_freq >= 0.1])
+genes <- names(mut_freq[mut_freq >= 0.05])
 df <- df[rownames(df) %in% genes, ]
 
 cox_res <- lapply(1:nrow(df), function(k){
@@ -573,7 +573,7 @@ data$time[data$time > time.censor] <- time.censor
   if( n1 >= n1.cutoff & n0 >= n0.cutoff & e1 >= 2 & e0 >= 2 ){
     
     fit <- coxphf( formula= Surv( time , status ) ~ variable + Age +   
-                                                   + ECOG + Resection, data=data )
+                                                   + ECOG + Resection + MGMT, data=data )
     res <- data.frame(gene = rownames(df)[k],
                       level = names(fit$coefficients),
                       logHR = fit$coefficients,
@@ -612,12 +612,12 @@ write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_w
 
 ## --- Step 3: Mut patients
 res <- read.csv(file.path(dir_output, 'clinical', 'cox_os_clin_mut.csv'))
-varnames <- res[res$pval < 0.1, 'variable']
+varnames <- res[res$pval < 0.05, 'variable']
 
 clin_mut <- clin[clin$IDH_status == 'Mut', ]
 df <- mut[, colnames(mut) %in% clin_mut$Study]
 mut_freq <- rowMeans(df == 1)
-genes <- names(mut_freq[mut_freq >= 0.1])
+genes <- names(mut_freq[mut_freq >= 0.05])
 df <- df[rownames(df) %in% genes, ]
 
 cox_res <- lapply(1:nrow(df), function(k){
@@ -719,7 +719,7 @@ data$time[data$time > time.censor] <- time.censor
 
   if( n1 >= n1.cutoff & n0 >= n0.cutoff & e1 >= 2 & e0 >= 2 ){
     
-    fit <- coxphf( formula= Surv( time , status ) ~ variable + Resection, data=data )
+    fit <- coxphf( formula= Surv( time , status ) ~ variable + Resection + MGMT, data=data )
     res <- data.frame(gene = rownames(df)[k],
                       level = names(fit$coefficients),
                       logHR = fit$coefficients,
@@ -760,7 +760,7 @@ write.csv(cox_res, file = file.path(dir_output, 'mutation & clinical', 'cox_os_w
 res <- read.csv(file.path(dir_output, 'clinical', 'cox_os_clin_wt_nongbm.csv'))
 varnames <- res[res$pval < 0.05, 'variable']
 
-clin_wt_nongbm <- clin[clin$Histo != 'GBM' & clin$IDH_status == 'WT', ]
+clin_wt_nongbm <- clin[clin$Histo != 'GBM' & clin$IDH_status == 'WT', ] # 43
 df <- mut[, colnames(mut) %in% clin_wt_nongbm$Study]
 mut_freq <- rowMeans(df == 1)
 genes <- names(mut_freq[mut_freq >= 0.1])
@@ -792,7 +792,7 @@ data$time[data$time > time.censor] <- time.censor
 
   if( n1 >= n1.cutoff & n0 >= n0.cutoff & e1 >= 2 & e0 >= 2 ){
     
-    fit <- coxphf( formula= Surv( time , status ) ~ variable + ECOG, data=data )
+    fit <- coxphf( formula= Surv( time , status ) ~ variable + ECOG , data=data )
     res <- data.frame(gene = rownames(df)[k],
                       level = names(fit$coefficients),
                       logHR = fit$coefficients,
