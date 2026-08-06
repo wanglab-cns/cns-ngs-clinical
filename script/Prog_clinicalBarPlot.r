@@ -204,6 +204,7 @@ mut_long_mut <- mut_long[mut_long$IDH_status == 'Mut', ] %>%
   group_by(Gene) %>%
   filter(sum(Mutation) > 0) %>%
   ungroup()
+
 age_assoc <- mut_long_mut %>%
   group_by(Gene) %>%
   summarise(
@@ -224,7 +225,7 @@ write.csv(age_assoc, file = file.path(dir_output, 'csv', 'mut_age_mut.csv'))
 age_assoc$pval <- round(age_assoc$pval, 1)
 
 ## bar plot age
-gene_order <- mut_long_mut %>%
+gene_order_mut <- mut_long_mut %>%
   group_by(Gene) %>%
   summarise(overall = mean(Mutation)) %>%
   arrange(desc(overall)) %>%
@@ -245,7 +246,7 @@ age_assoc <- age_assoc %>%
     )
   )
 
-plot_age$Gene <- factor(plot_age$Gene, levels = gene_order)
+plot_age$Gene <- factor(plot_age$Gene, levels = gene_order_mut )
 plot_age_sig <- plot_age %>%
   group_by(Gene) %>%
   summarise(y_pos = max(freq) + 5, .groups = "drop") %>%
@@ -310,7 +311,7 @@ write.csv(age_assoc, file = file.path(dir_output, 'csv', 'mut_age_wt.csv'))
 age_assoc$pval <- round(age_assoc$pval, 1)
 
 ## bar plot age
-gene_order <- mut_long_wt %>%
+gene_order_wt <- mut_long_wt %>%
   group_by(Gene) %>%
   summarise(overall = mean(Mutation)) %>%
   arrange(desc(overall)) %>%
@@ -331,7 +332,7 @@ age_assoc <- age_assoc %>%
     )
   )
 
-plot_age$Gene <- factor(plot_age$Gene, levels = gene_order)
+plot_age$Gene <- factor(plot_age$Gene, levels = gene_order_wt)
 plot_age_sig <- plot_age %>%
   group_by(Gene) %>%
   summarise(y_pos = max(freq) + 5, .groups = "drop") %>%
@@ -398,7 +399,7 @@ write.csv(age_assoc, file = file.path(dir_output, 'csv', 'mut_age_wt_gbm.csv'))
 age_assoc$pval <- round(age_assoc$pval, 1)
 
 ## bar plot age
-gene_order <- mut_long_wt_gbm %>%
+gene_order_wt_gbm <- mut_long_wt_gbm %>%
   group_by(Gene) %>%
   summarise(overall = mean(Mutation)) %>%
   arrange(desc(overall)) %>%
@@ -419,7 +420,7 @@ age_assoc <- age_assoc %>%
     )
   )
 
-plot_age$Gene <- factor(plot_age$Gene, levels = gene_order)
+plot_age$Gene <- factor(plot_age$Gene, levels = gene_order_wt_gbm)
 plot_age_sig <- plot_age %>%
   group_by(Gene) %>%
   summarise(y_pos = max(freq) + 5, .groups = "drop") %>%
@@ -468,6 +469,7 @@ mut_long_wt_nongbm <- mut_long[
   group_by(Gene) %>%
   filter(sum(Mutation) > 0) %>%
   ungroup()
+
 age_assoc <- mut_long_wt_nongbm %>%
   group_by(Gene) %>%
   summarise(
@@ -488,7 +490,7 @@ write.csv(age_assoc, file = file.path(dir_output, 'csv', 'mut_age_wt_nongbm.csv'
 age_assoc$pval <- round(age_assoc$pval, 1)
 
 ## bar plot age
-gene_order <- mut_long_wt_nongbm %>%
+gene_order_wt_nongbm <- mut_long_wt_nongbm %>%
   group_by(Gene) %>%
   summarise(overall = mean(Mutation)) %>%
   arrange(desc(overall)) %>%
@@ -509,7 +511,7 @@ age_assoc <- age_assoc %>%
     )
   )
 
-plot_age$Gene <- factor(plot_age$Gene, levels = gene_order)
+plot_age$Gene <- factor(plot_age$Gene, levels = gene_order_wt_nongbm)
 plot_age_sig <- plot_age %>%
   group_by(Gene) %>%
   summarise(y_pos = max(freq) + 5, .groups = "drop") %>%
@@ -631,6 +633,7 @@ mut_long_mut <- mut_long[mut_long$IDH_status == 'Mut', ] %>%
   group_by(Gene) %>%
   filter(sum(Mutation) > 0) %>%
   ungroup()
+
 sex_assoc <- mut_long_mut %>%
   group_by(Gene) %>%
   summarise(
@@ -667,7 +670,7 @@ sex_assoc <- sex_assoc %>%
     )
   )
 
-plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order)
+plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order_mut)
 plot_sex_sig <- plot_sex %>%
   group_by(Gene) %>%
   summarise(y_pos = max(freq) + 5, .groups = "drop") %>%
@@ -748,7 +751,7 @@ sex_assoc <- sex_assoc %>%
     )
   )
 
-plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order)
+plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order_wt)
 plot_sex_sig <- plot_sex %>%
   group_by(Gene) %>%
   summarise(y_pos = max(freq) + 5, .groups = "drop") %>%
@@ -830,7 +833,7 @@ sex_assoc <- sex_assoc %>%
     )
   )
 
-plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order)
+plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order_wt_gbm)
 plot_sex_sig <- plot_sex %>%
   group_by(Gene) %>%
   summarise(y_pos = max(freq) + 5, .groups = "drop") %>%
@@ -916,7 +919,7 @@ sex_assoc <- sex_assoc %>%
     )
   )
 
-plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order)
+plot_sex$Gene <- factor(plot_sex$Gene, levels = gene_order_wt_nongbm)
 plot_sex_sig <- plot_sex %>%
   group_by(Gene) %>%
   summarise(y_pos = max(freq) + 5, .groups = "drop") %>%
