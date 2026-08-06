@@ -200,7 +200,10 @@ print(p)
 dev.off()
 
 ## Step 2 --- Mutant patients
-mut_long_mut <- mut_long[mut_long$IDH_status == 'Mut', ]
+mut_long_mut <- mut_long[mut_long$IDH_status == 'Mut', ] %>%
+  group_by(Gene) %>%
+  filter(sum(Mutation) > 0) %>%
+  ungroup()
 age_assoc <- mut_long_mut %>%
   group_by(Gene) %>%
   summarise(
@@ -276,11 +279,11 @@ p <- ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
   labs(y = "Mutation frequency (%)", x = "", 
        title = " ")
 
-pdf(file.path(dir_output, 'mut_age_mut.pdf'), width = 6, height = 3.5)
+pdf(file.path(dir_output, 'mut_age_mut.pdf'), width = 5.5, height = 3.5)
 print(p)
 dev.off()
 
-jpeg(file.path(dir_output, "mut_age_mut.jpeg"), width = 6, height = 3.5, units = "in", 
+jpeg(file.path(dir_output, "mut_age_mut.jpeg"), width = 5.5, height = 3.5, units = "in", 
      res = 300, quality = 100)
 print(p)
 dev.off()
@@ -371,7 +374,10 @@ print(p)
 dev.off()
 
 ## Step 4 --- Wild type GBM patients
-mut_long_wt_gbm <- mut_long[mut_long$IDH_status == 'WT' & mut_long$histo == 'Glioblastoma', ]
+mut_long_wt_gbm <- mut_long[
+  mut_long$IDH_status == 'WT' & mut_long$histo == 'Glioblastoma',
+] %>%
+  filter(Gene != "IDH")
 age_assoc <- mut_long_wt_gbm %>%
   group_by(Gene) %>%
   summarise(
@@ -456,7 +462,12 @@ print(p)
 dev.off()
 
 ## Step 5 --- Wild type nonGBM patients
-mut_long_wt_nongbm <- mut_long[mut_long$IDH_status == 'WT' & mut_long$histo != 'Glioblastoma', ]
+mut_long_wt_nongbm <- mut_long[
+  mut_long$IDH_status == 'WT' & mut_long$histo != 'Glioblastoma',
+] %>%
+  group_by(Gene) %>%
+  filter(sum(Mutation) > 0) %>%
+  ungroup()
 age_assoc <- mut_long_wt_nongbm %>%
   group_by(Gene) %>%
   summarise(
@@ -531,11 +542,11 @@ p <- ggplot(plot_age, aes(x = Gene, y = freq, fill = Age)) +
   labs(y = "Mutation frequency (%)", x = "", 
        title = " ")
 
-pdf(file.path(dir_output, 'mut_age_wt_nongbm.pdf'), width = 6, height = 3.5)
+pdf(file.path(dir_output, 'mut_age_wt_nongbm.pdf'), width = 5, height = 3.5)
 print(p)
 dev.off()
 
-jpeg(file.path(dir_output, "mut_age_wt_nongbm.jpeg"), width = 6, height = 3.5, units = "in", 
+jpeg(file.path(dir_output, "mut_age_wt_nongbm.jpeg"), width = 5, height = 3.5, units = "in", 
      res = 300, quality = 100)
 print(p)
 dev.off()
@@ -616,7 +627,10 @@ print(p)
 dev.off()
 
 ## Step 2 --- Mutant patients
-mut_long_mut <- mut_long[mut_long$IDH_status == 'Mut', ]
+mut_long_mut <- mut_long[mut_long$IDH_status == 'Mut', ] %>%
+  group_by(Gene) %>%
+  filter(sum(Mutation) > 0) %>%
+  ungroup()
 sex_assoc <- mut_long_mut %>%
   group_by(Gene) %>%
   summarise(
@@ -687,11 +701,11 @@ p <- ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
   labs(y = "Mutation frequency (%)", x = "", 
        title = " ")
 
-pdf(file.path(dir_output,  'mut_sex_mut.pdf'), width = 6, height = 3.5)
+pdf(file.path(dir_output,  'mut_sex_mut.pdf'), width = 5.5, height = 3.5)
 print(p)
 dev.off()
 
-jpeg(file.path(dir_output, "mut_sex_mut.jpeg"), width = 6, height = 3.5, units = "in", 
+jpeg(file.path(dir_output, "mut_sex_mut.jpeg"), width = 5.5, height = 3.5, units = "in", 
      res = 300, quality = 100)
 print(p)
 dev.off()
@@ -777,7 +791,10 @@ print(p)
 dev.off()
 
 ## Step 4 --- Wild type GBM patients
-mut_long_wt_gbm <- mut_long[mut_long$IDH_status == 'WT' & mut_long$histo == 'Glioblastoma', ]
+mut_long_wt_gbm <- mut_long[
+  mut_long$IDH_status == 'WT' & mut_long$histo == 'Glioblastoma',
+] %>%
+  filter(Gene != "IDH")
 sex_assoc <- mut_long_wt_gbm %>%
   group_by(Gene) %>%
   summarise(
@@ -857,7 +874,12 @@ print(p)
 dev.off()
 
 ## Step 5 --- Wild type nonGBM patients
-mut_long_wt_nongbm <- mut_long[mut_long$IDH_status == 'WT' & mut_long$histo != 'Glioblastoma', ]
+mut_long_wt_nongbm <- mut_long[
+  mut_long$IDH_status == 'WT' & mut_long$histo != 'Glioblastoma',
+] %>%
+  group_by(Gene) %>%
+  filter(sum(Mutation) > 0) %>%
+  ungroup()
 sex_assoc <- mut_long_wt_nongbm %>%
   group_by(Gene) %>%
   summarise(
@@ -929,11 +951,11 @@ p <- ggplot(plot_sex, aes(x = Gene, y = freq, fill = Sex)) +
        title = " ")
 
 
-pdf(file.path(dir_output, 'mut_sex_wt_nongbm.pdf'), width = 6, height = 3.5)
+pdf(file.path(dir_output, 'mut_sex_wt_nongbm.pdf'), width = 5, height = 3.5)
 print(p)
 dev.off()
 
-jpeg(file.path(dir_output, "mut_sex_wt_nongbm.jpeg"), width = 6, height = 3.5, units = "in", 
+jpeg(file.path(dir_output, "mut_sex_wt_nongbm.jpeg"), width = 5, height = 3.5, units = "in", 
      res = 300, quality = 100)
 print(p)
 dev.off()
