@@ -2162,6 +2162,7 @@ data$variable <- clin$group
 
 surv_obj <- with(data, Surv(time, status))
 fit_idh <- survfit(surv_obj ~ variable, data = data)
+summary(fit_idh)
 
 p_idh <- ggsurvplot(
   fit_idh,
@@ -2196,8 +2197,124 @@ p_idh <- ggsurvplot(
 )
 
 pdf(file.path(dir_output, 'clinical', "KM_OS_a.pdf"), width =4, height = 4)
+print(p_idh)
+dev.off()
 
 jpeg(file.path(dir_output, "clinical", "KM_OS_a.jpeg"), width = 4, height = 4, units = "in", res = 300)
-
 print(p_idh)
+dev.off()
+
+
+
+#############################################################
+## KM figure --- OS association with grade
+## IDH-WT-nonGBM only
+#############################################################
+## step 1 --- subset IDH-WT-nonGBM
+df <- clin[clin$group == "IDH-WT-nonGBM", ]
+
+## step 2 --- define grade groups
+df$grade_group <- NA
+
+df$grade_group[df$Grade %in% c("I", "II")] <- "Low grade"
+df$grade_group[df$Grade %in% c("III", "IV")] <- "High grade"
+
+df$grade_group <- factor(
+  df$grade_group,
+  levels = c("Low grade", "High grade")
+)
+
+## check
+table(df$grade_group, useNA = "ifany")
+table(df$histo, df$grade_group)
+
+## step 3 --- prepare survival data
+data <- data.frame(
+  status = df$os.event,
+  time   = df$os.time
+)
+
+data$time <- as.numeric(as.character(data$time))
+
+## step 4 --- apply censoring
+for(i in 1:nrow(data)){
+
+  if(
+    !is.na(as.numeric(as.character(data[i, "time"]))) &&
+    as.numeric(as.character(data[i, "time"])) > time.censor
+  ){
+    data[i, "time"]   <- time.censor
+    data[i, "status"] <- 0
+  }
+}
+
+data$variable <- df$grade_group
+
+## remove missing grade if any
+data <- data[!is.na(data$variable), ]
+
+## step 5 --- KM analysis
+surv_obj <- with(data, Surv(time, status))
+
+fit_grade <- survfit(
+  surv_obj ~ variable,
+  data = data
+)
+
+summary(fit_grade)
+
+## step 6 --- plot
+p_grade <- ggsurvplot(
+  fit_grade,
+  data = data,
+  risk.table = TRUE,
+  pval = TRUE,
+  conf.int = FALSE,
+  legend.title = " ",
+  legend.labs = c(
+    "Low grade",
+    "High grade"
+  ),
+  palette = c("#1E466EFF", "#A12A19FF"),
+  xlab = "Time (months)",
+  ylab = "Overall survival probability",
+
+  ggtheme = theme_bw(base_size = 8) +
+    theme(
+      panel.grid = element_blank(),
+      panel.border = element_blank(),
+      axis.line = element_line(color = "black"),
+
+      legend.position = "bottom",
+      legend.title = element_blank(),
+      legend.text = element_text(size = 6),
+
+      axis.text = element_text(size = 6),
+      axis.title = element_text(size = 7),
+
+      plot.title = element_text(size = 8)
+    ),
+
+  pval.size = 3,
+  risk.table.height = 0.22,
+  risk.table.fontsize = 3
+)
+
+## step 7 --- save
+pdf(
+  file.path(dir_output, "clinical", "KM_OS_WT_nonGBM_grade.pdf"),
+  width = 4,
+  height = 4
+)
+print(p_grade)
+dev.off()
+
+jpeg(
+  file.path(dir_output, "clinical", "KM_OS_WT_nonGBM_grade.jpeg"),
+  width = 4,
+  height = 4,
+  units = "in",
+  res = 300
+)
+print(p_grade)
 dev.off()
