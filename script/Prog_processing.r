@@ -48,6 +48,8 @@
 ## Notes:
 ##   - Only Tier I and Tier II clinically curated variants are retained.
 ##   - Mutation classes include: SNV/Indel, Fusion, Amplification, and Deletion.
+##   - C23-098 IDH1 p.Arg132His is manually curated as SNV/Indel based on review of the underlying NGS annotation.
+##   - C22-026, C22-075, and C24-135 are excluded from genomic analyses because NGS was not performed.
 ##   - Clinical and molecular datasets are aligned using harmonized patient identifiers.
 ##   - The exported object is designed for downstream analyses within the Bioconductor ecosystem.
 ##----------------------------------------------------------------------------------------------------
@@ -148,8 +150,28 @@ clin <- clin[order(clin$Study), ]
 ## Create mutation matrix
 #################################################
 mut_dat <- mut_dat[!is.na(mut_dat$Study), ]
-mut_dat <- mut_dat[mut_dat$'Mutation Type' != 'Unclassified', ] # 1 patient  
+
+# fix C23-098 case
+mut_dat <- mut_dat %>%
+  mutate(
+    `Mutation Type` = case_when(
+      Study == "C23-098" &
+        Gene == "IDH1" &
+        str_detect(
+          `Full Mutation Description`,
+          regex("Arg132His|R132H", ignore_case = TRUE)
+        ) ~ "SNV/Indel",
+
+      TRUE ~ `Mutation Type`
+    )
+  )
+ 
 mut_dat <- mut_dat[order(mut_dat$Study), ]
+
+## exclude cases with not NGS
+no_ngs <- c("C22-026", "C22-075", "C24-135")
+mut_dat <- mut_dat %>%
+  filter(!Study %in% no_ngs)
 
 ## extract IDH status
 #IDH_status <- mut_dat %>%
@@ -238,12 +260,35 @@ mat_onco <- mat_onco[, sort(colnames(mat_onco)), drop = FALSE]
 clin_updated <- read.csv(file.path(dir_input, 'clin.csv'))
 clin_updated <- clin_updated[order(clin_updated$Study), ]
 
-int <- intersect(clin$Study, colnames(mat_bin)) # 213 patients (all) & 199 for Tier 1 & II
-clin <- clin[clin$Study %in% int, ]
-clin <- as.data.frame(clin)
+## Patients available in clinical + both mutation matrices
+int <- Reduce(
+  intersect,
+  list(
+    clin$Study,
+    colnames(mat_bin),
+    colnames(mat_onco)
+  )
+)
+
+cat("Final genomic cohort:", length(int), "patients\n")
+
+## Use one fixed patient order
+int <- sort(int)
+
+clin <- clin %>%
+  filter(Study %in% int) %>%
+  arrange(match(Study, int)) %>%
+  as.data.frame()
+
+mat_bin  <- mat_bin[, int, drop = FALSE]
+mat_onco <- mat_onco[, int, drop = FALSE]
 rownames(clin) <- clin$Study
-mat_bin <- mat_bin[, colnames(mat_bin) %in% int]
-mat_onco <- mat_onco[, colnames(mat_onco) %in% int]
+
+## Critical alignment QC
+stopifnot(
+  identical(clin$Study, colnames(mat_bin)),
+  identical(clin$Study, colnames(mat_onco))
+)
 
 clin <- clin %>%
   left_join(
