@@ -20,7 +20,6 @@
 ## Outputs:
 ##   CSV files summarizing univariable Cox regression results for:
 ##     - Full cohort
-##     - IDH wild-type subgroup
 ##     - IDH mutant subgroup
 ##     - IDH wild-type glioblastoma subgroup
 ##     - IDH wild-type non-glioblastoma subgroup
@@ -234,63 +233,7 @@ write.csv(cox_res,
           file = file.path(dir_output, 'clinical', 'cox_os_clin_all.csv'),
           row.names = FALSE)
 
-## --- Step 2: WT patients 
-clin_wt <- clin[clin$IDH_status == 'WT', ] # 152 cases
-df <- clin_wt[, c('Age', 'Sex', 'Grade', 'Histo', 'MGMT', 'ECOG', 'Resection')]
-
-cox_res <- lapply(names(df), function(varname){
-
-  data <- data.frame(
-    status = clin_wt$os.event,
-    time   = as.numeric(clin_wt$os.time),
-    variable = df[[varname]]
-  )
-
-  # remove NA
-  data <- data[!is.na(data$variable), ]
-
-  # ensure factor (important)
-  data$variable <- as.factor(data$variable)
-
-  # censoring (vectorized)
-  data$status[data$time > time.censor] <- 0
-  data$time[data$time > time.censor] <- time.censor
-
-  # skip if only one level
-  if(nlevels(data$variable) < 2) return(NULL)
-
-  # run Cox
-  fit <- tryCatch(
-    coxphf(Surv(time, status) ~ variable, data = data),
-    error = function(e) return(NULL)
-  )
-
-  if(is.null(fit)) return(NULL)
-
-  res <- data.frame(
-    variable = varname,
-    level = names(fit$coefficients),
-    logHR = fit$coefficients,
-    HR = exp(fit$coefficients),   
-    se = sqrt(diag(fit$var)),
-    n = nrow(data),
-    low = fit$ci.lower,
-    up  = fit$ci.upper,
-    pval = fit$prob
-  )
-
-  res
-})
-
-cox_res <- do.call(rbind, cox_res)
-cox_res <- cox_res[!is.na(cox_res$HR), ]
-cox_res$study <- 'WT'
-
-write.csv(cox_res,
-          file = file.path(dir_output, 'clinical', 'cox_os_clin_wt.csv'),
-          row.names = FALSE)
-
-## --- Step 3: Mut patients 
+## --- Step 2: Mut patients 
 clin_mut <- clin[clin$IDH_status == 'Mut', ] # 47 cases
 df <- clin_mut[, c('Age', 'Sex', 'Grade', 'MGMT', 'ECOG', 'Resection')]
 
@@ -346,7 +289,7 @@ write.csv(cox_res,
           file = file.path(dir_output, 'clinical', 'cox_os_clin_mut.csv'),
           row.names = FALSE)          
 
-## --- Step 4: WT GBM patients 
+## --- Step 3: WT GBM patients 
 clin_wt_gbm <- clin[clin$Histo == 'GBM', ] # 105 cases
 df <- clin_wt_gbm[, c('Age', 'Sex', 'Grade', 'MGMT', 'ECOG', 'Resection')]
 
