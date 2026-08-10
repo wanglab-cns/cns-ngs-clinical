@@ -961,7 +961,7 @@ sets.x.label <- "Mutation Frequency"
 pdf(file.path(dir_output,  'upset_coMut_all.pdf'), width = 7, height = 5)
 
 suppressWarnings(
-  upset.fun(fromList(listInput))
+  upset.fun(fromList(listInput), 'Number of Patients')
 )
 
 dev.off()
@@ -970,7 +970,7 @@ jpeg(file.path(dir_output,  'upset_coMut_all.jpeg'), width = 7, height = 5,
      units = "in", res = 300, quality = 100)
 
 suppressWarnings(
-  upset.fun(fromList(listInput))
+  upset.fun(fromList(listInput), 'Number of Patients')
 )
 
 dev.off()
@@ -1010,7 +1010,7 @@ sets.bar.color <- col.id
 pdf(file.path(dir_output,  'upset_coMut_wt.pdf'), width = 7, height = 5)
 
 suppressWarnings(
-  upset.fun(fromList(listInput))
+  upset.fun(fromList(listInput), 'Number of Patients')
 )
 
 dev.off()
@@ -1019,7 +1019,7 @@ jpeg(file.path(dir_output,  'upset_coMut_wt.jpeg'), width = 7, height = 5,
      units = "in", res = 300, quality = 100)
 
 suppressWarnings(
-  upset.fun(fromList(listInput))
+  upset.fun(fromList(listInput), 'Number of Patients')
 )
 
 dev.off()
@@ -1059,7 +1059,7 @@ sets.bar.color <- col.id
 pdf(file.path(dir_output,  'upset_coMut_mut.pdf'), width = 7, height = 5)
 
 suppressWarnings(
-  upset.fun(fromList(listInput))
+  upset.fun(fromList(listInput), 'Number of Patients')
 )
 
 dev.off()
@@ -1068,7 +1068,7 @@ jpeg(file.path(dir_output,  'upset_coMut_mut.jpeg'), width = 7, height = 5,
      units = "in", res = 300, quality = 100)
 
 suppressWarnings(
-  upset.fun(fromList(listInput))
+  upset.fun(fromList(listInput), 'Number of Patients')
 )
 
 dev.off()
@@ -1114,7 +1114,7 @@ sets.bar.color <- col.id
 pdf(file.path(dir_output,  'upset_coMut_wt_gbm.pdf'), width = 7, height = 5)
 
 suppressWarnings(
-  upset.fun(fromList(listInput))
+  upset.fun(fromList(listInput), 'Number of Patients')
 )
 
 dev.off()
@@ -1123,7 +1123,7 @@ jpeg(file.path(dir_output,  'upset_coMut_wt_gbm.jpeg'), width = 7, height = 5,
      units = "in", res = 300, quality = 100)
 
 suppressWarnings(
-  upset.fun(fromList(listInput))
+  upset.fun(fromList(listInput), 'Number of Patients')
 )
 
 dev.off()
@@ -1163,7 +1163,7 @@ sets.bar.color <- col.id
 pdf(file.path(dir_output,  'upset_coMut_wt_nongbm.pdf'), width = 7, height = 5)
 
 suppressWarnings(
-  upset.fun(fromList(listInput))
+  upset.fun(fromList(listInput), 'Number of Patients')
 )
 
 dev.off()
@@ -1172,7 +1172,7 @@ jpeg(file.path(dir_output,  'upset_coMut_wt_nongbm.jpeg'), width = 7, height = 5
      units = "in", res = 300, quality = 100)
 
 suppressWarnings(
-  upset.fun(fromList(listInput))
+  upset.fun(fromList(listInput), 'Number of Patients')
 )
 
 dev.off()
