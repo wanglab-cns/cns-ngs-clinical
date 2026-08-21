@@ -28,9 +28,10 @@
 ##        - IDH status
 ##        - Histology
 ##        - WHO grade
+##        - MGMT
+##        - Resection
 ##   4) Generate annotated OncoPrints for:
 ##        - Full cohort
-##        - IDH wild-type subgroup
 ##        - IDH mutant subgroup
 ##        - IDH wild-type glioblastoma subgroup
 ##        - IDH wild-type non-glioblastoma subgroup
@@ -202,7 +203,16 @@ annotation_legend_param <- list(
   Grade = list(
     title_gp = gpar(fontsize = 7, fontface = "bold"),
     labels_gp = gpar(fontsize = 6)
+  ),
+  MGMT = list(
+    title_gp = gpar(fontsize = 7, fontface = "bold"),
+    labels_gp = gpar(fontsize = 6)
+  ),
+  Resection = list(
+    title_gp = gpar(fontsize = 7, fontface = "bold"),
+    labels_gp = gpar(fontsize = 6)
   )
+
 )
 
 ####################################################
@@ -245,6 +255,19 @@ clin <- clin %>%
     )
   )
 
+
+# MGMT
+clin$MGMT <- clin$MGMT.methylation
+clin$MGMT <- case_when(
+  str_detect(clin$MGMT, "Methylated") ~ "Methylated",
+  str_detect(clin$MGMT, "Unmethylated") ~ "Unmethylated",
+  TRUE ~ "Unknown"
+)
+
+# Recesion
+clin$Resection <- clin$Extent.of.surgical.resection
+clin$Resection <- ifelse(clin$Resection == 'Total', 'Gross Total', clin$Resection)
+
 anno_df <- data.frame(
   Sex = factor(clin$Sex, levels = c("Male", "Female")),
   Age = factor(clin$Age, levels = c(">40", "<40")),
@@ -252,7 +275,9 @@ anno_df <- data.frame(
   Histo = factor(clin$Histo, levels = c('Glioblastoma', 'Astrocytoma', 'Circumscribed glioma',
                                         'Glioneuronal tumor', 'Oligodendroglioma',  'Pediatric-type HGG',
                                         'Pediatric-type LGG', 'Ependymoma')),
-  Grade = factor(clin$Grade, levels = c('1', '2', '3', '4'))
+  Grade = factor(clin$Grade, levels = c('1', '2', '3', '4')),
+  MGMT = factor(clin$MGMT, levels = c('Methylated', 'Unmethylated', 'Unknown')),
+  Resection = factor(clin$Resection, levels = c('Biopsy', 'Gross Total', 'Subtotal'))
 )
 
 # make sure rownames match sample IDs
@@ -287,8 +312,20 @@ anno_col <- list(
     'Pediatric-type HGG'    = "#B49696FF",
     'Pediatric-type LGG'    = "#AAC197FF",
     'Ependymoma'            = "#96A5A5FF" 
+  ),
+  MGMT = c(
+    'Methylated'  = "#A89E5EFF",
+    'Unmethylated'  = "#EBA07EFF",
+    'Unknown' = "#96A5A5FF"
+  ),
+  Resection = c(
+    'Biopsy' = "#846D86FF",
+    'Gross Total' = "#7F8C72FF",
+    'Subtotal' = "#7D96AFFF" 
   )
 )
+
+
 
 # create annotation
 top_anno <- HeatmapAnnotation(
@@ -329,7 +366,7 @@ p <- oncoPrint(
   right_annotation = NULL
 )
 
-pdf(file.path(dir_output, 'fig1.pdf'), width = 7, height = 8)
+pdf(file.path(dir_output, 'fig_all.pdf'), width = 7, height = 8)
 
 draw(
   p,
@@ -339,111 +376,7 @@ draw(
 
 dev.off()
 
-jpeg(filename = file.path(dir_output, "fig1.jpeg"), width = 7, height = 8, units = "in", 
-    res = 300, quality = 100)
-
-draw(
-  p,
-  heatmap_legend_side = "right",
-  annotation_legend_side = "right"
-)
-
-dev.off()
-
-####################################################
-## OncoPrint ---> clinbical metadata (IDH WT)
-####################################################
-# sample-level metadata
-clin <- as.data.frame(clin)
-clin_wt <- clin[clin$IDH_status == 'WT', ]
-
-anno_df <- data.frame(
-  Sex = factor(clin_wt$Sex, levels = c("Male", "Female")),
-  Age = factor(clin_wt$Age, levels = c(">40", "<40")),
-  Histo = factor(clin_wt$Histo, c('Glioblastoma', 'Circumscribed glioma',
-                                  'Glioneuronal tumor', 'Pediatric-type HGG', 
-                                  'Pediatric-type LGG', 'Ependymoma')),
-  Grade = factor(clin_wt$Grade, levels = c('1', '2', '3', '4'))
-)
-
-# make sure rownames match sample IDs
-mut_wt <- mut_fixed[, colnames(mut_fixed) %in% clin_wt$Study]
-rownames(anno_df) <- colnames(mut_wt)
-
-# colors
-anno_col <- list(
-  Sex = c(
-    Male   = "#4C72B0",
-    Female = "#DD8452"
-  ),
-  Age = c(
-    '>40'  = "#08306B",
-    '<40' = "#C6DBEF"
-  ),
-  Grade = c(
-    '1'  = "#A8C3A0FF",
-    '2'  = "#BC8E7DFF",
-    '3' = "#FAE093FF",
-    '4' = "#7C7189FF"
-  ),
-  Histo = c(
-    'Glioblastoma'          = "#4A7169FF",
-    'Circumscribed glioma'  = "#E76254FF", 
-    'Glioneuronal tumor'    = "#99B6BDFF",
-    'Pediatric-type HGG'    = "#B49696FF",
-    'Pediatric-type LGG'    = "#AAC197FF",
-    'Ependymoma'            = "#96A5A5FF"
-  )
-)
-
-# create annotation
-top_anno <- HeatmapAnnotation(
-  
-  # ---- alteration barplot ----
-  Alterations = anno_oncoprint_barplot(
-    border = FALSE,
-    height = unit(1.2, "cm")
-  ),
-
-  # ---- metadata ----
-  df = anno_df,
-  col = anno_col,
-  simple_anno_size = unit(3, "mm"), 
-  annotation_name_side = "left",
-  annotation_name_gp = gpar(fontsize = 7) 
-)
-
-freq <- rowMeans(mut_wt != '')
-keep <- freq[freq > 0.05]
-mut_wt_filtered <- mut_wt[rownames(mut_wt) %in% names(keep), ]
-
-p <- oncoPrint(
-  mut_wt_filtered,
-  get_type = function(x) strsplit(x, ";")[[1]],
-  alter_fun = alter_fun,
-  col = col,
-  remove_empty_rows = TRUE,
-  remove_empty_columns = TRUE,
-  heatmap_legend_param = heatmap_legend_param,
-  row_names_gp = grid::gpar(fontsize = 8),
-  top_annotation = top_anno,
-  left_annotation = rowAnnotation(
-    rbar = anno_oncoprint_barplot(axis_param = list(direction = "reverse"))
-  ),
-  right_annotation = NULL
-)
-
-pdf(file.path(dir_output, 'fig2_wt.pdf'), width = 6.5, height = 5)
-
-draw(
-  p,
-  heatmap_legend_side = "right",
-  annotation_legend_side = "right"
-)
-
-dev.off()
-
-jpeg(filename = file.path(dir_output, "fig2_wt.jpeg"), width = 6.5, height = 5, units = "in", 
+jpeg(filename = file.path(dir_output, "fig_all.jpeg"), width = 7, height = 8, units = "in", 
     res = 300, quality = 100)
 
 draw(
@@ -465,7 +398,9 @@ anno_df <- data.frame(
   Sex = factor(clin_mut$Sex, levels = c("Male", "Female")),
   Age = factor(clin_mut$Age, levels = c(">40", "<40")),
   Histo = factor(clin_mut$Histo, levels = c('Astrocytoma', 'Oligodendroglioma')),
-  Grade = factor(clin_mut$Grade, levels = c('2', '3', '4'))
+  Grade = factor(clin_mut$Grade, levels = c('2', '3', '4')),
+  MGMT = factor(clin_mut$MGMT, levels = c('Methylated', 'Unmethylated', 'Unknown')),
+  Resection = factor(clin_mut$Resection, levels = c('Biopsy', 'Gross Total', 'Subtotal'))
 )
 
 # make sure rownames match sample IDs
@@ -490,6 +425,16 @@ anno_col <- list(
   Histo = c(
     'Astrocytoma'           = "#735231FF",
     'Oligodendroglioma'     = "#E3CA97FF"
+  ),
+  MGMT = c(
+    'Methylated'  = "#A89E5EFF",
+    'Unmethylated'  = "#EBA07EFF",
+    'Unknown' = "#96A5A5FF"
+  ),
+  Resection = c(
+    'Biopsy' = "#846D86FF",
+    'Gross Total' = "#7F8C72FF",
+    'Subtotal' = "#7D96AFFF" 
   )
 )
 
@@ -530,7 +475,7 @@ p <- oncoPrint(
   right_annotation = NULL
 )
 
-pdf(file.path(dir_output, 'fig3_mut.pdf'), width = 6.5, height = 5)
+pdf(file.path(dir_output, 'fig_mut.pdf'), width = 6.5, height = 5)
 
 draw(
   p,
@@ -540,7 +485,7 @@ draw(
 
 dev.off()
 
-jpeg(filename = file.path(dir_output, "fig3_mut.jpeg"), width = 6.5, height = 5, units = "in", 
+jpeg(filename = file.path(dir_output, "fig_mut.jpeg"), width = 6.5, height = 5, units = "in", 
     res = 300, quality = 100)
 
 draw(
@@ -561,7 +506,9 @@ clin_wt_gbm <- clin[clin$IDH_status == 'WT' & clin$Histo == 'Glioblastoma', ]
 anno_df <- data.frame(
   Sex = factor(clin_wt_gbm$Sex, levels = c("Male", "Female")),
   Age = factor(clin_wt_gbm$Age, levels = c(">40", "<40")),
-  Grade = factor(clin_wt_gbm$Grade, levels = c('1', '2', '4'))
+ # Grade = factor(clin_wt_gbm$Grade, levels = c('1', '2', '4'))
+  MGMT = factor(clin_wt_gbm$MGMT, levels = c('Methylated', 'Unmethylated', 'Unknown')),
+  Resection = factor(clin_wt_gbm$Resection, levels = c('Biopsy', 'Gross Total', 'Subtotal'))
 )
 
 # make sure rownames match sample IDs
@@ -578,10 +525,20 @@ anno_col <- list(
     '>40'  = "#08306B",
     '<40' = "#C6DBEF"
   ),
-  Grade = c(
-    '1'  = "#A8C3A0FF",
-    '2'  = "#BC8E7DFF",
-    '4' = "#7C7189FF"
+ # Grade = c(
+ #   '1'  = "#A8C3A0FF",
+ #   '2'  = "#BC8E7DFF",
+ #   '4' = "#7C7189FF"
+ # )
+  MGMT = c(
+    'Methylated'  = "#A89E5EFF",
+    'Unmethylated'  = "#EBA07EFF",
+    'Unknown' = "#96A5A5FF"
+  ),
+  Resection = c(
+    'Biopsy' = "#846D86FF",
+    'Gross Total' = "#7F8C72FF",
+    'Subtotal' = "#7D96AFFF" 
   )
 )
 
@@ -622,7 +579,7 @@ p <- oncoPrint(
   right_annotation = NULL
 )
 
-pdf(file.path(dir_output, 'fig4_wt_gbm.pdf'), width = 6.5, height = 5)
+pdf(file.path(dir_output, 'fig_wt_gbm.pdf'), width = 6.5, height = 5)
 
 draw(
   p,
@@ -632,7 +589,7 @@ draw(
 
 dev.off()
 
-jpeg(filename = file.path(dir_output, "fig4_wt_gbm.jpeg"), width = 6.5, height = 5, units = "in", 
+jpeg(filename = file.path(dir_output, "fig_wt_gbm.jpeg"), width = 6.5, height = 5, units = "in", 
     res = 300, quality = 100)
 
 draw(
@@ -656,7 +613,9 @@ anno_df <- data.frame(
   Histo = factor(clin_wt_nongbm$Histo, c('Circumscribed glioma', 'Glioneuronal tumor', 
                                          'Pediatric-type HGG', 'Pediatric-type LGG', 
                                          'Ependymoma')),
-  Grade = factor(clin_wt_nongbm$Grade, levels = c('1', '2', '3', '4'))
+  Grade = factor(clin_wt_nongbm$Grade, levels = c('1', '2', '3', '4')),
+  MGMT = factor(clin_wt_nongbm$MGMT, levels = c('Methylated', 'Unmethylated', 'Unknown')),
+  Resection = factor(clin_wt_nongbm$Resection, levels = c('Biopsy', 'Gross Total', 'Subtotal'))
 )
 
 # make sure rownames match sample IDs
@@ -685,6 +644,16 @@ anno_col <- list(
     'Pediatric-type HGG'    = "#B49696FF",
     'Pediatric-type LGG'    = "#AAC197FF",
     'Ependymoma'            = "#96A5A5FF"
+  ),
+   MGMT = c(
+    'Methylated'  = "#A89E5EFF",
+    'Unmethylated'  = "#EBA07EFF",
+    'Unknown' = "#96A5A5FF"
+  ),
+  Resection = c(
+    'Biopsy' = "#846D86FF",
+    'Gross Total' = "#7F8C72FF",
+    'Subtotal' = "#7D96AFFF" 
   )
 )
 
@@ -725,7 +694,7 @@ p <- oncoPrint(
   right_annotation = NULL
 )
 
-pdf(file.path(dir_output, 'fig5_wt_nongbm.pdf'), width = 6.5, height = 5)
+pdf(file.path(dir_output, 'fig_wt_nongbm.pdf'), width = 6.5, height = 5.5)
 
 draw(
   p,
@@ -735,7 +704,7 @@ draw(
 
 dev.off()
 
-jpeg(filename = file.path(dir_output, "fig5_wt_nongbm.jpeg"), width = 6.5, height = 5, units = "in", 
+jpeg(filename = file.path(dir_output, "fig_wt_nongbm.jpeg"), width = 6.5, height = 5.5, units = "in", 
     res = 300, quality = 100)
 
 draw(
