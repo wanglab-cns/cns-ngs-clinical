@@ -216,10 +216,10 @@ clin$Age <- ifelse(clin$Age >= 40, '>40', '<40')
 clin <- clin %>%
   mutate(
     Grade = case_when(
-      WHO.2021.Grade == 1 ~ "I",
-      WHO.2021.Grade == 2 ~ "II",
-      WHO.2021.Grade == 3 ~ "III",
-      WHO.2021.Grade == 4 ~ "IV",
+      WHO.2021.Grade == 1 ~ "1",
+      WHO.2021.Grade == 2 ~ "2",
+      WHO.2021.Grade == 3 ~ "3",
+      WHO.2021.Grade == 4 ~ "4",
       TRUE ~ NA_character_
     )
   )
@@ -252,7 +252,7 @@ anno_df <- data.frame(
   Histo = factor(clin$Histo, levels = c('Glioblastoma', 'Astrocytoma', 'Circumscribed glioma',
                                         'Glioneuronal tumor', 'Oligodendroglioma',  'Pediatric-type HGG',
                                         'Pediatric-type LGG', 'Ependymoma')),
-  Grade = factor(clin$Grade, levels = c('I', 'II', 'III', 'IV'))
+  Grade = factor(clin$Grade, levels = c('1', '2', '3', '4'))
 )
 
 # make sure rownames match sample IDs
@@ -273,10 +273,10 @@ anno_col <- list(
     '<40' = "#C6DBEF"
   ),
   Grade = c(
-    'I'  = "#A8C3A0FF",
-    'II'  = "#BC8E7DFF",
-    'III' = "#FAE093FF",
-    'IV' = "#7C7189FF"
+    '1'  = "#A8C3A0FF",
+    '2'  = "#BC8E7DFF",
+    '3' = "#FAE093FF",
+    '4' = "#7C7189FF"
   ),
   Histo = c(
     'Glioblastoma'          = "#4A7169FF",
@@ -363,7 +363,7 @@ anno_df <- data.frame(
   Histo = factor(clin_wt$Histo, c('Glioblastoma', 'Circumscribed glioma',
                                   'Glioneuronal tumor', 'Pediatric-type HGG', 
                                   'Pediatric-type LGG', 'Ependymoma')),
-  Grade = factor(clin_wt$Grade, levels = c('I', 'II', 'III', 'IV'))
+  Grade = factor(clin_wt$Grade, levels = c('1', '2', '3', '4'))
 )
 
 # make sure rownames match sample IDs
@@ -381,10 +381,10 @@ anno_col <- list(
     '<40' = "#C6DBEF"
   ),
   Grade = c(
-    'I'  = "#A8C3A0FF",
-    'II'  = "#BC8E7DFF",
-    'III' = "#FAE093FF",
-    'IV' = "#7C7189FF"
+    '1'  = "#A8C3A0FF",
+    '2'  = "#BC8E7DFF",
+    '3' = "#FAE093FF",
+    '4' = "#7C7189FF"
   ),
   Histo = c(
     'Glioblastoma'          = "#4A7169FF",
@@ -465,7 +465,7 @@ anno_df <- data.frame(
   Sex = factor(clin_mut$Sex, levels = c("Male", "Female")),
   Age = factor(clin_mut$Age, levels = c(">40", "<40")),
   Histo = factor(clin_mut$Histo, levels = c('Astrocytoma', 'Oligodendroglioma')),
-  Grade = factor(clin_mut$Grade, levels = c('II', 'III', 'IV'))
+  Grade = factor(clin_mut$Grade, levels = c('2', '3', '4'))
 )
 
 # make sure rownames match sample IDs
@@ -483,9 +483,9 @@ anno_col <- list(
     '<40' = "#C6DBEF"
   ),
   Grade = c(
-    'II'  = "#BC8E7DFF",
-    'III' = "#FAE093FF",
-    'IV' = "#7C7189FF"
+    '2'  = "#BC8E7DFF",
+    '3' = "#FAE093FF",
+    '4' = "#7C7189FF"
   ),
   Histo = c(
     'Astrocytoma'           = "#735231FF",
@@ -561,7 +561,7 @@ clin_wt_gbm <- clin[clin$IDH_status == 'WT' & clin$Histo == 'Glioblastoma', ]
 anno_df <- data.frame(
   Sex = factor(clin_wt_gbm$Sex, levels = c("Male", "Female")),
   Age = factor(clin_wt_gbm$Age, levels = c(">40", "<40")),
-  Grade = factor(clin_wt_gbm$Grade, levels = c('I', 'II', 'IV'))
+  Grade = factor(clin_wt_gbm$Grade, levels = c('1', '2', '4'))
 )
 
 # make sure rownames match sample IDs
@@ -579,9 +579,9 @@ anno_col <- list(
     '<40' = "#C6DBEF"
   ),
   Grade = c(
-    'I'  = "#A8C3A0FF",
-    'II'  = "#BC8E7DFF",
-    'IV' = "#7C7189FF"
+    '1'  = "#A8C3A0FF",
+    '2'  = "#BC8E7DFF",
+    '4' = "#7C7189FF"
   )
 )
 
@@ -656,7 +656,7 @@ anno_df <- data.frame(
   Histo = factor(clin_wt_nongbm$Histo, c('Circumscribed glioma', 'Glioneuronal tumor', 
                                          'Pediatric-type HGG', 'Pediatric-type LGG', 
                                          'Ependymoma')),
-  Grade = factor(clin_wt_nongbm$Grade, levels = c('I', 'II', 'III', 'IV'))
+  Grade = factor(clin_wt_nongbm$Grade, levels = c('1', '2', '3', '4'))
 )
 
 # make sure rownames match sample IDs
@@ -674,10 +674,10 @@ anno_col <- list(
     '<40' = "#C6DBEF"
   ),
   Grade = c(
-    'I'  = "#A8C3A0FF",
-    'II'  = "#BC8E7DFF",
-    'III' = "#FAE093FF",
-    'IV' = "#7C7189FF"
+    '1'  = "#A8C3A0FF",
+    '2'  = "#BC8E7DFF",
+    '3' = "#FAE093FF",
+    '4' = "#7C7189FF"
   ),
   Histo = c(
     'Circumscribed glioma'  = "#E76254FF", 
